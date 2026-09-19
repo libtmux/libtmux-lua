@@ -95,5 +95,6 @@ the GitHub CLI or API and verify both repositories afterward.
 - `origin`: [libtmux/libtmux-lua](https://github.com/libtmux/libtmux-lua).
 - `tony`: [tony/libtmux-lua](https://github.com/tony/libtmux-lua).
 
-Both repositories are private and independent, with `master` as the default
-branch. The personal repository is not a GitHub fork.
+The organization repository is public; the personal repository is private.
+They are independent, with `master` as the default branch. The personal
+repository is not a GitHub fork. Push only to `origin`.
