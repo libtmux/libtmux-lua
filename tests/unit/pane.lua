@@ -184,7 +184,7 @@ function M.test_copy_actions_resize_and_kill_have_explicit_targets_and_scope()
         local session = assert(
             entity.from_reference(state, { kind = "session", id = "$1", generation = generation })
         )
-        value, err = session:kill():await()
+        value, err = session:copy_mode():await()
         t.assertNil(value)
         t.assertEquals(assert(err).code, "invalid_target")
         t.assertEquals(#state.calls, 4)
@@ -305,6 +305,92 @@ function M.test_private_inspection_ignores_overwritten_methods_and_rejects_forei
         value, err = entity.inspect(state, pane, "pane")
         t.assertNil(value)
         t.assertEquals(assert(err).code, "stale_generation")
+    end)
+end
+
+function M.test_selection_title_and_swap_preserve_literal_private_targets()
+    fixture(function(state, pane, generation, entity)
+        local other = assert(entity.from_reference(state, {
+            kind = "pane",
+            id = "%9",
+            generation = generation,
+        }))
+        other.reference = function()
+            error("caller method must not run")
+        end
+        assert(pane:select({ keep_zoom = true }):await())
+        assert(pane:set_title("literal#{pane_id};λ"):await())
+        local options = { keep_zoom = true }
+        local pending = pane:swap(other, options)
+        options.select = true
+        assert(pending:await())
+        t.assertEquals(state.calls[1].argv, { "select-pane", "-t", "%8", "-Z" })
+        t.assertEquals(state.calls[2].argv, {
+            "select-pane",
+            "-t",
+            "%8",
+            "-T",
+            "literal##{pane_id};λ",
+        })
+        t.assertEquals(state.calls[3].argv, { "swap-pane", "-t", "%9", "-s", "%8", "-d", "-Z" })
+        assert(pane:swap(other, { select = true }):await())
+        t.assertEquals(state.calls[4].argv, { "swap-pane", "-t", "%9", "-s", "%8" })
+        for _, attempt in ipairs({
+            function()
+                return pane:swap({ reference = other.reference })
+            end,
+            function()
+                return pane:swap(pane)
+            end,
+            function()
+                return pane:swap(other, { select = "no" })
+            end,
+            function()
+                return pane:set_title("\255")
+            end,
+            function()
+                return pane:set_title("bad\000title")
+            end,
+            function()
+                return pane:set_title("line\nnext")
+            end,
+            function()
+                return pane:select({ keep_zoom = 1 })
+            end,
+        }) do
+            local value, err = attempt():await()
+            t.assertNil(value)
+            t.assertEquals(assert(err).effect, "not_sent")
+        end
+        t.assertEquals(#state.calls, 4)
+    end)
+end
+
+function M.test_topology_completion_preserves_effect_when_generation_is_invalidated()
+    fixture(function(state, pane, generation)
+        state.before = function()
+            identity.invalidate(generation)
+        end
+        local value, err = pane:select():await()
+        t.assertNil(value)
+        t.assertEquals(assert(err).code, "stale_generation")
+        t.assertEquals(err.effect, "completed")
+        t.assertEquals(err.partial.stdout, state.output)
+        t.assertEquals(#state.calls, 1)
+    end)
+end
+
+function M.test_empty_title_rejects_exact_3_7_native_silent_noop()
+    fixture(function(state, pane)
+        state.version = "3.7"
+        local value, err = pane:set_title(""):await()
+        t.assertNil(value)
+        t.assertEquals(assert(err).code, "unsupported")
+        t.assertEquals(err.effect, "not_sent")
+        t.assertEquals(#state.calls, 0)
+        state.version = "3.7a"
+        assert(pane:set_title(""):await())
+        t.assertEquals(state.calls[1].argv, { "select-pane", "-t", "%8", "-T", "" })
     end)
 end
 

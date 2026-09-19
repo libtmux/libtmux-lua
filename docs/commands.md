@@ -10,6 +10,12 @@ No shell parses argv. tmux still parses its own command syntax; the library
 protects literal separator arguments. A tmux command that explicitly accepts
 shell text, such as `run-shell`, retains that command's shell semantics.
 
+Native command aliases apply even to full built-in names, including commands
+used by typed domain methods. Hooks can run additional commands and affect
+state. The library does not change borrowed server configuration or promise
+that aliases preserve built-in semantics. A preliminary configuration check
+cannot prevent an alias from changing before a later command is parsed.
+
 Use `server:group(commands, options)` for an explicit ordered tmux command
 group. Its result is aggregate output and exit status. Parse failure can
 reject the whole group, immediate execution failure skips later commands,

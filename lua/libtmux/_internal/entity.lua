@@ -5,6 +5,7 @@ local graph = require("libtmux._internal.graph")
 local identity = require("libtmux._internal.identity")
 local domain = require("libtmux._internal.domain")
 local pane = require("libtmux._internal.pane")
+local topology = require("libtmux._internal.topology")
 local M, Entity = {}, {}
 local handles = setmetatable({}, { __mode = "kv" })
 
@@ -38,6 +39,7 @@ local function from_identity(state, owned)
     if not ref then
         return nil, err
     end
+    stored.kind = ref.kind
     local handle = setmetatable({}, {
         __index = function(_, name)
             return stored.methods[name]
@@ -199,17 +201,54 @@ end
 
 function Entity:resize(options)
     local stored = handles[self]
-    return pane.run(stored.server, stored.identity, "resize", nil, options)
+    local implementation = stored.kind == "pane" and pane or topology
+    return implementation.run(stored.server, stored.identity, "resize", nil, options)
 end
 
 function Entity:kill(options)
     local stored = handles[self]
-    return pane.run(stored.server, stored.identity, "kill", nil, options)
+    local implementation = stored.kind == "pane" and pane or topology
+    return implementation.run(stored.server, stored.identity, "kill", nil, options)
+end
+
+function Entity:rename(name, options)
+    local stored = handles[self]
+    return topology.run(stored.server, stored.identity, "rename", name, options)
+end
+
+function Entity:navigate_window(direction, options)
+    local stored = handles[self]
+    return topology.run(stored.server, stored.identity, "navigate_window", direction, options)
+end
+
+function Entity:renumber_windows(options)
+    local stored = handles[self]
+    return topology.run(stored.server, stored.identity, "renumber_windows", nil, options)
+end
+
+function Entity:layout(options)
+    local stored = handles[self]
+    return topology.run(stored.server, stored.identity, "layout", nil, options)
 end
 
 function Entity:respawn(options)
     local stored = handles[self]
     return pane.run(stored.server, stored.identity, "respawn", nil, options)
+end
+
+function Entity:select(options)
+    local stored = handles[self]
+    return pane.run(stored.server, stored.identity, "select", nil, options)
+end
+
+function Entity:set_title(text, options)
+    local stored = handles[self]
+    return pane.run(stored.server, stored.identity, "set_title", text, options)
+end
+
+function Entity:swap(other, options)
+    local stored = handles[self]
+    return pane.run(stored.server, stored.identity, "swap", other, options, M.inspect)
 end
 
 function Entity:new_window(options)
@@ -332,11 +371,26 @@ end
 --- libtmux.Request<boolean>
 ---@field copy_command fun(self:libtmux.Entity<T>,action:string,
 --- args?:string[],options?:libtmux.KeyOptions):libtmux.Request<boolean>
----@field resize fun(self:libtmux.Entity<T>,options:libtmux.ResizePaneOptions):
+---@field resize fun(self:libtmux.Entity<T>,
+--- options:libtmux.ResizePaneOptions|libtmux.ResizeWindowOptions):
 --- libtmux.Request<boolean>
 ---@field kill fun(self:libtmux.Entity<T>,options?:libtmux.PaneOptions):
 --- libtmux.Request<boolean>
 ---@field respawn fun(self:libtmux.Entity<T>,options?:libtmux.RespawnOptions):
+--- libtmux.Request<boolean>
+---@field select fun(self:libtmux.Entity<T>,options?:libtmux.SelectPaneOptions):
+--- libtmux.Request<boolean>
+---@field set_title fun(self:libtmux.Entity<T>,text:string,options?:libtmux.PaneOptions):
+--- libtmux.Request<boolean>
+---@field swap fun(self:libtmux.Entity<T>,other:libtmux.Entity<libtmux.SnapshotPane>,
+--- options?:libtmux.SwapPaneOptions):libtmux.Request<boolean>
+---@field rename fun(self:libtmux.Entity<T>,name:string,options?:libtmux.TopologyOptions):
+--- libtmux.Request<boolean>
+---@field navigate_window fun(self:libtmux.Entity<T>,direction:"next"|"previous"|"last",
+--- options?:libtmux.NavigateWindowOptions):libtmux.Request<boolean>
+---@field renumber_windows fun(self:libtmux.Entity<T>,options?:libtmux.TopologyOptions):
+--- libtmux.Request<boolean>
+---@field layout fun(self:libtmux.Entity<T>,options:libtmux.LayoutOptions):
 --- libtmux.Request<boolean>
 
 return M

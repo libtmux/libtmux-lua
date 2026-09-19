@@ -13,6 +13,9 @@ local commands = {
     resize = "resize-pane",
     kill = "kill-pane",
     respawn = "respawn-pane",
+    select = "select-pane",
+    set_title = "select-pane",
+    swap = "swap-pane",
 }
 local allowed = {
     capture = {
@@ -34,6 +37,9 @@ local allowed = {
     resize = { width = true, height = true, direction = true, amount = true },
     kill = {},
     respawn = { kill = true, argv = true, shell = true, cwd = true, environment = true },
+    select = { keep_zoom = true },
+    set_title = {},
+    swap = { select = true, keep_zoom = true },
 }
 
 local function failure(code, message, kind, effect, details)
@@ -228,7 +234,7 @@ local function current(state, owned, kind)
     return ref
 end
 
-local function prepare(state, ref, kind, data, options)
+local function prepare(state, ref, kind, data, options, inspect)
     local function invalid(message, code)
         error(failure(code or "invalid_options", message, kind), 0)
     end
@@ -411,6 +417,37 @@ local function prepare(state, ref, kind, data, options)
         for _, arg in ipairs(args) do
             flag(arg)
         end
+    elseif kind == "select" then
+        boolean("keep_zoom", "-Z")
+    elseif kind == "set_title" then
+        string_value(data, 65536)
+        if not utf8(data) then
+            invalid("pane title requires valid UTF-8", "invalid_utf8")
+        end
+        if data:find("[%z\001-\031\127]") then
+            invalid("pane title cannot contain ASCII control bytes", "invalid_argument")
+        end
+        if data == "" and state.version == "3.7" then
+            invalid("tmux 3.7 silently ignores an empty pane title", "unsupported")
+        end
+        flag("-T", (data:gsub("#", "##")))
+    elseif kind == "swap" then
+        local target, err = inspect(state, data, "pane")
+        if not target then
+            error(err, 0)
+        end
+        if target.id == ref.id then
+            invalid("swap requires two different panes", "invalid_target")
+        end
+        if options.select ~= nil and type(options.select) ~= "boolean" then
+            invalid("select must be boolean")
+        end
+        argv[3] = target.id
+        flag("-s", ref.id)
+        if not options.select then
+            flag("-d")
+        end
+        boolean("keep_zoom", "-Z")
     elseif kind == "respawn" then
         boolean("kill", "-k")
         domain.append_launch(argv, options, invalid)
@@ -472,11 +509,11 @@ local function prepare(state, ref, kind, data, options)
     return { argv = copied[1], options = configured, bytes = bytes, cwd = options.cwd }
 end
 
-function M.run(state, owned, kind, data, options)
+function M.run(state, owned, kind, data, options, inspect)
     local ref, validation_error = current(state, owned, kind)
     local plan
     if ref then
-        local ok, value = pcall(prepare, state, ref, kind, data, options)
+        local ok, value = pcall(prepare, state, ref, kind, data, options, inspect)
         if ok then
             plan = value
         else
@@ -510,6 +547,16 @@ function M.run(state, owned, kind, data, options)
             return nil, err
         end
         operation:_set_effect("completed")
+        local still_current, cause = current(state, owned, kind)
+        if not still_current then
+            assert(cause)
+            return nil,
+                failure(cause.code, cause.message, kind, "completed", {
+                    cause = cause,
+                    partial = result,
+                    target = now,
+                })
+        end
         if kind == "capture" then
             return setmetatable({ bytes = result.stdout, target = now }, { __index = Capture })
         end
@@ -566,5 +613,11 @@ end
 
 ---@class libtmux.RespawnOptions: libtmux.CreationOptions
 ---@field kill? boolean Replace an active program; defaults to false.
+
+---@class libtmux.SelectPaneOptions: libtmux.PaneOptions
+---@field keep_zoom? boolean Preserve zoom while selecting; defaults to false.
+
+---@class libtmux.SwapPaneOptions: libtmux.SelectPaneOptions
+---@field select? boolean Defaults to false (native -d); active selection can still change.
 
 return M

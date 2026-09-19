@@ -41,6 +41,7 @@ build = {
         ["libtmux._internal.entity"] = "lua/libtmux/_internal/entity.lua",
         ["libtmux._internal.domain"] = "lua/libtmux/_internal/domain.lua",
         ["libtmux._internal.pane"] = "lua/libtmux/_internal/pane.lua",
+        ["libtmux._internal.topology"] = "lua/libtmux/_internal/topology.lua",
         ["libtmux._internal.planner"] = "lua/libtmux/_internal/planner.lua",
         ["libtmux._internal.live_query"] = "lua/libtmux/_internal/live_query.lua",
         ["libtmux.runtime.luv"] = "lua/libtmux/runtime/luv.lua",

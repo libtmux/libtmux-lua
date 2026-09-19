@@ -95,7 +95,10 @@ def main():
             lines.append('  local created = assert(server:new_session({argv={"/bin/cat"}}):await())')
             complete('  created.', {"session", "window", "pane", "window_link", "created"})
             lines.append('  local created_session = created.session')
-            complete('  created_session:', {"new_window", "reference", "get_option", "set_hook", "run_hook", "get_environment"})
+            complete('  created_session:', {"new_window", "reference", "get_option", "set_hook", "run_hook", "get_environment",
+                                           "rename", "kill", "navigate_window", "renumber_windows"})
+            lines.append('  local created_window = created.window')
+            complete('  created_window:', {"rename", "kill", "resize", "layout"})
             lines.append('  local option_record = assert(created_session:get_option("mouse"):await())')
             complete('  option_record.', {"name", "present", "inherited", "value", "entries", "target"})
             lines.append('  local hook_record = assert(created_session:get_hook("session-renamed"):await())')
@@ -112,7 +115,8 @@ def main():
             complete('  event.', {"kind", "data", "generation", "sequence"})
             lines.append('  local created_pane = created.pane')
             complete('  created_pane:', {"split", "reference", "capture", "send_text", "send_keys",
-                                        "copy_mode", "copy_command", "resize", "kill", "respawn"})
+                                        "copy_mode", "copy_command", "resize", "kill", "respawn",
+                                        "select", "set_title", "swap"})
             lines.append('  local pane_capture_request = created_pane:capture({history_lines=20})')
             complete('  pane_capture_request:', {"await", "cancel", "result", "on_complete"})
             lines.append('  local pane_capture = assert(pane_capture_request:await())')

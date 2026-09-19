@@ -118,3 +118,31 @@ All options must be plain records. The nested `process` record accepts timeout,
 deadline, output limit and drain/kill timeouts as described in
 [commands](commands.md). Generation validation and runtime byte limits apply
 before dispatch; native completion still waits for client exit and both EOFs.
+
+## Selection, titles and swaps
+
+`select()` changes the window's shared active pane. It unzooms when changing
+panes unless `keep_zoom = true`. This explicit mutation affects other clients
+and can run native focus and selection hooks.
+
+`set_title(text)` sends format-literal UTF-8: `#{pane_id}` stays text. NUL,
+ASCII control bytes and DEL are rejected before dispatch because native tmux
+can silently ignore them. The limit is 65,536 bytes. Exact tmux 3.7 also
+silently ignores empty titles, so that combination returns `unsupported`.
+Other accepted releases allow clearing the title. tmux's native name cleaning
+still applies; from 3.7, backslashes can be doubled. Completion does not
+promise byte-exact storage for every accepted title.
+
+`swap(other_pane, options)` swaps two explicit, different panes from the same
+Server. Their stable IDs follow them into their new windows. The default uses
+native `-d`: across windows, an active pane moved out is replaced at its old
+position. Within one window, an active source pane can remain selected after
+moving positions. Neither active identity nor active position is preserved in
+every case. `select = true` uses native selection of the swapped panes.
+`keep_zoom = true`
+preserves each window's zoom. Swaps change inherited window options and the
+pane relationships visible through every linked window.
+
+These methods return `true` on native completion and share the process limits
+above. Missing targets retain the native failure and its partial receipt.
+See [topology operations](topology.md) for Session and Window mutations.

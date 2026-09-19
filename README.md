@@ -21,6 +21,7 @@ Consumer dependencies do not belong in core-only installations.
 - [Literal commands, groups and independent batches](docs/commands.md)
 - [Create sessions, windows and panes](docs/creation.md)
 - [Capture, send input and manage panes](docs/panes.md)
+- [Rename, navigate and arrange sessions and windows](docs/topology.md)
 - [Observe sessions and stream pane output](docs/control.md)
 - [Read and change options and hooks](docs/settings.md)
 - [Read and change persistent environment values](docs/environment.md)
