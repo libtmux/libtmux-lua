@@ -1,3 +1,5 @@
+local settings = require("libtmux._internal.settings")
+local environment = require("libtmux._internal.environment")
 local endpoints = require("libtmux._internal.endpoint")
 local errors = require("libtmux._internal.error")
 local fields = require("libtmux._internal.fields")
@@ -372,6 +374,58 @@ local function capture(state, options)
     end, { operation = "snapshot", effect = "not_sent" })
 end
 
+function Server:get_option(name, options)
+    return settings.run(servers[self], nil, "option", "get", name, nil, options)
+end
+
+function Server:list_options(options)
+    return settings.run(servers[self], nil, "option", "list", nil, nil, options)
+end
+
+function Server:set_option(name, value, options)
+    return settings.run(servers[self], nil, "option", "set", name, value, options)
+end
+
+function Server:unset_option(name, options)
+    return settings.run(servers[self], nil, "option", "unset", name, nil, options)
+end
+
+function Server:get_hook(name, options)
+    return settings.run(servers[self], nil, "hook", "get", name, nil, options)
+end
+
+function Server:list_hooks(options)
+    return settings.run(servers[self], nil, "hook", "list", nil, nil, options)
+end
+
+function Server:set_hook(name, value, options)
+    return settings.run(servers[self], nil, "hook", "set", name, value, options)
+end
+
+function Server:unset_hook(name, options)
+    return settings.run(servers[self], nil, "hook", "unset", name, nil, options)
+end
+
+function Server:get_environment(name, options)
+    return environment.run(servers[self], nil, "get", name, nil, options)
+end
+
+function Server:list_environment(options)
+    return environment.run(servers[self], nil, "list", nil, nil, options)
+end
+
+function Server:set_environment(name, value, options)
+    return environment.run(servers[self], nil, "set", name, value, options)
+end
+
+function Server:unset_environment(name, options)
+    return environment.run(servers[self], nil, "unset", name, nil, options)
+end
+
+function Server:remove_environment(name, options)
+    return environment.run(servers[self], nil, "remove", name, nil, options)
+end
+
 function Server:snapshot(options)
     return capture(servers[self], options)
 end
@@ -525,6 +579,37 @@ end
 ---@field error? libtmux.Error
 
 ---@class libtmux.Server
+---@field get_option fun(self:libtmux.Server,name:string,options?:libtmux.SettingOptions):
+--- libtmux.Request<libtmux.OptionRecord>
+---@field list_options fun(self:libtmux.Server,options?:libtmux.SettingOptions):
+--- libtmux.Request<libtmux.OptionRecord[]>
+---@field set_option fun(self:libtmux.Server,name:string,value:libtmux.OptionInput,
+--- options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean>
+---@field unset_option fun(self:libtmux.Server,name:string,options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean>
+---@field get_hook fun(self:libtmux.Server,name:string,options?:libtmux.SettingOptions):
+--- libtmux.Request<libtmux.HookRecord>
+---@field list_hooks fun(self:libtmux.Server,options?:libtmux.SettingOptions):
+--- libtmux.Request<libtmux.HookRecord[]>
+---@field set_hook fun(self:libtmux.Server,name:string,value:libtmux.HookProgram,
+--- options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean>
+---@field unset_hook fun(self:libtmux.Server,name:string,options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean>
+---@field get_environment fun(self:libtmux.Server,name:string,options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<libtmux.EnvironmentRecord>
+---@field list_environment fun(self:libtmux.Server,options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<libtmux.EnvironmentRecord[]>
+---@field set_environment fun(self:libtmux.Server,name:string,value:string,
+--- options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<boolean>
+---@field unset_environment fun(self:libtmux.Server,name:string,
+--- options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<boolean>
+---@field remove_environment fun(self:libtmux.Server,name:string,
+--- options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<boolean>
 ---@field observe fun(self:libtmux.Server,session:libtmux.Entity<libtmux.SnapshotSession>,
 --- options?:libtmux.ObservationOptions):libtmux.Request<libtmux.Observation>
 ---@field query fun(self:libtmux.Server,options?:libtmux.LiveQueryOptions):

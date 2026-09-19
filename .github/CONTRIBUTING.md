@@ -162,6 +162,14 @@ reviewing a catalog change; the mid gate checks drift without network access:
 $ mise exec -- python scripts/generate_fields.py
 ```
 
+The [option catalog](../data/tmux-options.json) generates private release
+metadata and the [option reference](../docs/options-reference.md). Normal
+generation and drift checks are offline:
+
+```console
+$ mise exec -- python scripts/generate_options.py
+```
+
 Check whitespace in unstaged changes:
 
 ```console

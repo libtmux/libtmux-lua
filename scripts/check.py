@@ -105,6 +105,7 @@ def main():
             docs()
         elif gate == "generated":
             run([sys.executable, "scripts/generate_fields.py", "--check"], env=env, timeout=5)
+            run([sys.executable, "scripts/generate_options.py", "--check"], env=env, timeout=5)
         elif gate == "integration":
             run([sys.executable, "tests/run_integration.py"], env=env)
         elif gate == "package":

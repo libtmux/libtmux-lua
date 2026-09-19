@@ -1,3 +1,5 @@
+local settings = require("libtmux._internal.settings")
+local environment = require("libtmux._internal.environment")
 local errors = require("libtmux._internal.error")
 local graph = require("libtmux._internal.graph")
 local identity = require("libtmux._internal.identity")
@@ -65,6 +67,76 @@ function M.from_reference(state, ref)
         return nil, err
     end
     return from_identity(state, owned)
+end
+
+function Entity:get_option(name, options)
+    local stored = handles[self]
+    return settings.run(stored.server, stored.identity, "option", "get", name, nil, options)
+end
+
+function Entity:list_options(options)
+    local stored = handles[self]
+    return settings.run(stored.server, stored.identity, "option", "list", nil, nil, options)
+end
+
+function Entity:set_option(name, value, options)
+    local stored = handles[self]
+    return settings.run(stored.server, stored.identity, "option", "set", name, value, options)
+end
+
+function Entity:unset_option(name, options)
+    local stored = handles[self]
+    return settings.run(stored.server, stored.identity, "option", "unset", name, nil, options)
+end
+
+function Entity:get_hook(name, options)
+    local stored = handles[self]
+    return settings.run(stored.server, stored.identity, "hook", "get", name, nil, options)
+end
+
+function Entity:list_hooks(options)
+    local stored = handles[self]
+    return settings.run(stored.server, stored.identity, "hook", "list", nil, nil, options)
+end
+
+function Entity:set_hook(name, value, options)
+    local stored = handles[self]
+    return settings.run(stored.server, stored.identity, "hook", "set", name, value, options)
+end
+
+function Entity:unset_hook(name, options)
+    local stored = handles[self]
+    return settings.run(stored.server, stored.identity, "hook", "unset", name, nil, options)
+end
+
+function Entity:run_hook(name, options)
+    local stored = handles[self]
+    return settings.run(stored.server, stored.identity, "hook", "run", name, nil, options)
+end
+
+function Entity:get_environment(name, options)
+    local stored = handles[self]
+    return environment.run(stored.server, stored.identity, "get", name, nil, options)
+end
+
+function Entity:list_environment(options)
+    local stored = handles[self]
+    return environment.run(stored.server, stored.identity, "list", nil, nil, options)
+end
+
+function Entity:set_environment(name, value, options)
+    local stored = handles[self]
+    return environment.run(stored.server, stored.identity, "set", name, value, options)
+end
+
+function Entity:unset_environment(name, options)
+    local stored = handles[self]
+    return environment.run(stored.server, stored.identity, "unset", name, nil, options)
+end
+
+function Entity:remove_environment(name, options)
+    local stored = handles[self]
+    return environment.run(stored.server, stored.identity, "remove", name, nil, options)
 end
 
 function Entity:reference()
@@ -210,6 +282,40 @@ end
 ---@field index? integer
 
 ---@class libtmux.Entity<T>
+---@field get_option fun(self:libtmux.Entity<T>,name:string,options?:libtmux.SettingOptions):
+--- libtmux.Request<libtmux.OptionRecord>
+---@field list_options fun(self:libtmux.Entity<T>,options?:libtmux.SettingOptions):
+--- libtmux.Request<libtmux.OptionRecord[]>
+---@field set_option fun(self:libtmux.Entity<T>,name:string,value:libtmux.OptionInput,
+--- options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean>
+---@field unset_option fun(self:libtmux.Entity<T>,name:string,options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean>
+---@field get_hook fun(self:libtmux.Entity<T>,name:string,options?:libtmux.SettingOptions):
+--- libtmux.Request<libtmux.HookRecord>
+---@field list_hooks fun(self:libtmux.Entity<T>,options?:libtmux.SettingOptions):
+--- libtmux.Request<libtmux.HookRecord[]>
+---@field set_hook fun(self:libtmux.Entity<T>,name:string,value:libtmux.HookProgram,
+--- options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean>
+---@field unset_hook fun(self:libtmux.Entity<T>,name:string,options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean>
+---@field run_hook fun(self:libtmux.Entity<T>,name:string,options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean>
+---@field get_environment fun(self:libtmux.Entity<T>,name:string,
+--- options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<libtmux.EnvironmentRecord>
+---@field list_environment fun(self:libtmux.Entity<T>,options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<libtmux.EnvironmentRecord[]>
+---@field set_environment fun(self:libtmux.Entity<T>,name:string,value:string,
+--- options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<boolean>
+---@field unset_environment fun(self:libtmux.Entity<T>,name:string,
+--- options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<boolean>
+---@field remove_environment fun(self:libtmux.Entity<T>,name:string,
+--- options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<boolean>
 ---@field reference fun(self:libtmux.Entity<T>):libtmux.Reference?, libtmux.Error?
 ---@field snapshot fun(self:libtmux.Entity<T>):libtmux.Request<T>
 ---@field new_window fun(self:libtmux.Entity<T>,options?:libtmux.NewWindowOptions):

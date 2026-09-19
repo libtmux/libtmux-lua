@@ -24,6 +24,7 @@ function M.test_prepare_preserves_arguments_through_tmux_separator_parser()
         "tmux-test",
         "-S",
         "/owned/socket;",
+        "-u",
         "-f",
         "/owned/config;",
         "--",
@@ -52,6 +53,7 @@ function M.test_only_explicit_group_boundaries_become_separator_tokens()
         "tmux",
         "-S",
         "/owned/socket",
+        "-u",
         "--",
         "set-option",
         "-g",
@@ -69,7 +71,7 @@ function M.test_bound_endpoint_can_disable_tmux_server_autostart()
         { "new-session", "-d" },
     })
     t.assertNil(err)
-    t.assertEquals(encoded, { "tmux", "-S", "/owned/pin", "-N", "--", "new-session", "-d" })
+    t.assertEquals(encoded, { "tmux", "-S", "/owned/pin", "-u", "-N", "--", "new-session", "-d" })
     local invalid, invalid_err = command.prepare({ socket = "/owned/pin", no_start = "yes" }, {
         { "new-session" },
     })
@@ -130,6 +132,86 @@ function M.test_metatables_are_rejected_without_running_code()
     assert(err)
     t.assertEquals(err.code, "invalid_endpoint")
     t.assertFalse(touched)
+end
+
+local function program(input)
+    t.assertEquals(type(command.prepare_program), "function", "hook program preparation is missing")
+    return command.prepare_program(input)
+end
+
+local function invalid_program(input)
+    local value, err = program(input)
+    t.assertNil(value)
+    assert(err)
+    t.assertEquals(err.code, "invalid_program")
+    t.assertEquals(err.effect, "not_sent")
+end
+
+function M.test_program_commands_quote_each_byte_and_only_explicit_command_boundaries()
+    local input = { commands = { { "a", "", "\n;\255" }, { "b", "%end\\$" } } }
+    local encoded, err = program(input)
+    t.assertNil(err)
+    t.assertEquals(
+        encoded,
+        '"\\141" "" "\\012\\073\\377" ; "\\142" "\\045\\145\\156\\144\\134\\044"'
+    )
+    t.assertEquals(input.commands[1], { "a", "", "\n;\255" })
+    input.commands[1][1] = "changed"
+    t.assertStrContains(encoded, '"\\141"')
+    local source = "not-yet-a-command\n%end 1 2 1\r\t\\\255"
+    t.assertEquals(program({ source = source }), source)
+    t.assertEquals(program({ source = "" }), "")
+end
+
+function M.test_program_validation_rejects_ambiguous_records_and_untrusted_tables()
+    local touched = false
+    local function touch()
+        touched = true
+        error("program validation must not run caller code")
+    end
+    local mt = { __index = touch, __pairs = touch, __len = touch, __tostring = touch }
+    for _, input in ipairs({
+        false,
+        {},
+        { commands = { { "a" } }, source = "a" },
+        { source = "a", extra = true },
+        { source = "a\000b" },
+        { source = false },
+        { commands = false },
+        { commands = {} },
+        { commands = { {} } },
+        { commands = { { "" } } },
+        { commands = { { "a" }, { "b", "\000" } } },
+        { commands = { { "a" }, { "b", false } } },
+        { commands = { [2] = { "a" } } },
+        { commands = { { [1] = "a", [3] = "hole" } } },
+        setmetatable({ source = "a" }, mt),
+        { commands = setmetatable({ { "a" } }, mt) },
+        { commands = { setmetatable({ "a" }, mt) } },
+        { commands = { { "a", setmetatable({}, mt) } } },
+    }) do
+        invalid_program(input)
+    end
+    t.assertFalse(touched)
+end
+
+function M.test_program_limits_cover_encoded_expansion_commands_and_aggregate_arguments()
+    local maximum = 1048576
+    t.assertEquals(#assert(program({ source = string.rep("x", maximum) })), maximum)
+    invalid_program({ source = string.rep("x", maximum + 1) })
+    local commands = { { "a", string.rep("x", (maximum - 8) / 4 - 1), "" } }
+    t.assertEquals(#assert(program({ commands = commands })), maximum)
+    commands[1][2] = commands[1][2] .. "x"
+    invalid_program({ commands = commands })
+    commands = {}
+    for index = 1, 1024 do
+        commands[index] = { "a", "", "", "" }
+    end
+    t.assertNotNil(program({ commands = commands }))
+    commands[1][5] = ""
+    invalid_program({ commands = commands })
+    commands[1][5], commands[1025] = nil, { "a" }
+    invalid_program({ commands = commands })
 end
 
 return M

@@ -14,7 +14,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class CodecTests(unittest.TestCase):
     def test_metadata_round_trips_every_non_nul_byte(self):
         with TmuxFixture() as fixture:
-            env = dict(fixture.env, TMUX_BIN=fixture.binary,
+            env = dict(fixture.env, TMUX_BIN=fixture.binary, LC_ALL="C", LANG="C",
                        TMUX_SOCKET=str(fixture.socket))
             lua = os.environ.get("LIBTMUX_TEST_LUA") or shutil.which("lua")
             self.assertIsNotNone(lua, "missing selected Lua executable")

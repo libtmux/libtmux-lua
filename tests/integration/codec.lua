@@ -1,4 +1,4 @@
-local process = require("libtmux._internal.process")
+local commands = require("libtmux._internal.command")
 local codec = require("libtmux._internal.codec")
 local metadata = require("libtmux._internal.metadata")
 local query = require("libtmux.query")
@@ -8,8 +8,9 @@ local socket = assert(os.getenv("TMUX_SOCKET"))
 
 local result, err = adapter.run(function(runtime)
     local function command(...)
-        local value, failure =
-            process.execute(runtime, { binary, "-f", "/dev/null", "-S", socket, ... }):await()
+        local value, failure = commands
+            .execute(runtime, { binary = binary, config = "/dev/null", socket = socket }, { ... })
+            :await()
         assert(value, tostring(failure))
         return value.stdout
     end

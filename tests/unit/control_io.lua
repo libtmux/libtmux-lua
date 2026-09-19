@@ -65,6 +65,7 @@ function M.test_literal_control_spawn_keeps_reader_alive_until_exit_and_both_eof
         "-N",
         "-S",
         "/owned/pin/socket",
+        "-u",
         "-f",
         "/dev/null",
         "-C",

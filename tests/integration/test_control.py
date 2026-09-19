@@ -19,7 +19,7 @@ class ControlTests(unittest.TestCase):
                 topology = "#{session_id};#{pane_id};#{window_id};#{window_width};#{window_height}"
                 before = fixture.run("display-message", "-p", "-t", "fixture:0.0", topology).stdout
                 session, pane, *_ = before.strip().split(";")
-                env = dict(fixture.env, TMUX_BIN=fixture.binary, TMUX_SOCKET=str(fixture.socket),
+                env = dict(fixture.env, LC_ALL="C", LANG="C", TMUX_BIN=fixture.binary, TMUX_SOCKET=str(fixture.socket),
                            TMUX_TEST_SESSION=session, TMUX_TEST_PANE=pane, LIBTMUX_CONTROL_CASE=case)
                 if case == "unlink":
                     window = before.strip().split(";")[2]
