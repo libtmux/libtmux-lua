@@ -13,7 +13,7 @@ else:
 
 ROOT = Path(__file__).resolve().parent.parent
 DEPENDENCIES = {
-    "dev": (("luaunit", "3.5-1"),),
+    "dev": (("luaunit", "3.5-1"), ("lunajson", "1.2.3-1")),
     "lint": (("argparse", "0.7.2-1"), ("luafilesystem", "1.9.0-1"), ("luacheck", "1.2.0-1")),
     "live": (("luv", "1.52.1-0"),),
     "consumers": (("lunajson", "1.2.3-1"), ("lyaml", "6.2.9-1")),

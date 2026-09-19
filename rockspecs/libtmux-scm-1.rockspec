@@ -14,6 +14,7 @@ build = {
         libtmux = "lua/libtmux/init.lua",
         ["libtmux.query"] = "lua/libtmux/query.lua",
         ["libtmux._internal.query"] = "lua/libtmux/_internal/query.lua",
+        ["libtmux._internal.query_wire"] = "lua/libtmux/_internal/query_wire.lua",
         ["libtmux._internal.runtime"] = "lua/libtmux/_internal/runtime.lua",
         ["libtmux._internal.error"] = "lua/libtmux/_internal/error.lua",
         ["libtmux._internal.process"] = "lua/libtmux/_internal/process.lua",

@@ -1,8 +1,29 @@
 local internal = require("libtmux._internal.query")
+local wire = require("libtmux._internal.query_wire")
 local M = {}
 local methods = {}
 local compiled_queries = setmetatable({}, { __mode = "k" })
 M.NULL = internal.NULL
+
+---Encode this Lua API's versioned JSON profile using an explicit consumer codec.
+---@param schema libtmux.QuerySchema
+---@param criteria libtmux.Where
+---@param codec table A trusted lunajson-compatible encoder and SAX parser.
+---@return string? json
+---@return libtmux.QueryError? error
+function M.encode_json(schema, criteria, codec)
+    return wire.encode(schema, criteria, codec)
+end
+
+---Decode and validate a complete JSON query; never evaluate received code.
+---@param schema libtmux.QuerySchema
+---@param text string
+---@param codec table A trusted lunajson-compatible encoder and SAX parser.
+---@return libtmux.Where? criteria
+---@return libtmux.QueryError? error
+function M.decode_json(schema, text, codec)
+    return wire.decode(schema, text, codec)
+end
 
 ---Validate and copy untrusted data; errors are returned rather than raised.
 ---@param schema unknown Expected libtmux.QuerySchema data.
