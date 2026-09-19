@@ -1,0 +1,33 @@
+# Build and coverage output.
+/build/
+/dist/
+/coverage/
+
+# Editor and OS files.
+.DS_Store
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Local environment and tool state.
+/.cache/
+/.direnv/
+/.envrc.local
+.env
+.env.*
+!.env.example
+
+# Per-machine agent configuration.
+CLAUDE.local.md
+.claude/settings.local.json
+
+# Worktrees, scratch files, and agent plans.
+/.worktrees/
+/worktrees/
+/scratch/
+/*.log
+/docs/superpowers/
+/plans/
+/superpowers/
