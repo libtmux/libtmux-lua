@@ -1,26 +1,38 @@
-# Private observation transport
+# Observing a session
 
-The private control transport observes one existing tmux session through an
-owned persistent client. General commands still use the
-[process command API](commands.md). Public observation entry points and shared
-session leases remain under development.
+`server:observe(session, options)` returns a Request for an observation lease.
+Pass a session handle from that Server's snapshot or creation result. Concurrent
+leases for the same session share one owned persistent client. General commands
+use the [process command API](commands.md).
 
-`libtmux._internal.control.open(runtime, bound, options)` returns a Request
-for a connection. `bound` is a pinned endpoint; `options.session_id` is an
-explicit tmux session ID. Opening verifies the pinned daemon before spawning
-and checks daemon evidence again through the new connection. Every client
+Opening verifies the pinned daemon before spawning and checks daemon evidence
+again through the new connection. Every client
 uses `-N`; a missing session fails without creating a session or linking a
 window. Each endpoint owns at most eight observation clients.
 
-The connection offers:
+The observation offers:
 
-- `watch_pane(pane_id, options)` returns a ready pane-output watch.
+- `watch_pane(pane, options)` returns a ready pane-output watch for a pane handle.
 - `watch_notifications(options)` returns a ready notification watch,
   preserving unknown events and raw lines.
-- `subscribe_format(pane_id, field_names, options)` returns a typed native
+- `subscribe_format(pane, field_names, options)` returns a typed native
   format watch using generated pane fields.
 - `coverage()` returns copied session/pane coverage and connection generation.
-- `close()` closes watches and waits for the owned client to retire.
+- `close()` closes this lease's watches; final close waits for native cleanup.
+
+Handles must belong to the same Server. Their copied private identities select
+targets; overwriting a public `reference` method cannot redirect observation.
+Options are copied on submission. Shared connection limits must agree across
+leases; conflicting options return `option_conflict`. Separate Server handles
+have independent pools even when their socket paths match.
+
+Canceling acquisition releases only that caller's claim. Startup continues for
+remaining callers; canceling the final claim closes its client. Acquisition
+during final cleanup returns `closing`. Await final `close()` before reopening;
+a new connection has a distinct generation and requires new watches. A failed
+startup also retains its pool entry until native cleanup finishes.
+A new acquisition on a failed shared connection returns its recorded loss
+error. Close the old leases before opening a fresh connection.
 
 Watch creation installs its local receiver before a same-connection
 `list-panes` coverage check. A pane outside that session returns
@@ -58,7 +70,9 @@ Closing a format watch unregisters its subscription.
 ## Bounds and ownership
 
 Defaults are 128 pending housekeeping replies, 128 watches, 4 MiB of retained
-connection data, and 1 MiB or 1,024 events per watch. Runtime byte and logical
+connection data, and 1 MiB or 1,024 events per watch. Each observation claim,
+shared attachment and public watch consumes a runtime resource slot; the
+default runtime limit is 128 resources in total. Runtime byte and logical
 request limits also apply. Watch byte accounting includes event metadata;
 subscription projections and queued encoded commands are charged before
 deferred work begins.

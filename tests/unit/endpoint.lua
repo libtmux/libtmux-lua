@@ -290,6 +290,99 @@ function M.test_cancelled_persistent_open_closes_its_lease_before_root_return()
     t.assertNil(f.uv.files[f.uv.alias])
 end
 
+function M.test_persistent_startup_cleanup_barrier_waits_for_native_retirement()
+    for _, outcome in ipairs({ "cancelled", "failed", "discarded" }) do
+        local f = fixture()
+        local finish, release_root, retire_root, cleanup, closed
+        closed = 0
+        f:start(function(rt)
+            f.bound = assert(
+                endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await()
+            )
+            f.opening, cleanup = f.bound:_client(function()
+                if outcome == "cancelled" then
+                    return rt:_logical_request({
+                        start = function(_, retire)
+                            return function()
+                                retire()
+                            end
+                        end,
+                    }):await()
+                elseif outcome == "failed" then
+                    return nil, { code = "startup_failed" }
+                end
+                return "discarded connection"
+            end, function(done)
+                closed, finish = closed + 1, done
+            end)
+            f.opening:await()
+            rt:_logical_request({
+                start = function(settle, retire)
+                    release_root, retire_root = settle, retire
+                end,
+            }):await()
+        end)
+        t.assertEquals(type(cleanup), "function", "startup cleanup barrier is missing")
+        if outcome == "cancelled" then
+            local value, err = cleanup()
+            t.assertNil(value)
+            t.assertEquals(assert(err).code, "pending")
+            t.assertEquals(closed, 0)
+            f.opening:cancel()
+            f.driver:drain()
+        end
+        t.assertTrue(f.opening:is_retired())
+        local barrier = assert(cleanup())
+        t.assertIs(cleanup(), barrier)
+        t.assertFalse(barrier:cancel())
+        f.driver:drain()
+        t.assertEquals(closed, 1)
+        t.assertFalse(barrier:is_retired())
+        t.assertFalse(f.root:is_retired())
+        t.assertNotNil(f.uv.files[f.uv.alias])
+        finish()
+        f.driver:drain()
+        t.assertTrue(barrier:is_retired())
+        t.assertTrue(barrier:result())
+        release_root(true)
+        retire_root()
+        f.driver:drain()
+        t.assertTrue(f.root:is_retired())
+        t.assertNil(f.uv.files[f.uv.alias])
+        t.assertEquals(f.runtime:stats().resources, 0)
+    end
+end
+
+function M.test_persistent_startup_cancel_before_allocation_has_no_cleanup_barrier()
+    local f = fixture()
+    local opened, closed = false, false
+    f:start(function(rt)
+        local bound =
+            assert(endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await())
+        local before = #f.uv.spawned
+        local opening, cleanup = bound:_client(function()
+            opened = true
+        end, function(done)
+            closed = true
+            done()
+        end)
+        t.assertEquals(type(cleanup), "function", "startup cleanup barrier is missing")
+        local value, err = cleanup()
+        t.assertNil(value)
+        t.assertEquals(assert(err).code, "pending")
+        t.assertTrue(opening:cancel())
+        t.assertTrue(opening:is_retired())
+        value, err = cleanup()
+        t.assertNil(value)
+        t.assertNil(err)
+        t.assertEquals(#f.uv.spawned, before)
+    end)
+    t.assertFalse(opened)
+    t.assertFalse(closed)
+    t.assertTrue(f.root:is_retired())
+    t.assertNil(f.uv.files[f.uv.alias])
+end
+
 function M.test_generation_invalidation_closes_persistent_clients_without_rebinding()
     local f = fixture()
     local closed = false

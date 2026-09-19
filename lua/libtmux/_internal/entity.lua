@@ -2,6 +2,7 @@ local errors = require("libtmux._internal.error")
 local graph = require("libtmux._internal.graph")
 local identity = require("libtmux._internal.identity")
 local domain = require("libtmux._internal.domain")
+local pane = require("libtmux._internal.pane")
 local M, Entity = {}, {}
 local handles = setmetatable({}, { __mode = "kv" })
 
@@ -68,6 +69,75 @@ end
 
 function Entity:reference()
     return reference(handles[self])
+end
+
+function M.inspect(state, handle, kind)
+    local stored = handles[handle]
+    if not stored or not rawequal(stored.server, state) then
+        return nil,
+            errors.new("invalid_target", "entity handle belongs to another server", {
+                operation = "reference",
+                effect = "not_sent",
+            })
+    end
+    local ref, err = reference(stored)
+    if not ref then
+        return nil, err
+    end
+    if kind and ref.kind ~= kind then
+        return nil,
+            errors.new("invalid_target", "entity handle has the wrong kind", {
+                operation = "reference",
+                effect = "not_sent",
+            })
+    end
+    return ref
+end
+
+function Entity:capture(options)
+    local stored = handles[self]
+    return pane.run(stored.server, stored.identity, "capture", nil, options)
+end
+
+function Entity:send_text(text, options)
+    local stored = handles[self]
+    return pane.run(stored.server, stored.identity, "send_text", text, options)
+end
+
+function Entity:send_keys(keys, options)
+    local stored = handles[self]
+    return pane.run(stored.server, stored.identity, "send_keys", keys, options)
+end
+
+function Entity:copy_mode(options)
+    local stored = handles[self]
+    return pane.run(stored.server, stored.identity, "copy_mode", nil, options)
+end
+
+function Entity:copy_command(action, args, options)
+    local stored = handles[self]
+    return pane.run(
+        stored.server,
+        stored.identity,
+        "copy_command",
+        { action = action, args = args },
+        options
+    )
+end
+
+function Entity:resize(options)
+    local stored = handles[self]
+    return pane.run(stored.server, stored.identity, "resize", nil, options)
+end
+
+function Entity:kill(options)
+    local stored = handles[self]
+    return pane.run(stored.server, stored.identity, "kill", nil, options)
+end
+
+function Entity:respawn(options)
+    local stored = handles[self]
+    return pane.run(stored.server, stored.identity, "respawn", nil, options)
 end
 
 function Entity:new_window(options)
@@ -146,5 +216,21 @@ end
 --- libtmux.Request<libtmux.Creation>
 ---@field split fun(self:libtmux.Entity<T>,options?:libtmux.SplitOptions):
 --- libtmux.Request<libtmux.Creation>
+---@field capture fun(self:libtmux.Entity<T>,options?:libtmux.CaptureOptions):
+--- libtmux.Request<libtmux.Capture>
+---@field send_text fun(self:libtmux.Entity<T>,text:string,options?:libtmux.PaneOptions):
+--- libtmux.Request<boolean>
+---@field send_keys fun(self:libtmux.Entity<T>,keys:string[],options?:libtmux.KeyOptions):
+--- libtmux.Request<boolean>
+---@field copy_mode fun(self:libtmux.Entity<T>,options?:libtmux.CopyModeOptions):
+--- libtmux.Request<boolean>
+---@field copy_command fun(self:libtmux.Entity<T>,action:string,
+--- args?:string[],options?:libtmux.KeyOptions):libtmux.Request<boolean>
+---@field resize fun(self:libtmux.Entity<T>,options:libtmux.ResizePaneOptions):
+--- libtmux.Request<boolean>
+---@field kill fun(self:libtmux.Entity<T>,options?:libtmux.PaneOptions):
+--- libtmux.Request<boolean>
+---@field respawn fun(self:libtmux.Entity<T>,options?:libtmux.RespawnOptions):
+--- libtmux.Request<boolean>
 
 return M

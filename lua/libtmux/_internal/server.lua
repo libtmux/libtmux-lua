@@ -8,6 +8,7 @@ local execution = require("libtmux._internal.execution")
 local process = require("libtmux._internal.process")
 local domain = require("libtmux._internal.domain")
 local live_query = require("libtmux._internal.live_query")
+local observation = require("libtmux._internal.observation")
 local M, Server = {}, {}
 -- Live objects own state; the registry must not root returned-request cycles on Lua 5.1.
 local servers = setmetatable({}, { __mode = "kv" })
@@ -383,6 +384,10 @@ function Server:new_session(options)
     return domain.create(servers[self], nil, "session", options, entities.from_reference)
 end
 
+function Server:observe(session, options)
+    return observation.open(servers[self], session, options)
+end
+
 function Server:query(options)
     return live_query.run(servers[self], options, false)
 end
@@ -520,6 +525,8 @@ end
 ---@field error? libtmux.Error
 
 ---@class libtmux.Server
+---@field observe fun(self:libtmux.Server,session:libtmux.Entity<libtmux.SnapshotSession>,
+--- options?:libtmux.ObservationOptions):libtmux.Request<libtmux.Observation>
 ---@field query fun(self:libtmux.Server,options?:libtmux.LiveQueryOptions):
 --- libtmux.Request<libtmux.LiveQueryResult<table>>
 ---@field query_panes fun(self:libtmux.Server,options?:libtmux.LiveQueryOptions):

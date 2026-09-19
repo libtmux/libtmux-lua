@@ -1,15 +1,23 @@
 local t = require("luaunit")
 local runtimes = require("libtmux._internal.runtime")
 local drivers = require("tests.support.runtime_driver")
+local identity = require("libtmux._internal.identity")
 local available, control = pcall(require, "libtmux._internal.control")
 local M = {}
 
-local function fixture(body, options)
+local function fixture(body, options, public_observation)
     t.assertTrue(available, "observation control connection is missing")
     local driver, uv = drivers.new(), { pipes = {}, lines = {}, replies = {}, number = 1 }
     local rt = runtimes.new(driver, options)
     driver.uv = uv
-    local bound = { token = {} }
+    local bound = {
+        token = assert(identity.generation({
+            pid = "123",
+            started = "100",
+            version = "3.7c",
+            socket = "/owned/socket",
+        })),
+    }
     function bound:generation()
         return self.token
     end
@@ -77,6 +85,7 @@ local function fixture(body, options)
         return pipe
     end
     function uv.spawn(_, _, exited)
+        uv.spawns = (uv.spawns or 0) + 1
         uv.exit = exited
         local child = {}
         function child.close(_, done)
@@ -92,7 +101,25 @@ local function fixture(body, options)
     end
     local f = { runtime = rt, driver = driver, uv = uv, bound = bound }
     f.root = rt:start(function(runtime)
-        f.connection = assert(control.open(runtime, bound, { session_id = "$0" }):await())
+        if public_observation then
+            local entities = require("libtmux._internal.entity")
+            local observation = require("libtmux._internal.observation")
+            local state = { runtime = runtime, bound = bound, version = "3.7c" }
+            local session = assert(entities.from_reference(state, {
+                kind = "session",
+                id = "$0",
+                generation = bound.token,
+            }))
+            f.state, f.session = state, session
+            f.pane = assert(entities.from_reference(state, {
+                kind = "pane",
+                id = "%0",
+                generation = bound.token,
+            }))
+            f.observer = assert(observation.open(state, session):await())
+        else
+            f.connection = assert(control.open(runtime, bound, { session_id = "$0" }):await())
+        end
         return body(f)
     end)
     driver:drain()
@@ -282,6 +309,86 @@ function M.test_queued_subscription_projection_is_charged_before_any_deferred_io
     t.assertNil(err)
     t.assertTrue(f.root:is_retired())
     t.assertEquals(f.runtime:stats().resource_bytes, 0)
+end
+
+function M.test_public_subscription_names_require_bytes_before_any_deferred_io()
+    local f = fixture(function(state)
+        local runtime = state.runtime
+        local previous_limit = runtime._limits.max_bytes
+        local before, lines = runtime:stats().bytes, #state.uv.lines
+        local names = { "title", "dead" }
+        local cost = 32 + 8 + #names[1] + 8 + #names[2]
+        runtime._limits.max_bytes = before + cost - 1
+        local request = state.observer:subscribe_format(state.pane, names)
+        local settled = request:is_settled()
+        runtime._limits.max_bytes = previous_limit
+        t.assertTrue(settled, "queued field names must be admitted before deferred native work")
+        local value, err = request:await()
+        t.assertNil(value)
+        t.assertEquals(assert(err).code, "queue_full")
+        t.assertEquals(err.effect, "not_sent")
+        t.assertEquals(#state.uv.lines, lines)
+        t.assertTrue(request:is_retired())
+        t.assertTrue(state.observer:close():await())
+    end, nil, true)
+    local _, err = f.root:result()
+    t.assertNil(err)
+    t.assertTrue(f.root:is_retired())
+    t.assertEquals(f.runtime:stats().bytes, 0)
+    t.assertEquals(f.runtime:stats().resources, 0)
+end
+
+function M.test_public_acquisition_rejects_a_failed_shared_connection()
+    local f = fixture(function(state)
+        local observation = require("libtmux._internal.observation")
+        local watch = assert(state.observer:watch_pane(state.pane):await())
+        local pending = watch:next()
+        state.driver.defer(function()
+            state.uv.pipes[2].read(nil, nil)
+        end)
+        local event, loss = pending:await()
+        t.assertNil(event)
+        t.assertEquals(assert(loss).code, "connection_lost")
+        local acquired, err = observation.open(state.state, state.session):await()
+        t.assertNil(acquired, "failed shared connection published a new observation")
+        t.assertIs(err, loss)
+        local next_event, next_error = watch:next():await()
+        t.assertNil(next_event)
+        t.assertIs(next_error, loss)
+        t.assertEquals(state.uv.spawns, 1)
+        assert(state.observer:close():await())
+    end, nil, true)
+    local _, err = f.root:result()
+    t.assertNil(err)
+    t.assertTrue(f.root:is_retired())
+    t.assertEquals(f.runtime:stats().resources, 0)
+    t.assertEquals(f.runtime:stats().bytes, 0)
+end
+
+function M.test_idle_public_watch_close_does_not_require_a_free_read_slot()
+    local f = fixture(function(state)
+        local idle = assert(state.observer:watch_pane(state.pane):await())
+        local busy = assert(state.observer:watch_pane(state.pane):await())
+        local pending = busy:next()
+        local closed, err = idle:close():await()
+        t.assertTrue(closed, tostring(err))
+        t.assertFalse(pending:is_settled(), "closing an idle watch canceled another watch's read")
+        pending:cancel()
+        local event, cancelled = pending:await()
+        t.assertNil(event)
+        t.assertEquals(assert(cancelled).code, "cancelled")
+        assert(busy:close():await())
+        assert(state.observer:close():await())
+    end, { max_logical = 1 }, true)
+    local _, err = f.root:result()
+    t.assertNil(err)
+    t.assertTrue(f.root:is_retired())
+    t.assertTrue(f.uv.ended)
+    local stats = f.runtime:stats()
+    t.assertEquals(stats.resources, 0)
+    t.assertEquals(stats.resources_failed, 0)
+    t.assertEquals(stats.logical, 0)
+    t.assertEquals(stats.bytes, 0)
 end
 
 function M.test_malformed_coverage_response_fails_the_connection_and_other_waiters()

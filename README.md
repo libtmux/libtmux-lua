@@ -1,9 +1,9 @@
 # libtmux for Lua
 
 This port is under development. It provides pure Lua queries, explicit
-asynchronous connections, snapshots and live queries, literal commands, groups, bounded
-batches, and session/window/pane creation. Other domain operations,
-observation, and MCP/workspace consumers remain
+asynchronous connections, snapshots and live queries, literal commands, groups,
+bounded batches, session/window/pane creation, Pane operations, and shared
+session observation. Other domain operations and MCP/workspace consumers remain
 under development; their separate packages currently provide scaffolds.
 
 The [query API](docs/query.md) filters captured tables through Lua predicates
@@ -20,6 +20,8 @@ Consumer dependencies do not belong in core-only installations.
 - [Explicit connections and captured snapshots](docs/snapshots.md)
 - [Literal commands, groups and independent batches](docs/commands.md)
 - [Create sessions, windows and panes](docs/creation.md)
+- [Capture, send input and manage panes](docs/panes.md)
+- [Observe sessions and stream pane output](docs/control.md)
 - [Compatibility targets](docs/compatibility.md)
 - [Writing conventions](.github/WRITING.md)
 

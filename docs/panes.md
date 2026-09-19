@@ -1,0 +1,120 @@
+# Pane operations
+
+Pane handles perform explicit asynchronous operations through the pinned
+PROCESS endpoint. Each method returns a Request; await it inside a managed
+runtime task or use its completion callback. Snapshot records remain plain
+captured data. Obtain a handle from a creation receipt or `server:handle`.
+
+```lua
+local capture = assert(pane:capture({ history_lines = 20 }):await())
+local text = assert(capture:text())
+assert(pane:send_text("printf '%s\\n' ready"):await())
+assert(pane:send_keys({ "Enter" }):await())
+```
+
+The executable [integration fixture](../tests/integration/pane.lua) includes
+connection setup, creation, output barriers and teardown.
+
+## Capture and text
+
+`capture()` returns `{ bytes, target }` with a pure `text()` method. `bytes`
+preserves tmux's stdout, including its terminal newline and invalid UTF-8.
+`text()` validates UTF-8 strictly and returns the same string; invalid input
+returns `nil, err` with `invalid_utf8`. It performs no replacement, trimming,
+newline conversion or tmux I/O.
+
+Capture reads rendered screen/history cells. It does not recover the original
+PTY byte stream, prove application completion, or establish an ordered handoff
+to observation. It does not enter, exit or navigate copy mode.
+
+The default captures the visible terminal screen. `history_lines = N` adds
+up to N history rows, bounded at 1,000,000. Alternatively, `start_line` and
+`end_line` accept integer row offsets or `"-"`: zero is the first visible row,
+negative offsets refer to history, `start_line = "-"` selects all retained
+history and `end_line = "-"` selects the visible screen's end. Explicit ranges
+cannot be combined with `history_lines`. tmux clamps ranges to available data.
+
+| Option | Native behavior | Availability |
+| --- | --- | --- |
+| `join_lines` | Join wrapped rows and preserve trailing spaces (`-J`). | 3.2a+ |
+| `preserve_spaces` | Preserve trailing spaces (`-N`). | 3.2a+ |
+| `escape_sequences` | Include text/background attribute sequences (`-e`). | 3.2a+ |
+| `escape_nonprintable` | Request native octal escaping (`-C`). | 3.2a+ |
+| `alternate_screen` | Select tmux's alternate grid (`-a`); missing grid errors. | 3.2a+ |
+| `trim_empty_cells` | Omit trailing empty cells (`-T`). | 3.4+ |
+| `mode_screen` | Capture the active mode screen when available (`-M`). | 3.6+ |
+
+`alternate_screen` cannot be combined with history, explicit ranges or
+`mode_screen`. Unsupported version flags fail before dispatch. Hyperlinks,
+line numbers, line flags, pending escape sequences and paste-buffer capture
+remain unimplemented typed options; raw commands remain available.
+
+## Text, keys and copy mode
+
+`send_text(text)` sends bounded NUL-free UTF-8 with native `send-keys -l`.
+It appends no Enter. A CR or LF already present in the argument remains
+explicit caller input. It accepts at most 65,536 bytes; arbitrary binary
+input is not part of this method.
+
+`send_keys(names, options)` accepts a dense sequence of up to 1,024 names.
+Supported names include Enter, Escape, Tab, BTab, Space, BSpace, arrows,
+Home/End, Insert/Delete and their IC/DC aliases, PageUp/PageDown aliases,
+F1–F12 and numeric keypad names. C-, M- and S- modifiers may prefix these
+names or one printable ASCII character. Names are bounded at 64 bytes.
+`repeat_count` is an integer from 1 to 1,000. Typos return `invalid_key`;
+recognized deferred native categories such as mouse and user-defined keys
+return `unsupported`. Unmodified literal characters belong in `send_text`.
+
+Both methods preserve native mode and `synchronize-panes` behavior. Modes can
+intercept input; synchronization can copy it to sibling panes. Dead or
+input-disabled panes can accept a command without delivering input. Success
+means tmux processed the operation, not that an application consumed it.
+The library does not change these policies or infer shell-command success.
+
+`copy_mode({ page_up = true })` explicitly enters copy mode. `copy_command`
+sends one validated action through `send-keys -X`, with optional arguments
+and `repeat_count`. Entry, navigation and cancellation affect shared pane UI.
+No automatic cleanup exits a mode that another client may be using.
+
+The initial action subset includes cursor/word/paragraph/page/history
+navigation, selection marking, rectangle modes, refresh, search and jumps.
+For example:
+
+```lua
+assert(pane:copy_mode():await())
+assert(pane:copy_command("search-forward-text", { "ready" }):await())
+assert(pane:copy_command("page-up", {}, { repeat_count = 2 }):await())
+assert(pane:copy_command("cancel"):await())
+```
+
+Unknown actions or incorrect argument counts return `invalid_copy_command`.
+Recognized deferred actions return `unsupported`, including copy/append,
+clipboard/pipe actions and newer navigation commands. This subset does not
+claim complete native copy-mode parity. Native command completion does not
+guarantee a search match or cursor movement.
+
+## Resize, kill and respawn
+
+`resize({ width = N, height = N })` requests absolute dimensions;
+`resize({ direction = "left", amount = N })` adjusts one direction. Forms are
+mutually exclusive, dimensions/amount are 1–65,535 and adjustment defaults to
+one. Native layout constraints can clamp the result, resize neighbors and
+unzoom the window. Obtain a fresh snapshot when the resulting geometry matters.
+
+`kill()` targets only the handle's pane ID. Native removal of the last pane
+also destroys its window and can remove links or empty sessions elsewhere.
+This is an explicit mutation; canceling another Request never calls it.
+
+`respawn(options)` reuses the same pane identity. Without `kill = true`, an
+active pane produces a native error. Omitted `argv`/`shell` reuses its previous
+program; explicit launch options follow [creation](creation.md), including
+absolute `cwd`, environment and separate literal argv/shell forms. Respawn
+resets the terminal screen and mode. It can terminate the old program before
+a later spawn failure, and tmux success does not prove executable startup.
+
+These methods return `true` on successful native completion. They preserve
+typed errors and partial command output on failure, with no automatic retry.
+All options must be plain records. The nested `process` record accepts timeout,
+deadline, output limit and drain/kill timeouts as described in
+[commands](commands.md). Generation validation and runtime byte limits apply
+before dispatch; native completion still waits for client exit and both EOFs.

@@ -38,6 +38,84 @@ local function literal(value)
     return (value:gsub("#", "##"))
 end
 
+function M.append_launch(argv, options, reject)
+    local function flag(name, value)
+        argv[#argv + 1] = name
+        if value ~= nil then
+            argv[#argv + 1] = tostring(value)
+        end
+    end
+    if options.cwd ~= nil then
+        if not bytes(options.cwd, false, 4096) or options.cwd:sub(1, 1) ~= "/" then
+            reject("cwd must be an absolute NUL-free path")
+        end
+        flag("-c", literal(options.cwd))
+    end
+    if options.environment ~= nil then
+        if not plain(options.environment) then
+            reject("environment must be a plain string map")
+        end
+        local names = {}
+        for name, value in next, options.environment do
+            if
+                not bytes(name, false, 256)
+                or not name:match("^[A-Za-z_][A-Za-z0-9_]*$")
+                or not bytes(value, true)
+            then
+                reject("environment needs portable variable names and NUL-free string values")
+            end
+            names[#names + 1] = name
+            if #names > 128 then
+                reject("environment exceeds 128 entries")
+            end
+        end
+        table.sort(names)
+        for _, name in ipairs(names) do
+            flag("-e", name .. "=" .. options.environment[name])
+        end
+    end
+    if options.argv ~= nil and options.shell ~= nil then
+        reject("argv and shell are mutually exclusive")
+    end
+    flag("--")
+    if options.argv ~= nil then
+        if not plain(options.argv) then
+            reject("argv must be a plain dense sequence")
+        end
+        local count = 0
+        for key in next, options.argv do
+            count = count + 1
+            if not integer(key, 1, 1024) or count > 1024 then
+                reject("argv exceeds its argument limit")
+            end
+        end
+        if count == 0 then
+            reject("argv must not be empty")
+        end
+        -- tmux treats one argument as shell text; env ensures literal execvp semantics.
+        if count == 1 then
+            local executable = rawget(options.argv, 1)
+            if type(executable) == "string" and executable:find("=", 1, true) then
+                reject("singleton argv executable cannot contain '='; use explicit shell text")
+            end
+            flag("/usr/bin/env")
+            flag("--")
+        end
+        for index = 1, count do
+            local value = rawget(options.argv, index)
+            if not bytes(value, index > 1) then
+                reject("argv needs bounded NUL-free strings without holes")
+            end
+            argv[#argv + 1] = value
+        end
+    elseif options.shell ~= nil then
+        if not bytes(options.shell, false) then
+            reject("shell must be explicit nonempty NUL-free text")
+        end
+        argv[#argv + 1] = options.shell
+    end
+end
+
 local function current(state, parent)
     if state.closed then
         return nil, failure("closed", "server handle is closed", "create")
@@ -173,75 +251,7 @@ local function prepare(runtime, kind, ref, options)
             flag("-l", string.format("%.0f%%", options.percent))
         end
     end
-    if options.cwd ~= nil then
-        if not bytes(options.cwd, false, 4096) or options.cwd:sub(1, 1) ~= "/" then
-            invalid("cwd must be an absolute NUL-free path")
-        end
-        flag("-c", literal(options.cwd))
-    end
-    if options.environment ~= nil then
-        if not plain(options.environment) then
-            invalid("environment must be a plain string map")
-        end
-        local names = {}
-        for name, value in next, options.environment do
-            if
-                not bytes(name, false, 256)
-                or not name:match("^[A-Za-z_][A-Za-z0-9_]*$")
-                or not bytes(value, true)
-            then
-                invalid("environment needs portable variable names and NUL-free string values")
-            end
-            names[#names + 1] = name
-            if #names > 128 then
-                invalid("environment exceeds 128 entries")
-            end
-        end
-        table.sort(names)
-        for _, name in ipairs(names) do
-            flag("-e", name .. "=" .. options.environment[name])
-        end
-    end
-    if options.argv ~= nil and options.shell ~= nil then
-        invalid("argv and shell are mutually exclusive")
-    end
-    flag("--")
-    if options.argv ~= nil then
-        if not plain(options.argv) then
-            invalid("argv must be a plain dense sequence")
-        end
-        local count = 0
-        for key in next, options.argv do
-            count = count + 1
-            if not integer(key, 1, 1024) or count > 1024 then
-                invalid("argv exceeds its argument limit")
-            end
-        end
-        if count == 0 then
-            invalid("argv must not be empty")
-        end
-        -- tmux treats one argument as shell text; env ensures literal execvp semantics.
-        if count == 1 then
-            local executable = rawget(options.argv, 1)
-            if type(executable) == "string" and executable:find("=", 1, true) then
-                invalid("singleton argv executable cannot contain '='; use explicit shell text")
-            end
-            flag("/usr/bin/env")
-            flag("--")
-        end
-        for index = 1, count do
-            local value = rawget(options.argv, index)
-            if not bytes(value, index > 1) then
-                invalid("argv needs bounded NUL-free strings without holes")
-            end
-            argv[#argv + 1] = value
-        end
-    elseif options.shell ~= nil then
-        if not bytes(options.shell, false) then
-            invalid("shell must be explicit nonempty NUL-free text")
-        end
-        argv[#argv + 1] = options.shell
-    end
+    M.append_launch(argv, options, invalid)
     if options.process ~= nil then
         if not plain(options.process) then
             invalid("process options must be a plain record")
@@ -272,10 +282,11 @@ local function prepare(runtime, kind, ref, options)
     return plan
 end
 
-local function directory(state, path)
+function M.directory(state, path, operation)
+    operation = operation or "create.cwd"
     return state.runtime:_request({
         bytes = #path,
-        operation = "create.cwd",
+        operation = operation,
         effect = "not_sent",
         start = function(settle, retire)
             local uv = state.runtime._driver.uv
@@ -285,7 +296,7 @@ local function directory(state, path)
                     failure(
                         "unsupported",
                         "runtime cannot validate the working directory",
-                        "create.cwd"
+                        operation
                     )
                 )
                 retire()
@@ -303,7 +314,7 @@ local function directory(state, path)
                         failure(
                             "invalid_directory",
                             "working directory is unavailable",
-                            "create.cwd",
+                            operation,
                             { cause = err }
                         )
                     )
@@ -405,7 +416,7 @@ function M.create(state, parent, kind, options, wrap)
         end
         if plan.cwd then
             local valid
-            valid, err = directory(state, plan.cwd):await()
+            valid, err = M.directory(state, plan.cwd):await()
             if not valid then
                 return nil, err
             end

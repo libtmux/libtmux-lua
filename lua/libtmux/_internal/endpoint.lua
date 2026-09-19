@@ -340,7 +340,14 @@ function Bound:_client(open, close)
         state.active = state.active - 1
         cleanup(state)
     end)
-    return request
+    -- Startup retirement can precede native cleanup or discard a delivered connection.
+    local function finish_cleanup()
+        if not request:is_retired() then
+            return nil, failure("pending", "persistent client startup has not retired")
+        end
+        return lease and lease:close() or nil
+    end
+    return request, finish_cleanup
 end
 
 function M.bind(runtime, options)

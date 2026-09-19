@@ -197,6 +197,14 @@ function Runtime:_rejected_request(code, message)
     return req
 end
 
+-- Completed local cleanup needs no transport admission; callbacks stay deferred.
+function Runtime:_resolved_request(value)
+    local req = request(self)
+    req:_settle(value)
+    req:_retire()
+    return req
+end
+
 function Request:is_settled()
     return self._settled == true
 end
@@ -781,10 +789,16 @@ function Runtime:spawn(fn)
     return self:_task(fn, owner)
 end
 
-function Runtime:_operation(fn, context)
+local function operation(self, fn, context, root_owned)
     local owner = self:_owner()
     if not owner then
         return self:_rejected_request("closed", "runtime has no live submission scope")
+    end
+    if root_owned then
+        owner = self._root_scope
+        if not owner or owner.finished or owner.error then
+            return self:_rejected_request("closed", "runtime root scope has closed")
+        end
     end
     if context ~= nil and (type(context) ~= "table" or getmetatable(context) ~= nil) then
         return self:_rejected_request("invalid_request", "operation context must be a plain table")
@@ -792,6 +806,15 @@ function Runtime:_operation(fn, context)
     context = context_copy(context or {})
     context.effect = context.effect or "not_sent"
     return self:_task(fn, owner, context, true)
+end
+
+function Runtime:_operation(fn, context)
+    return operation(self, fn, context, false)
+end
+
+-- Shared finite startup belongs to the runtime root, not its first borrower.
+function Runtime:_root_operation(fn, context)
+    return operation(self, fn, context, true)
 end
 
 function Budget:bytes()

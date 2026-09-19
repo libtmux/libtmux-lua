@@ -627,6 +627,14 @@ local function coverage(state, operation)
     return true
 end
 
+function Connection:_status()
+    local state = assert(connections[self], "invalid control connection")
+    if state.closed then
+        return nil, state.error or failure("closed", "control connection is closed")
+    end
+    return true
+end
+
 function Connection:coverage()
     local state = assert(connections[self], "invalid control connection")
     if state.closed then
@@ -830,14 +838,17 @@ function Watch:close()
             end)
             return watch.close_request
         end
-        watch.close_request = watch.owner.runtime:_logical_request({
-            start = function(settle, retire)
-                settle(true)
-                retire()
-            end,
-        })
+        watch.close_request = watch.owner.runtime:_resolved_request(true)
     end
     return watch.close_request
+end
+
+function M.prepare(options)
+    return options_copy(options, defaults)
+end
+
+function M.prepare_watch(options)
+    return options_copy(options, watch_defaults)
 end
 
 function M.open(runtime, bound, options)
