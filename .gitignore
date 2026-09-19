@@ -2,6 +2,8 @@
 /build/
 /dist/
 /coverage/
+__pycache__/
+*.pyc
 
 # Editor and OS files.
 .DS_Store

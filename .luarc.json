@@ -1,0 +1,9 @@
+{
+  "runtime.version": "Lua 5.1",
+  "runtime.path": ["?.lua", "?/init.lua"],
+  "workspace.library": ["lua", "packages/mcp/lua", "packages/workspace/lua"],
+  "workspace.ignoreDir": [".git", ".cache", ".worktrees"],
+  "workspace.checkThirdParty": false,
+  "diagnostics.libraryFiles": "Opened",
+  "diagnostics.globals": ["vim"]
+}
