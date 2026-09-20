@@ -71,6 +71,20 @@ build = { type = "builtin", modules = { libtmux = "lua/libtmux/init.lua" } }
         self.assertIn("lua/libtmux/init.lua", checked.stderr)
         self.assertEqual(self.snapshot(), before)
 
+    def test_dated_release_preserves_notes_and_pending_changes(self):
+        result = self.prepare("0.1.0alpha1-1")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        notes = self.root / "CHANGES.md"
+        for pending in ("", "- Next release change.\n\n"):
+            with self.subTest(pending=pending):
+                notes.write_text("# Changelog\n\n## Unreleased\n\n" + pending +
+                                 "## 0.1.0alpha1-1 (2026-09-20)\n\n- Initial core.\n")
+                before = self.snapshot()
+                for arguments in (("--check",), ("0.1.0alpha1-1",)):
+                    result = self.prepare(*arguments)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(self.snapshot(), before)
+
     def test_invalid_identity_does_not_modify_files(self):
         before = self.snapshot()
         for version in ("0.1.0-alpha.1", "0.1.0alpha1-0", "scm-1", "../0.1.0-1"):
@@ -80,7 +94,7 @@ build = { type = "builtin", modules = { libtmux = "lua/libtmux/init.lua" } }
                 self.assertIn("version", result.stderr)
                 self.assertEqual(self.snapshot(), before)
 
-    def test_publication_requires_the_release_event_and_exact_tagged_commit(self):
+    def test_publication_requires_a_canonical_tag_push_and_exact_commit(self):
         result = self.prepare("0.1.0alpha1-1")
         self.assertEqual(result.returncode, 0, result.stderr)
         for args in (["add", "."], ["-c", "user.name=Fixture", "-c", "user.email=test@example.invalid",
@@ -88,13 +102,17 @@ build = { type = "builtin", modules = { libtmux = "lua/libtmux/init.lua" } }
                      ["tag", "v0.1.0alpha1"], ["update-ref", "refs/remotes/origin/master", "HEAD"]):
             subprocess.run(["git", *args], cwd=self.root, check=True)
         head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.root, text=True).strip()
-        event = {"action": "published", "repository": {"full_name": "libtmux/libtmux-lua"},
-                 "release": {"tag_name": "v0.1.0alpha1", "draft": False, "prerelease": True}}
+        event = {"ref": "refs/tags/v0.1.0alpha1", "deleted": False,
+                 "repository": {"full_name": "libtmux/libtmux-lua"}}
         release.verify_release(self.root, event, head)
-        for changed, commit in ((dict(event, action="edited"), head),
+        for changed, commit in ((dict(event, ref="refs/heads/master"), head),
                                 (dict(event, repository={"full_name": "someone/fork"}), head),
-                                (dict(event, release=dict(event["release"], tag_name="v0.1.0")), head),
-                                (dict(event, release=dict(event["release"], prerelease=False)), head),
+                                (dict(event, ref="refs/tags/v0.1.0"), head),
+                                (dict(event, deleted=True), head),
+                                (dict(event, deleted=None), head),
+                                ({"action": "published", "repository": event["repository"],
+                                  "release": {"tag_name": "v0.1.0alpha1", "draft": False,
+                                              "prerelease": True}}, head),
                                 (event, "0" * 40)):
             with self.subTest(event=changed, commit=commit), self.assertRaises(ValueError):
                 release.verify_release(self.root, changed, commit)

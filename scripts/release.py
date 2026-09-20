@@ -54,7 +54,8 @@ def prepared_spec(root, version):
 
 def release_notes(notes, version):
     heading = f"## {version}\n"
-    if heading in notes:
+    pattern = rf"^## {re.escape(version)}(?: \(\d{{4}}-\d{{2}}-\d{{2}}\))?$"
+    if re.search(pattern, notes, re.MULTILINE):
         return notes
     marker = "## Unreleased\n"
     if marker not in notes:
@@ -122,13 +123,10 @@ def verify_artifacts(root, directory, head):
 def verify_release(root, event, commit, artifacts=None):
     version = candidate(root)
     source, revision = identity(version)
-    release = event.get("release", {})
-    if (event.get("action") != "published" or
-            event.get("repository", {}).get("full_name") != "libtmux/libtmux-lua" or
-            release.get("draft") is not False or release.get("tag_name") != release_tag(version)):
-        raise ValueError("publication requires the canonical published release and matching version tag")
-    if re.search(r"alpha|beta|rc", source) and release.get("prerelease") is not True:
-        raise ValueError("alpha, beta and rc releases must be marked prerelease")
+    if (event.get("repository", {}).get("full_name") != "libtmux/libtmux-lua" or
+            event.get("ref") != f"refs/tags/{release_tag(version)}" or
+            event.get("deleted") is not False):
+        raise ValueError("publication requires a canonical version-tag push")
     head = command(["git", "rev-parse", "HEAD"], cwd=root).strip()
     tagged = command(["git", "rev-parse", f"refs/tags/{release_tag(version)}^{{commit}}"], cwd=root).strip()
     if head != commit or tagged != head:
@@ -153,7 +151,7 @@ def main():
     preparation.add_argument("version", nargs="?", help="explicit LuaRocks version, including revision")
     preparation.add_argument("--check", action="store_true", help="report drift without changing files")
     verification = commands.add_parser("verify", help="check publication guards without uploading")
-    verification.add_argument("--event", type=Path, required=True, help="GitHub release event JSON")
+    verification.add_argument("--event", type=Path, required=True, help="GitHub tag-push event JSON")
     verification.add_argument("--commit", required=True, help="exact commit validated by the workflow")
     verification.add_argument("--artifacts", type=Path, help="directory containing validated artifacts")
     args = parser.parse_args()

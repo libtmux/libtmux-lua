@@ -133,7 +133,7 @@ jobs:
         if: matrix.name == 'Outer current'
         run: |
           source_args=()
-          if [[ "$GITHUB_EVENT_NAME" == release ]]; then
+          if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF_TYPE" == tag ]]; then
             python scripts/release.py verify --event "$GITHUB_EVENT_PATH" --commit "$GITHUB_SHA"
             source_args+=(--public-tag)
           fi

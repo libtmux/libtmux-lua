@@ -285,6 +285,8 @@ The command uses [LuaRocks new_version](https://github.com/luarocks/luarocks/blo
 to generate a versioned rockspec from the development rockspec. It updates
 `release.json`, `libtmux._VERSION` and the changelog heading. It does not commit,
 tag, push or publish. Existing versioned rockspecs stay in the repository.
+Date the prepared changelog heading when cutting the release; leave
+`Unreleased` in place for later changes.
 
 Check those files without changing them:
 
@@ -337,36 +339,25 @@ A manual `Publish` run only validates; it never uploads.
 ### Publish after the preparation PR merges
 
 Start from clean, updated `master`, with its CI passing. The initial release
-uses source tag `v0.1.0alpha1`; create it at the reviewed release commit:
+uses the lightweight source tag `v0.1.0alpha1`; create it at the reviewed
+release commit:
 
 ```console
-$ git tag \
-    --annotate v0.1.0alpha1 \
-    --message 'libtmux 0.1.0alpha1'
+$ git tag v0.1.0alpha1
 ```
 
-Push that tag only to the public repository:
+Push that tag to the public repository to start [Publish](workflows/publish.yml):
 
 ```console
 $ git push origin refs/tags/v0.1.0alpha1
 ```
 
-Publish a GitHub prerelease to start [Publish](workflows/publish.yml):
-
-```console
-$ gh release create v0.1.0alpha1 \
-    --repo libtmux/libtmux-lua \
-    --verify-tag \
-    --prerelease \
-    --title 'libtmux 0.1.0alpha1' \
-    --notes-file CHANGES.md
-```
-
 The workflow reruns CI at that commit, validates the public source tag and
 packs its source rock. It checks the installed artifact, then verifies its
 checksums again in the protected upload job. That job uploads the same
-rockspec and source rock to LuaRocks and attaches them, checksums and the
-provenance bundle to the GitHub release. No package is rebuilt during upload.
+rockspec and source rock to LuaRocks, then creates a GitHub release with
+generated notes, artifacts, checksums and provenance. Alpha, beta and rc
+versions are marked as prereleases. No package is rebuilt during upload.
 
 For packaging revisions, use a separate release tag such as
 `rocks/0.1.0alpha1-2` at the reviewed packaging commit. Keep the original source
@@ -403,9 +394,10 @@ else. Recover through LuaRocks' documented `upload_rock` endpoint using the
 unchanged validated artifact and existing version ID, or publish a corrected
 rockspec revision through review. Do not rerun the entire upload with force.
 
-If LuaRocks succeeded but attaching GitHub assets failed, verify the registry
-files and attach the retained assets to the existing release; do not re-upload
-the package. The native uploader's duplicate rejection is intentional.
+If LuaRocks succeeded but creating the GitHub release or attaching assets
+failed, verify the registry files, create the release if needed, and attach
+the retained assets; do not re-upload the package. The native uploader's
+duplicate rejection is intentional.
 
 ## Repository metadata
 

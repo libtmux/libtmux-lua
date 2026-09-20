@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 0.1.0alpha1-1
+## 0.1.0alpha1-1 (2026-09-20)
 
 - Core: add explicit async requests, snapshots and queries for tmux objects.
 - Core: add session, window, pane, buffer and client operations, with

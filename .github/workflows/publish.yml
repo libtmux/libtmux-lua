@@ -1,8 +1,8 @@
 name: Publish
 
 on:
-  release:
-    types: [published]
+  push:
+    tags: ['v*', 'rocks/*']
   workflow_dispatch:
 
 permissions: {}
@@ -18,7 +18,7 @@ jobs:
     uses: ./.github/workflows/ci.yml
 
   luarocks:
-    if: github.event_name == 'release' && github.repository == 'libtmux/libtmux-lua'
+    if: github.event_name == 'push' && github.ref_type == 'tag' && github.repository == 'libtmux/libtmux-lua'
     needs: validate
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -56,11 +56,16 @@ jobs:
           test -n "$LUAROCKS_API_KEY"
           version="$(jq -r .version release.json)"
           luarocks upload "dist/libtmux-$version.rockspec" "dist/libtmux-$version.src.rock" --temp-key "$LUAROCKS_API_KEY"
-      - name: Attach artifacts and provenance to the release
+      - name: Create GitHub release with artifacts and provenance
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          RELEASE_TAG: ${{ github.ref_name }}
           PROVENANCE_BUNDLE: ${{ steps.provenance.outputs.bundle-path }}
         run: |
           cp "$PROVENANCE_BUNDLE" dist/provenance.sigstore.json
-          gh release upload "$RELEASE_TAG" dist/*.rockspec dist/*.src.rock dist/SHA256SUMS dist/candidate.json dist/provenance.sigstore.json
+          version="$(jq -r .version release.json)"
+          release_args=()
+          if [[ "$version" =~ (alpha|beta|rc)[0-9]+ ]]; then
+            release_args+=(--prerelease)
+          fi
+          gh release create "$RELEASE_TAG" --verify-tag --title "libtmux $version" --generate-notes "${release_args[@]}" dist/*.rockspec dist/*.src.rock dist/SHA256SUMS dist/candidate.json dist/provenance.sigstore.json
