@@ -62,7 +62,7 @@ jobs:
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           version: 2026.9.9
-      - name: Select Lua and install unit dependencies
+      - name: Select Lua and install test dependencies
         run: |
           mkdir -p .cache/ci
           if [[ "$CI_LUA" == '5.5.1' ]]; then
@@ -76,11 +76,10 @@ jobs:
             fi
           fi
           echo "TEST_LUA=$test_lua" >> "$GITHUB_ENV"
-          python scripts/bootstrap.py dev --lua="$test_lua" 2>&1 | tee .cache/ci/dependencies.log
+          python scripts/bootstrap.py dev live --lua="$test_lua" 2>&1 | tee .cache/ci/dependencies.log
       - name: Build live-test prerequisites
         if: matrix.gate != 'unit'
         run: |
-          python scripts/bootstrap.py live --lua="$TEST_LUA" 2>&1 | tee .cache/ci/live-dependencies.log
           python scripts/bootstrap_hosts.py "$CI_NVIM" 2>&1 | tee .cache/ci/neovim.log
           python scripts/bootstrap_native.py tmux --tmux-version="$CI_TMUX" 2>&1 | tee .cache/ci/tmux.log
           echo "TMUX_BIN=$PWD/.cache/toolchains/tmux-$CI_TMUX/bin/tmux" >> "$GITHUB_ENV"
