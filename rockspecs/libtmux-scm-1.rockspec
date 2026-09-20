@@ -3,8 +3,9 @@ package = "libtmux"
 version = "scm-1"
 source = { url = "git+https://github.com/libtmux/libtmux-lua.git" }
 description = {
-    summary = "Development foundation for libtmux in Lua",
+    summary = "Lua API for tmux sessions, windows and panes",
     homepage = "https://github.com/libtmux/libtmux-lua",
+    issues_url = "https://github.com/libtmux/libtmux-lua/issues",
     license = "MIT",
 }
 dependencies = { "lua >= 5.1, < 5.6" }

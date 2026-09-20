@@ -5,12 +5,13 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -55,6 +56,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          fetch-depth: 0
       - name: Native build dependencies
         run: |
           sudo apt-get update
@@ -88,6 +90,8 @@ jobs:
         run: |
           mise install stylua@2.4.0
           mise where stylua@2.4.0 >> "$GITHUB_PATH"
+          mise install actionlint@1.7.12
+          mise where actionlint@1.7.12 >> "$GITHUB_PATH"
           python scripts/bootstrap_runtimes.py 5.4.9
           python scripts/bootstrap.py lint --lua=.cache/toolchains/lua-5.4.9/bin/lua
           python scripts/bootstrap_native.py yaml luals
@@ -125,3 +129,20 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 7
+      - name: Validate release artifacts
+        if: matrix.name == 'Outer current'
+        run: |
+          source_args=()
+          if [[ "$GITHUB_EVENT_NAME" == release ]]; then
+            python scripts/release.py verify --event "$GITHUB_EVENT_PATH" --commit "$GITHUB_SHA"
+            source_args+=(--public-tag)
+          fi
+          python scripts/package.py --release --output dist "${source_args[@]}"
+      - name: Retain release candidate
+        if: matrix.name == 'Outer current'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-candidate
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
