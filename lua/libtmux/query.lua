@@ -1,6 +1,5 @@
 local internal = require("libtmux._internal.query")
 local wire = require("libtmux._internal.query_wire")
----@class libtmux.query
 local M = {}
 local methods = {}
 local compiled_queries = setmetatable({}, { __mode = "k" })

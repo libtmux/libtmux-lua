@@ -1,7 +1,6 @@
 local runtime = require("libtmux._internal.runtime")
 local luv = require("libtmux.runtime.luv")
 local errors = require("libtmux._internal.error")
----@class libtmux.runtime.nvim
 local M = {}
 
 -- Inline generics preserve the body callback's contextual type in LuaLS.

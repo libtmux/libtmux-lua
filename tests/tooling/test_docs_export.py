@@ -7,16 +7,16 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class DocsExportTest(unittest.TestCase):
-    def test_public_modules_are_named_at_the_exported_table(self):
+    def test_export_annotations_are_isolated_from_runtime_modules(self):
         modules = {
             "lua/libtmux/query.lua": "libtmux.query",
             "lua/libtmux/runtime/luv.lua": "libtmux.runtime.luv",
             "lua/libtmux/runtime/nvim.lua": "libtmux.runtime.nvim",
         }
+        exporter = (ROOT / "scripts/export-docs").read_text()
         for relative, name in modules.items():
-            lines = (ROOT / relative).read_text().splitlines()
-            table = lines.index("local M = {}")
-            self.assertEqual(f"---@class {name}", lines[table - 1], relative)
+            self.assertNotIn(f"---@class {name}", (ROOT / relative).read_text(), relative)
+            self.assertIn(f'"{relative.removeprefix("lua/")}": "{name}"', exporter)
 
     def test_exporter_is_a_deterministic_json_entrypoint(self):
         exporter = ROOT / "scripts/export-docs"
