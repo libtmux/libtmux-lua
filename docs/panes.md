@@ -70,9 +70,21 @@ the number precedes the flags. Flags include `D`, `H`, `O`, `P`, `W` and `X`
 for dead, hyperlink, output-start, prompt-start, wrapped and extended rows;
 `-` means none. The result remains bytes, not parsed row records.
 
-Named paste-buffer capture remains an unfinished domain API. The executable
-[capture fixture](../tests/integration/capture.lua) demonstrates the supported
-capture modes with output barriers and cleanup.
+The executable [capture fixture](../tests/integration/capture.lua) demonstrates
+the supported capture modes with output barriers and cleanup.
+
+`capture_to_buffer(name, options)` writes directly to an explicit named buffer
+and returns `true` when the native command completes. It accepts the same
+capture options and [buffer creation names](buffers.md#storage-and-identity).
+Nonempty capture replaces the current slot. Empty capture leaves an existing
+buffer unchanged and does not create a missing buffer; this includes empty
+pending input and quiet missing alternate grids.
+
+Buffer capture stores native bytes without adding the print newline. A pending
+ESC followed by `[` is stored as `"\027["`, whereas `capture()` returns
+`"\027[\n"`. Another client may replace the buffer before a subsequent read.
+Process output limits bound client output, not storage inside the tmux daemon;
+use a capture range to limit the selected rows.
 
 ## Clear history
 

@@ -39,7 +39,8 @@ local function work(runtime)
     local observation = must(server:observe(created.session):await())
     local watch = must(observation:watch_pane(pane):await())
     must(pane:send_text("x"):await())
-    local marker = case == "pending" and "PENDING_READY\027[" or "CAPTURE_READY"
+    local pending_case = case == "pending" or case == "buffer_pending"
+    local marker = pending_case and "PENDING_READY\027[" or "CAPTURE_READY"
     local output = ""
     repeat
         output = output .. must(watch:next({ timeout = 750 }):await()).data
@@ -53,6 +54,16 @@ local function work(runtime)
             escape_nonprintable = true,
         }):await())
         assert(escaped.bytes == "\\033[\n", string.format("%q", escaped.bytes))
+    elseif case == "buffer_pending" then
+        must(pane:capture_to_buffer("literal#{pid};", { pending_escape_sequences = true }):await())
+        must(pane:capture_to_buffer("escaped", {
+            pending_escape_sequences = true,
+            escape_nonprintable = true,
+        }):await())
+    elseif case == "buffer_screen" then
+        must(pane:capture_to_buffer("kept", { pending_escape_sequences = true }):await())
+        must(pane:capture_to_buffer("absent", { pending_escape_sequences = true }):await())
+        must(pane:capture_to_buffer("screen", { start_line = 0, end_line = 0 }):await())
     else
         local minor =
             assert(tonumber(command({ "display-message", "-p", "#{version}" }):match("^3%.(%d+)")))
@@ -105,7 +116,7 @@ local function work(runtime)
     must(watch:close():await())
     must(observation:close():await())
     must(server:close():await())
-    return "public capture/history PASS"
+    return "public capture/history PASS " .. id
 end
 
 if host then

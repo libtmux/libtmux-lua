@@ -4,9 +4,11 @@ local execution = require("libtmux._internal.execution")
 local identity = require("libtmux._internal.identity")
 local process = require("libtmux._internal.process")
 local domain = require("libtmux._internal.domain")
+local buffer = require("libtmux._internal.buffer")
 local M, Capture = {}, {}
 local commands = {
     capture = "capture-pane",
+    capture_to_buffer = "capture-pane",
     clear_history = "clear-history",
     send_text = "send-keys",
     send_keys = "send-keys",
@@ -49,6 +51,7 @@ local allowed = {
     set_title = {},
     swap = { select = true, keep_zoom = true },
 }
+allowed.capture_to_buffer = allowed.capture
 
 local function failure(code, message, kind, effect, details)
     details = details or {}
@@ -273,8 +276,18 @@ local function prepare(state, ref, kind, data, options, inspect)
             flag("-N", options.repeat_count)
         end
     end
-    if kind == "capture" then
-        flag("-p")
+    if kind == "capture" or kind == "capture_to_buffer" then
+        if kind == "capture" then
+            flag("-p")
+        else
+            if not buffer.valid_creation_name(data) then
+                invalid(
+                    "buffer name needs UTF-8 without controls or backslashes (1 to 4096 bytes)",
+                    "unsupported_name"
+                )
+            end
+            flag("-b", data)
+        end
         if options.pending_escape_sequences then
             for key, value in next, options do
                 if
@@ -598,7 +611,7 @@ end
 ---@field mode_screen? boolean Requires tmux 3.6.
 ---@field trim_empty_cells? boolean Requires tmux 3.4.
 ---@field pending_escape_sequences? boolean Capture incomplete input instead of screen cells.
----@field ignore_missing_alternate? boolean A missing alternate grid produces one newline.
+---@field ignore_missing_alternate? boolean Suppress the missing alternate-grid error.
 ---@field hyperlinks_only? boolean List native URLs instead of cell text; requires tmux 3.7.
 ---@field line_numbers? boolean Prefix rows with their native offsets; requires tmux 3.7.
 ---@field line_flags? boolean Prefix rows with native flags; requires tmux 3.7.

@@ -338,6 +338,47 @@ function M.test_clear_history_is_scoped_and_checks_hyperlink_support_before_disp
     end)
 end
 
+function M.test_named_capture_requires_a_literal_creation_name_and_returns_completion()
+    fixture(function(state, pane)
+        local options = { history_lines = 20, join_lines = true }
+        local pending = pane:capture_to_buffer("literal#{pid};", options)
+        options.history_lines = 99
+        t.assertTrue(assert(pending:await()))
+        t.assertEquals(state.calls[1].argv, {
+            "capture-pane",
+            "-t",
+            "%8",
+            "-b",
+            "literal#{pid};",
+            "-S",
+            "-20",
+            "-J",
+        })
+        for _, name in ipairs({
+            "",
+            "bad\000name",
+            "bad\nname",
+            "bad\\name",
+            "\255",
+            string.rep("x", 4097),
+        }) do
+            local value, err = pane:capture_to_buffer(name):await()
+            t.assertNil(value)
+            t.assertEquals(assert(err).code, "unsupported_name")
+            t.assertEquals(err.effect, "not_sent")
+        end
+        local value, err = pane:capture_to_buffer("valid", {
+            pending_escape_sequences = true,
+            history_lines = 1,
+        }):await()
+        t.assertNil(value)
+        t.assertEquals(assert(err).code, "invalid_options")
+        t.assertEquals(#state.calls, 1)
+        assert(pane:capture_to_buffer("pending", { pending_escape_sequences = true }):await())
+        t.assertEquals(state.calls[2].argv, { "capture-pane", "-t", "%8", "-b", "pending", "-P" })
+    end)
+end
+
 function M.test_byte_admission_and_generation_precede_effects()
     fixture(function(state, pane, generation)
         state.runtime._limits.max_bytes = 8

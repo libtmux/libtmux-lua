@@ -33,6 +33,11 @@ can change their stored key. Further native name validation still applies.
 Spaces, leading dashes and `#{...}` are literal. Buffer names do not undergo
 tmux format expansion.
 
+Use [`pane:capture_to_buffer(name, options)`](panes.md#capture-and-text) to
+store a native pane capture directly. It uses these creation-name rules;
+empty capture leaves the named slot unchanged. Native buffer capture does
+not add the newline used by capture's printed output.
+
 `server:show_buffer(name)` returns `{ name, bytes }` with a pure `text()`
 method. `bytes` preserves exact stdout. `text()` requires valid UTF-8 and
 performs no trimming, replacement or newline normalization. Invalid UTF-8

@@ -16,13 +16,17 @@ class CaptureTests(unittest.TestCase):
     def run_case(self, case):
         for host in ("luv", "nvim"):
             with self.subTest(host=host), TmuxFixture() as fixture:
+                if case.startswith("buffer_"):
+                    fixture.run("set-buffer", "-b", "unrelated", "unchanged")
+                    fixture.run("set-buffer", "-b", "kept", "unchanged")
+                    fixture.run("set-buffer", "-b", "screen", "old")
                 script = fixture.path / "capture.py"
                 script.write_text(
                     "import os,subprocess,sys,tty\n"
                     "tty.setraw(0)\n"
                     f"subprocess.run({[fixture.binary, '-N', '-S', str(fixture.socket), 'wait-for', '-S', 'capture-input-ready']!r}, check=True, timeout=0.8)\n"
                     "os.read(0,1)\n"
-                    "if sys.argv[1] == 'pending':\n"
+                    "if sys.argv[1].endswith('pending'):\n"
                     " os.write(1,b'PENDING_READY\\x1b[')\n"
                     "else:\n"
                     " for index in range(40): os.write(1,('line-%02d\\r\\n'%index).encode())\n"
@@ -45,6 +49,17 @@ class CaptureTests(unittest.TestCase):
                                         timeout=0.8)
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                 self.assertIn(b"public capture/history PASS", result.stdout)
+                pane_id = result.stdout.decode().strip().rsplit(" ", 1)[-1]
+                if case == "buffer_pending":
+                    self.assertEqual(fixture.run("show-buffer", "-b", "literal#{pid}\\;").stdout, "\x1b[")
+                    self.assertEqual(fixture.run("show-buffer", "-b", "escaped").stdout, "\\033[")
+                elif case == "buffer_screen":
+                    self.assertEqual(fixture.run("show-buffer", "-b", "kept").stdout, "unchanged")
+                    self.assertNotEqual(fixture.run("show-buffer", "-b", "absent", check=False).returncode, 0)
+                    self.assertEqual(fixture.run("show-buffer", "-b", "screen").stdout,
+                                     fixture.run("capture-pane", "-p", "-S", "0", "-E", "0", "-t", pane_id).stdout)
+                if case.startswith("buffer_"):
+                    self.assertEqual(fixture.run("show-buffer", "-b", "unrelated").stdout, "unchanged")
                 self.assertEqual(fixture.run("capture-pane", "-p", "-t", "%0").stdout, untouched)
                 self.assertEqual(fixture.run("list-clients").stdout, "")
                 self.assertEqual(list(fixture.path.glob("libtmux-lua-pin-*")), [])
@@ -55,3 +70,9 @@ class CaptureTests(unittest.TestCase):
 
     def test_history_metadata_and_explicit_clearing(self):
         self.run_case("history")
+
+    def test_named_capture_preserves_pending_bytes_without_print_newline(self):
+        self.run_case("buffer_pending")
+
+    def test_named_capture_empty_noop_and_screen_replacement(self):
+        self.run_case("buffer_screen")

@@ -48,6 +48,14 @@ local function plain(value)
     return type(value) == "table" and getmetatable(value) == nil
 end
 
+function M.valid_creation_name(name)
+    return type(name) == "string"
+        and #name > 0
+        and #name <= MAX_NAME
+        and text.valid_utf8(name)
+        and not name:find("[%z\001-\031\127\\]")
+end
+
 function Value:text()
     if not text.valid_utf8(self.bytes) then
         return nil,
@@ -99,7 +107,7 @@ local function prepare(state, ref, kind, name, bytes, options)
         )
     end
     if kind == "set" then
-        if not text.valid_utf8(name) or name:find("[\001-\031\127\\]") then
+        if not M.valid_creation_name(name) then
             invalid(
                 "unsupported_name",
                 "buffer creation name requires UTF-8 without controls or backslashes"
