@@ -91,7 +91,10 @@ def main():
             complete('  pending:', {"await", "cancel", "result", "on_complete"})
             lines.append('  local server = assert(pending:await())')
             complete('  server:', {"snapshot", "close", "handle", "command", "group", "batch", "new_session", "query_panes", "explain_panes", "get_option", "list_options", "set_option",
-                                    "get_hook", "set_hook", "get_environment", "list_environment"})
+                                    "get_hook", "set_hook", "get_environment", "list_environment",
+                                    "set_buffer", "show_buffer", "delete_buffer"})
+            lines.append('  local buffer_value = assert(server:show_buffer("clipboard"):await())')
+            complete('  buffer_value.', {"name", "bytes", "text"})
             lines.append('  local created = assert(server:new_session({argv={"/bin/cat"}}):await())')
             complete('  created.', {"session", "window", "pane", "window_link", "created"})
             lines.append('  local created_session = created.session')
@@ -116,7 +119,7 @@ def main():
             lines.append('  local created_pane = created.pane')
             complete('  created_pane:', {"split", "reference", "capture", "send_text", "send_keys",
                                         "copy_mode", "copy_command", "resize", "kill", "respawn",
-                                        "select", "set_title", "swap"})
+                                        "select", "set_title", "swap", "paste_buffer"})
             lines.append('  local pane_capture_request = created_pane:capture({history_lines=20})')
             complete('  pane_capture_request:', {"await", "cancel", "result", "on_complete"})
             lines.append('  local pane_capture = assert(pane_capture_request:await())')

@@ -1,5 +1,6 @@
 local settings = require("libtmux._internal.settings")
 local environment = require("libtmux._internal.environment")
+local buffer = require("libtmux._internal.buffer")
 local errors = require("libtmux._internal.error")
 local graph = require("libtmux._internal.graph")
 local identity = require("libtmux._internal.identity")
@@ -246,6 +247,11 @@ function Entity:set_title(text, options)
     return pane.run(stored.server, stored.identity, "set_title", text, options)
 end
 
+function Entity:paste_buffer(name, options)
+    local stored = handles[self]
+    return buffer.run(stored.server, stored.identity, "paste", name, nil, options)
+end
+
 function Entity:swap(other, options)
     local stored = handles[self]
     return pane.run(stored.server, stored.identity, "swap", other, options, M.inspect)
@@ -391,6 +397,8 @@ end
 ---@field renumber_windows fun(self:libtmux.Entity<T>,options?:libtmux.TopologyOptions):
 --- libtmux.Request<boolean>
 ---@field layout fun(self:libtmux.Entity<T>,options:libtmux.LayoutOptions):
+--- libtmux.Request<boolean>
+---@field paste_buffer fun(self:libtmux.Entity<T>,name:string,options?:libtmux.PasteBufferOptions):
 --- libtmux.Request<boolean>
 
 return M

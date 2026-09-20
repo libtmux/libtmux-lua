@@ -1,5 +1,6 @@
 local settings = require("libtmux._internal.settings")
 local environment = require("libtmux._internal.environment")
+local buffer = require("libtmux._internal.buffer")
 local endpoints = require("libtmux._internal.endpoint")
 local errors = require("libtmux._internal.error")
 local fields = require("libtmux._internal.fields")
@@ -434,6 +435,18 @@ function Server:handle(snapshot, record)
     return entities.from_snapshot(servers[self], snapshot, record)
 end
 
+function Server:set_buffer(name, bytes, options)
+    return buffer.run(servers[self], nil, "set", name, bytes, options)
+end
+
+function Server:show_buffer(name, options)
+    return buffer.run(servers[self], nil, "show", name, nil, options)
+end
+
+function Server:delete_buffer(name, options)
+    return buffer.run(servers[self], nil, "delete", name, nil, options)
+end
+
 function Server:new_session(options)
     return domain.create(servers[self], nil, "session", options, entities.from_reference)
 end
@@ -622,6 +635,13 @@ end
 --- libtmux.Request<libtmux.LiveQueryPlan>
 ---@field new_session fun(self:libtmux.Server,options?:libtmux.NewSessionOptions):
 --- libtmux.Request<libtmux.Creation>
+---@field set_buffer fun(self:libtmux.Server,name:string,bytes:string,
+--- options?:libtmux.BufferOptions):
+--- libtmux.Request<boolean>
+---@field show_buffer fun(self:libtmux.Server,name:string,options?:libtmux.BufferOptions):
+--- libtmux.Request<libtmux.BufferValue>
+---@field delete_buffer fun(self:libtmux.Server,name:string,options?:libtmux.BufferOptions):
+--- libtmux.Request<boolean>
 ---@field handle fun<T>(self:libtmux.Server, snapshot:libtmux.Snapshot,
 --- record:T):libtmux.Entity<T>?, libtmux.Error?
 ---@field command fun(self:libtmux.Server, argv:string[],
