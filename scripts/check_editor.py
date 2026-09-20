@@ -102,6 +102,8 @@ def main():
                                            "rename", "kill", "navigate_window", "renumber_windows"})
             lines.append('  local created_window = created.window')
             complete('  created_window:', {"rename", "kill", "resize", "layout"})
+            lines.append('  local created_link = created.window_link')
+            complete('  created_link:', {"select", "link", "move", "swap", "unlink", "reference"})
             lines.append('  local option_record = assert(created_session:get_option("mouse"):await())')
             complete('  option_record.', {"name", "present", "inherited", "value", "entries", "target"})
             lines.append('  local hook_record = assert(created_session:get_hook("session-renamed"):await())')

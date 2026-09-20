@@ -51,3 +51,18 @@ class TopologyTests(unittest.TestCase):
 
     def test_window_dimensions_layout_and_error_side_effect(self):
         self.run_case("layout")
+
+    def test_link_identity_selection_noop_unlink_and_index_reuse(self):
+        self.run_case("link_identity")
+
+    def test_link_insertion_move_replacement_and_stale_destination(self):
+        self.run_case("link_placement")
+
+    def test_link_swap_selection_and_stale_handles(self):
+        self.run_case("link_swap")
+
+    def test_link_group_propagation_and_cross_group_refusal(self):
+        self.run_case("link_group")
+
+    def test_link_cross_session_move_swap_and_free_index(self):
+        self.run_case("link_cross_session")

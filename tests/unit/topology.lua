@@ -18,6 +18,10 @@ local function fixture(kind, version, body)
     }))
     local original =
         { kind = kind, id = kind == "session" and "$2" or "@3", generation = generation }
+    if kind == "window_link" then
+        original =
+            { kind = kind, session_id = "$2", index = 5, window_id = "@3", generation = generation }
+    end
     local owned = assert(identity.bind(generation, original))
     original.id = "changed"
     local state = { runtime = rt, version = version, calls = {} }
@@ -44,8 +48,22 @@ local function fixture(kind, version, body)
             end)
         end,
     }
+    state.other = {}
+    state.other_ref = {
+        kind = "window_link",
+        session_id = "$4",
+        index = 9,
+        window_id = "@7",
+        generation = generation,
+    }
+    local function inspect(_, handle, expected)
+        if handle == state.other and state.other_ref.kind == expected then
+            return state.other_ref
+        end
+        return nil, errors.new("invalid_target", "not an owned handle", { effect = "not_sent" })
+    end
     local function run(action, input, options)
-        return topology.run(state, owned, action, input, options)
+        return topology.run(state, owned, action, input, options, inspect)
     end
     local root = rt:start(function()
         return body(state, run, generation, driver)
@@ -66,6 +84,73 @@ local function reject(request, code)
         t.assertEquals(err.code, code)
     end
     t.assertEquals(err.effect, "not_sent")
+end
+
+function M.test_link_operations_guard_complete_source_and_destination_tuples()
+    fixture("window_link", "3.7c", function(state, run)
+        local destination = { link = state.other, position = "after" }
+        local pending = run("link", destination)
+        destination.position = "before"
+        assert(pending:await())
+        local call = state.calls[1].argv
+        t.assertEquals({ call[1], call[2], call[3], call[4] }, { "if-shell", "-F", "-t", "$2:5" })
+        t.assertStrContains(call[5], "#{==:#{window_id},@3}")
+        t.assertStrContains(call[5], "#{==:#{window_index},5}")
+        t.assertStrContains(call[5], "#{==:#{session_id},$2}")
+        local nested = call[6]:gsub("\\(%d%d%d)", function(value)
+            return string.char(tonumber(value, 8))
+        end)
+        t.assertStrContains(nested, '"$4:9"')
+        t.assertStrContains(nested, "#{==:#{window_id},@7}")
+        local mutation = nested:gsub("\\(%d%d%d)", function(value)
+            return string.char(tonumber(value, 8))
+        end)
+        t.assertStrContains(mutation, '"link-window" "-s" "$2:5" "-t" "$4:9" "-a" "-d"')
+        assert(run("select"):await())
+        assert(run("move", { link = state.other, position = "at" }, { replace = true }):await())
+        assert(run("swap", state.other, { select = true }):await())
+        assert(run("unlink", nil, { kill_if_last = true }):await())
+    end)
+end
+
+function M.test_link_validation_refuses_implicit_victims_and_unowned_destinations()
+    fixture("window_link", "3.7c", function(state, run)
+        for _, destination in ipairs({
+            {},
+            { session = {} },
+            { link = state.other },
+            { link = state.other, position = "at" },
+            { link = state.other, position = "after", index = 1 },
+            setmetatable({}, {}),
+        }) do
+            reject(run("link", destination))
+        end
+        reject(run("select", nil, { select = false }))
+        reject(run("unlink", nil, { kill_if_last = 1 }))
+        reject(run("swap", {}))
+        reject(run("link", { link = state.other, position = "after" }, { replace = true }))
+        state.other_ref = { kind = "session", id = "$4", generation = state.other_ref.generation }
+        reject(run("move", { session = state.other, index = 9 }, { replace = true }))
+        reject(run("link", { session = state.other, index = 2147483648 }))
+        t.assertEquals(#state.calls, 0)
+        assert(run("link", { session = state.other }):await())
+    end)
+end
+
+function M.test_only_exact_guard_receipts_establish_stale_link_rejection()
+    fixture("window_link", "3.7c", function(state, run)
+        state.result.stdout = "__libtmux_stale_link_v1__\n"
+        local result, err = run("unlink"):await()
+        t.assertNil(result)
+        err = assert(err)
+        t.assertEquals(err.code, "stale_target")
+        t.assertEquals(err.effect, "not_sent")
+        t.assertIs(err.partial, state.result)
+        state.result.stdout = "extra\n__libtmux_stale_link_v1__\n"
+        t.assertTrue(run("unlink"):await())
+        state.result.stdout, state.result.stderr = "__libtmux_stale_link_v1__\n", "hook output"
+        t.assertTrue(run("unlink"):await())
+    end)
 end
 
 function M.test_literal_rename_navigation_renumber_and_kill_use_private_stable_targets()

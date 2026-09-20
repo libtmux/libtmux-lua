@@ -31,6 +31,15 @@ local function work(runtime)
     local function field(target, name)
         return command({ "display-message", "-p", "-t", target, "#{" .. name .. "}" })
     end
+    local function link_at(index, session_id)
+        local snapshot = must(server:snapshot():await())
+        for _, record in ipairs(snapshot.window_links) do
+            if record.session_id == (session_id or sid) and record.index == index then
+                return must(server:handle(snapshot, record))
+            end
+        end
+        error("expected window link missing")
+    end
     if mode == "pane_selection" then
         local other = must(pane:split({ direction = "right", argv = { "/bin/cat" } }):await()).pane
         local other_id = other:reference().id
@@ -127,6 +136,98 @@ local function work(runtime)
         value, err = window:layout({ layout = "0000,invalid-layout" }):await()
         assert(value == nil and err and err.code == "exit_failed" and err.effect == "completed")
         assert(field(wid, "window_zoomed_flag") == "0\n")
+    elseif mode == "link_identity" then
+        local original = created.window_link
+        assert(type(original.link) == "function", "WindowLink link API is missing")
+        must(original:link({ session = session, index = 5 }):await())
+        local duplicate = link_at(5)
+        must(duplicate:select():await())
+        assert(field(sid, "window_index") == "5\n")
+        must(original:swap(duplicate):await())
+        assert(field(sid .. ":0", "window_id") == wid .. "\n")
+        assert(field(sid .. ":5", "window_id") == wid .. "\n")
+        must(original:unlink():await())
+        assert(field(sid .. ":5", "window_id") == wid .. "\n")
+        local replacement = must(session:new_window({ index = 0, argv = { "/bin/cat" } }):await())
+        local value, err = original:unlink():await()
+        assert(value == nil and err and err.code == "stale_target" and err.effect == "not_sent")
+        assert(field(sid .. ":0", "window_id") == replacement.window:reference().id .. "\n")
+        value, err = duplicate:unlink():await()
+        assert(value == nil and err and err.code == "exit_failed" and err.effect == "completed")
+        must(duplicate:unlink({ kill_if_last = true }):await())
+        value, err = duplicate:select():await()
+        assert(value == nil and err and err.code == "stale_target")
+    elseif mode == "link_placement" then
+        local original = created.window_link
+        assert(type(original.move) == "function", "WindowLink move API is missing")
+        local anchor = must(session:new_window({ index = 5, argv = { "/bin/cat" } }):await())
+        must(original:link({ link = anchor.window_link, position = "after" }):await())
+        assert(field(sid .. ":6", "window_id") == wid .. "\n")
+        must(original:move({ link = anchor.window_link, position = "before" }):await())
+        assert(field(sid .. ":5", "window_id") == wid .. "\n")
+        assert(field(sid .. ":6", "window_id") == anchor.window:reference().id .. "\n")
+        local moved = link_at(5)
+        local value, err = moved:link({ link = anchor.window_link, position = "after" }):await()
+        assert(value == nil and err and err.code == "stale_target" and err.effect == "not_sent")
+        value, err = moved:link({ session = session, index = 6 }):await()
+        assert(value == nil and err and err.code == "exit_failed" and err.effect == "completed")
+        local victim = link_at(6)
+        must(moved:move({ link = victim, position = "at" }, { replace = true }):await())
+        assert(field(sid .. ":6", "window_id") == wid .. "\n")
+        assert(
+            command({ "list-windows", "-t", sid, "-F", "#{window_id}" })
+                == wid .. "\n" .. wid .. "\n"
+        )
+    elseif mode == "link_swap" then
+        local second = must(session:new_window({ index = 5, argv = { "/bin/cat" } }):await())
+        local third = must(session:new_window({ index = 9, argv = { "/bin/cat" } }):await())
+        must(created.window_link:swap(second.window_link):await())
+        assert(field(sid, "window_index") == "0\n")
+        assert(field(sid .. ":0", "window_id") == second.window:reference().id .. "\n")
+        local value, err = created.window_link:select():await()
+        assert(value == nil and err and err.code == "stale_target")
+        local current = link_at(0)
+        must(current:swap(third.window_link, { select = true }):await())
+        assert(field(sid, "window_index") == "9\n")
+        assert(field(sid, "window_id") == second.window:reference().id .. "\n")
+    elseif mode == "link_group" then
+        local original = created.window_link
+        assert(type(original.link) == "function", "WindowLink link API is missing")
+        local group_id = command({
+            "new-session",
+            "-d",
+            "-t",
+            sid,
+            "-s",
+            "grouped",
+            "-P",
+            "-F",
+            "#{session_id}",
+        }):sub(1, -2)
+        must(original:link({ session = session, index = 1 }):await())
+        assert(field(group_id .. ":1", "window_id") == wid .. "\n")
+        local grouped = link_at(0, group_id)
+        local value, err = original:link({ link = grouped, position = "after" }):await()
+        assert(value == nil and err and err.code == "exit_failed" and err.effect == "completed")
+        assert(field(sid .. ":0", "window_id") == wid .. "\n")
+        assert(field(group_id .. ":0", "window_id") == wid .. "\n")
+        assert(command({ "list-windows", "-t", group_id, "-F", "#{window_index}" }) == "0\n2\n")
+        assert(command({ "list-windows", "-t", sid, "-F", "#{window_index}" }) == "0\n1\n")
+        must(link_at(1):unlink():await())
+        assert(command({ "list-windows", "-t", group_id, "-F", "#{window_id}" }) == wid .. "\n")
+    elseif mode == "link_cross_session" then
+        local other =
+            must(server:new_session({ name = "destination", argv = { "/bin/cat" } }):await())
+        local other_id = other.session:reference().id
+        must(created.window_link:swap(other.window_link, { select = true }):await())
+        assert(field(sid, "window_id") == other.window:reference().id .. "\n")
+        assert(field(other_id, "window_id") == wid .. "\n")
+        local moved = link_at(0, other_id)
+        must(moved:move({ session = session, index = 9 }):await())
+        assert(field(sid .. ":9", "window_id") == wid .. "\n")
+        assert(must(server:command({ "has-session", "-t", other_id }):await()).exit_code ~= 0)
+        must(link_at(9):link({ session = session }):await())
+        assert(field(sid .. ":1", "window_id") == wid .. "\n")
     else
         error("unknown topology test case")
     end

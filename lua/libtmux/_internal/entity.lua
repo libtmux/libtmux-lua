@@ -239,7 +239,23 @@ end
 
 function Entity:select(options)
     local stored = handles[self]
-    return pane.run(stored.server, stored.identity, "select", nil, options)
+    local implementation = stored.kind == "window_link" and topology or pane
+    return implementation.run(stored.server, stored.identity, "select", nil, options)
+end
+
+function Entity:link(destination, options)
+    local stored = handles[self]
+    return topology.run(stored.server, stored.identity, "link", destination, options, M.inspect)
+end
+
+function Entity:move(destination, options)
+    local stored = handles[self]
+    return topology.run(stored.server, stored.identity, "move", destination, options, M.inspect)
+end
+
+function Entity:unlink(options)
+    local stored = handles[self]
+    return topology.run(stored.server, stored.identity, "unlink", nil, options)
 end
 
 function Entity:set_title(text, options)
@@ -254,7 +270,8 @@ end
 
 function Entity:swap(other, options)
     local stored = handles[self]
-    return pane.run(stored.server, stored.identity, "swap", other, options, M.inspect)
+    local implementation = stored.kind == "window_link" and topology or pane
+    return implementation.run(stored.server, stored.identity, "swap", other, options, M.inspect)
 end
 
 function Entity:new_window(options)
@@ -384,12 +401,20 @@ end
 --- libtmux.Request<boolean>
 ---@field respawn fun(self:libtmux.Entity<T>,options?:libtmux.RespawnOptions):
 --- libtmux.Request<boolean>
----@field select fun(self:libtmux.Entity<T>,options?:libtmux.SelectPaneOptions):
+---@field select fun(self:libtmux.Entity<T>,
+--- options?:libtmux.SelectPaneOptions|libtmux.TopologyOptions):
 --- libtmux.Request<boolean>
 ---@field set_title fun(self:libtmux.Entity<T>,text:string,options?:libtmux.PaneOptions):
 --- libtmux.Request<boolean>
----@field swap fun(self:libtmux.Entity<T>,other:libtmux.Entity<libtmux.SnapshotPane>,
---- options?:libtmux.SwapPaneOptions):libtmux.Request<boolean>
+---@field swap fun(self:libtmux.Entity<T>,
+--- other:libtmux.Entity<libtmux.SnapshotPane>|libtmux.Entity<libtmux.SnapshotWindowLink>,
+--- options?:libtmux.SwapPaneOptions|libtmux.SwapLinkOptions):libtmux.Request<boolean>
+---@field link fun(self:libtmux.Entity<T>,destination:libtmux.LinkDestination,
+--- options?:libtmux.LinkOptions):libtmux.Request<boolean>
+---@field move fun(self:libtmux.Entity<T>,destination:libtmux.LinkDestination,
+--- options?:libtmux.LinkOptions):libtmux.Request<boolean>
+---@field unlink fun(self:libtmux.Entity<T>,options?:libtmux.UnlinkOptions):
+--- libtmux.Request<boolean>
 ---@field rename fun(self:libtmux.Entity<T>,name:string,options?:libtmux.TopologyOptions):
 --- libtmux.Request<boolean>
 ---@field navigate_window fun(self:libtmux.Entity<T>,direction:"next"|"previous"|"last",

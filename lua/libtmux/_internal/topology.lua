@@ -2,7 +2,9 @@ local errors = require("libtmux._internal.error")
 local execution = require("libtmux._internal.execution")
 local identity = require("libtmux._internal.identity")
 local process = require("libtmux._internal.process")
+local command = require("libtmux._internal.command")
 local M = {}
+local STALE_LINK = "__libtmux_stale_link_v1__"
 local versions = {
     ["3.2a"] = 2,
     ["3.3"] = 3,
@@ -32,6 +34,11 @@ local allowed = {
         smallest = true,
     },
     layout = { named = true, layout = true, next = true, previous = true, restore = true },
+    select = {},
+    link = { select = true, replace = true },
+    move = { select = true, replace = true },
+    swap = { select = true },
+    unlink = { kill_if_last = true },
 }
 local targets = {
     session = {
@@ -45,6 +52,13 @@ local targets = {
         kill = "kill-window",
         resize = "resize-window",
         layout = "select-layout",
+    },
+    window_link = {
+        select = "select-window",
+        link = "link-window",
+        move = "move-window",
+        swap = "swap-window",
+        unlink = "unlink-window",
     },
 }
 local layouts = {
@@ -96,7 +110,136 @@ local function current(state, owned, kind)
     return ref
 end
 
-local function prepare(state, ref, kind, input, options)
+local function link_target(ref)
+    return ref.session_id .. ":" .. string.format("%.0f", ref.index)
+end
+
+local function program(argv)
+    local value, err = command.prepare_program({ commands = { argv } })
+    if not value then
+        error(err, 0)
+    end
+    return value
+end
+
+local function guard(ref, argv)
+    local condition = "#{&&:#{==:#{session_id},"
+        .. ref.session_id
+        .. "},#{&&:#{==:#{window_index},"
+        .. string.format("%.0f", ref.index)
+        .. "},#{==:#{window_id},"
+        .. ref.window_id
+        .. "}}}"
+    return {
+        "if-shell",
+        "-F",
+        "-t",
+        link_target(ref),
+        condition,
+        program(argv),
+        program({ "display-message", "-p", STALE_LINK }),
+    }
+end
+
+local function prepare_link(state, ref, kind, input, options, inspect, invalid)
+    local function owned(value, expected)
+        if not inspect then
+            invalid("operation requires an owned destination", "invalid_target")
+        end
+        local found, err = inspect(state, value, expected)
+        if not found then
+            error(err, 0)
+        end
+        if not rawequal(ref.generation, found.generation) then
+            invalid("destination belongs to a different generation", "stale_generation")
+        end
+        return found
+    end
+    local function boolean(name)
+        if options[name] ~= nil and type(options[name]) ~= "boolean" then
+            invalid(name .. " must be boolean")
+        end
+        return options[name] == true
+    end
+    local argv = { targets.window_link[kind] }
+    local destination
+    local function flag(name, value)
+        argv[#argv + 1] = name
+        if value ~= nil then
+            argv[#argv + 1] = value
+        end
+    end
+    if kind == "select" or kind == "unlink" then
+        if input ~= nil then
+            invalid("this operation does not accept an input value", "invalid_argument")
+        end
+        flag("-t", link_target(ref))
+        if kind == "unlink" and boolean("kill_if_last") then
+            flag("-k")
+        end
+    else
+        flag("-s", link_target(ref))
+        if kind == "swap" then
+            destination = owned(input, "window_link")
+            flag("-t", link_target(destination))
+            if boolean("select") then
+                flag("-d")
+            end
+        else
+            if not plain(input) then
+                invalid("destination must be a plain record", "invalid_target")
+            end
+            for key in next, input do
+                if key ~= "session" and key ~= "index" and key ~= "link" and key ~= "position" then
+                    invalid("unknown destination field", "invalid_target")
+                end
+            end
+            local replace = boolean("replace")
+            if input.session ~= nil then
+                if input.link ~= nil or input.position ~= nil or replace then
+                    invalid("session destination excludes link, position and replacement")
+                end
+                local session = owned(input.session, "session")
+                if input.index ~= nil and not integer(input.index, 0, 2147483647) then
+                    invalid("destination index must be an integer from 0 to 2147483647")
+                end
+                flag(
+                    "-t",
+                    session.id .. ":" .. (input.index and string.format("%.0f", input.index) or "")
+                )
+            elseif input.link ~= nil then
+                destination = owned(input.link, "window_link")
+                if input.index ~= nil then
+                    invalid("link destination excludes index")
+                end
+                flag("-t", link_target(destination))
+                if replace then
+                    if input.position ~= "at" or link_target(ref) == link_target(destination) then
+                        invalid("replacement requires a different explicit victim at its link")
+                    end
+                    flag("-k")
+                elseif input.position == "before" then
+                    flag("-b")
+                elseif input.position == "after" and destination.index < 2147483647 then
+                    flag("-a")
+                else
+                    invalid("link destination requires before or after a bounded index")
+                end
+            else
+                invalid("destination requires an owned Session or WindowLink", "invalid_target")
+            end
+            if not boolean("select") then
+                flag("-d")
+            end
+        end
+    end
+    if destination then
+        argv = guard(destination, argv)
+    end
+    return guard(ref, argv)
+end
+
+local function prepare(state, ref, kind, input, options, inspect)
     local function invalid(message, code)
         error(failure(code or "invalid_options", message, ref, kind), 0)
     end
@@ -113,7 +256,12 @@ local function prepare(state, ref, kind, input, options)
             invalid("unknown topology option")
         end
     end
-    if kind ~= "rename" and kind ~= "navigate_window" and input ~= nil then
+    if
+        ref.kind ~= "window_link"
+        and kind ~= "rename"
+        and kind ~= "navigate_window"
+        and input ~= nil
+    then
         invalid("this topology operation does not take an input value", "invalid_argument")
     end
     local argv = { targets[ref.kind][kind], "-t", ref.id }
@@ -140,7 +288,9 @@ local function prepare(state, ref, kind, input, options)
         end
         return options[name] == true
     end
-    if kind == "rename" then
+    if ref.kind == "window_link" then
+        argv = prepare_link(state, ref, kind, input, options, inspect, invalid)
+    elseif kind == "rename" then
         bytes(input, 1024)
         if ref.kind == "session" and input:find("[.:\001-\031\127]") then
             invalid(
@@ -251,17 +401,22 @@ local function prepare(state, ref, kind, input, options)
     if cost > 1048576 then
         invalid("topology input exceeds one MiB")
     end
-    return { argv = copied[1], options = configured, bytes = cost }
+    return {
+        argv = copied[1],
+        options = configured,
+        bytes = cost,
+        guarded = ref.kind == "window_link",
+    }
 end
 
-function M.run(state, owned, kind, input, options)
+function M.run(state, owned, kind, input, options, inspect)
     local ref, validation_error, plan
     if type(kind) ~= "string" or not allowed[kind] then
         validation_error = failure("invalid_operation", "unknown topology operation", nil, kind)
     else
         ref, validation_error = current(state, owned, kind)
         if ref then
-            local ok, value = pcall(prepare, state, ref, kind, input, options)
+            local ok, value = pcall(prepare, state, ref, kind, input, options, inspect)
             if ok then
                 plan = value
             else
@@ -306,6 +461,23 @@ function M.run(state, owned, kind, input, options)
                     kind,
                     "completed",
                     { cause = err, partial = result }
+                )
+        end
+        if
+            plan.guarded
+            and result.stdout == STALE_LINK .. "\n"
+            and result.stderr == ""
+            and result.exit_code == 0
+            and result.signal == 0
+        then
+            return nil,
+                failure(
+                    "stale_target",
+                    "window link no longer matches its context",
+                    ref,
+                    kind,
+                    "not_sent",
+                    { partial = result }
                 )
         end
         return true
@@ -357,5 +529,21 @@ end
 ---@field next? boolean Select exactly one of named/layout/next/previous/restore.
 ---@field previous? boolean
 ---@field restore? boolean
+
+---@class libtmux.LinkDestination
+---@field session? libtmux.Entity<libtmux.SnapshotSession> Excludes link and position.
+---@field index? integer Native free index if omitted; excludes link.
+---@field link? libtmux.Entity<libtmux.SnapshotWindowLink> Guarded anchor or explicit victim.
+---@field position? "before"|"after"|"at" At requires replace=true.
+
+---@class libtmux.SwapLinkOptions: libtmux.TopologyOptions
+---@field select? boolean False preserves selected slots; true selects swapped slots.
+
+---@class libtmux.LinkOptions: libtmux.TopologyOptions
+---@field select? boolean Defaults to false; removal/replacement may force native selection.
+---@field replace? boolean Requires an explicit victim link with position=at.
+
+---@class libtmux.UnlinkOptions: libtmux.TopologyOptions
+---@field kill_if_last? boolean Permit destruction if no links survive; defaults to false.
 
 return M
