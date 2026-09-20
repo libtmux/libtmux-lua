@@ -121,6 +121,45 @@ layout can therefore change zoom state. A nonzero native exit carries its receip
 and `effect = "completed"`; it does not establish rollback. Custom layout
 syntax is tmux's grammar and is not evaluated as Lua or shell text.
 
+## Restart a window
+
+`window:respawn({ context = link, ... })` requires a WindowLink naming this
+Window. Its session supplies the native launch context, including inherited
+environment. The link is checked in the native queue before respawn; the
+method never chooses an arbitrary session from a global Window ID.
+
+Launch options match [creation](creation.md): literal `argv` or explicit
+`shell`, absolute `cwd` and a per-process `environment` map. Omitting launch
+text reuses the previous command. Working-directory validation is asynchronous
+and completes before dispatch. `kill = true` permits replacement of running
+processes; otherwise tmux refuses an active window.
+
+Respawn retains the Window ID and its first Pane, removes sibling panes, and
+resets layout through every link to the Window. It can fail after destructive
+preparation; a native error does not establish rollback. Existing sibling
+Pane handles do not become references to the restarted first Pane.
+
+## Move a pane
+
+`pane:move_to(target, options)` moves the same Pane into the target Pane's
+Window. It defaults to a vertical split with `select = false`. Choose
+`direction = "horizontal"`, `size` from 1 to 10,000 cells, or `percent` from
+1 to 100. Size and percent exclude one another. `before = true` changes native
+geometry; it does not promise a matching pane-index order. `full_size = true`
+extends the split across the Window.
+
+`select = true` requires `target_link = link`, identifying the exact placement
+whose session and index will be selected. An optional target link also checks
+membership when selection is disabled. The library checks that placement and
+the target Pane's current Window separately in the native queue, then submits
+the compound target. A moved target Pane produces `stale_target`; a target
+that tmux cannot resolve can instead retain its native command error.
+
+Movement changes global pane membership through all Window links. Moving the
+last Pane destroys the old Window and all its placements. Native layout and
+selection changes can happen before a later error. Moving a Pane preserves
+its ID and running process; it does not restart that process.
+
 ## Effects and boundaries
 
 Options are copied before dispatch and must be plain records. These methods
@@ -132,5 +171,4 @@ Mutations are never retried automatically.
 
 Native [aliases and hooks](commands.md) remain observable. These APIs do not
 promise transactions or protection against aliases that replace a built-in
-command. Contextual Window respawn and Pane join/break remain pending typed
-domain operations.
+command. Pane break-out remains a pending typed domain operation.

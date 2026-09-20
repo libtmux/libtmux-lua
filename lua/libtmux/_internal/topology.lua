@@ -3,6 +3,7 @@ local execution = require("libtmux._internal.execution")
 local identity = require("libtmux._internal.identity")
 local process = require("libtmux._internal.process")
 local command = require("libtmux._internal.command")
+local domain = require("libtmux._internal.domain")
 local M = {}
 local STALE_LINK = "__libtmux_stale_link_v1__"
 local versions = {
@@ -39,6 +40,23 @@ local allowed = {
     move = { select = true, replace = true },
     swap = { select = true },
     unlink = { kill_if_last = true },
+    move_to = {
+        direction = true,
+        size = true,
+        percent = true,
+        before = true,
+        full_size = true,
+        select = true,
+        target_link = true,
+    },
+    respawn = {
+        context = true,
+        kill = true,
+        argv = true,
+        shell = true,
+        cwd = true,
+        environment = true,
+    },
 }
 local targets = {
     session = {
@@ -52,6 +70,7 @@ local targets = {
         kill = "kill-window",
         resize = "resize-window",
         layout = "select-layout",
+        respawn = "respawn-window",
     },
     window_link = {
         select = "select-window",
@@ -60,6 +79,7 @@ local targets = {
         swap = "swap-window",
         unlink = "unlink-window",
     },
+    pane = { move_to = "join-pane" },
 }
 local layouts = {
     ["even-horizontal"] = 2,
@@ -122,7 +142,8 @@ local function program(argv)
     return value
 end
 
-local function guard(ref, argv)
+local function guard(ref, argv, pane_id)
+    local target = link_target(ref)
     local condition = "#{&&:#{==:#{session_id},"
         .. ref.session_id
         .. "},#{&&:#{==:#{window_index},"
@@ -130,14 +151,28 @@ local function guard(ref, argv)
         .. "},#{==:#{window_id},"
         .. ref.window_id
         .. "}}}"
+    local rejected = program({ "display-message", "-p", STALE_LINK })
+    if pane_id then
+        -- A stale compound target can fail resolution before if-shell runs.
+        -- Check the link and global pane separately before the compound mutation.
+        argv = {
+            "if-shell",
+            "-F",
+            "-t",
+            pane_id,
+            "#{&&:#{==:#{window_id}," .. ref.window_id .. "},#{==:#{pane_id}," .. pane_id .. "}}",
+            program(argv),
+            rejected,
+        }
+    end
     return {
         "if-shell",
         "-F",
         "-t",
-        link_target(ref),
+        target,
         condition,
         program(argv),
-        program({ "display-message", "-p", STALE_LINK }),
+        rejected,
     }
 end
 
@@ -260,6 +295,7 @@ local function prepare(state, ref, kind, input, options, inspect)
         ref.kind ~= "window_link"
         and kind ~= "rename"
         and kind ~= "navigate_window"
+        and kind ~= "move_to"
         and input ~= nil
     then
         invalid("this topology operation does not take an input value", "invalid_argument")
@@ -290,6 +326,86 @@ local function prepare(state, ref, kind, input, options, inspect)
     end
     if ref.kind == "window_link" then
         argv = prepare_link(state, ref, kind, input, options, inspect, invalid)
+    elseif kind == "move_to" then
+        local target, err = inspect(state, input, "pane")
+        if not target then
+            error(err, 0)
+        end
+        if target.id == ref.id then
+            invalid("move requires two different panes", "invalid_target")
+        end
+        local selected = boolean("select")
+        if selected and options.target_link == nil then
+            invalid("selecting a moved pane requires an explicit target link", "invalid_target")
+        end
+        local context
+        if options.target_link ~= nil then
+            context, err = inspect(state, options.target_link, "window_link")
+            if not context then
+                error(err, 0)
+            end
+        end
+        argv = {
+            "join-pane",
+            "-s",
+            ref.id,
+            "-t",
+            context and link_target(context) .. "." .. target.id or target.id,
+        }
+        if
+            options.direction ~= nil
+            and options.direction ~= "horizontal"
+            and options.direction ~= "vertical"
+        then
+            invalid("pane move direction must be horizontal or vertical")
+        end
+        flag(options.direction == "horizontal" and "-h" or "-v")
+        if options.size ~= nil and options.percent ~= nil then
+            invalid("pane move size and percent are mutually exclusive")
+        end
+        if options.size ~= nil then
+            if not integer(options.size, 1, 10000) then
+                invalid("pane move size must be an integer from 1 to 10000")
+            end
+            flag("-l", options.size)
+        elseif options.percent ~= nil then
+            if not integer(options.percent, 1, 100) then
+                invalid("pane move percent must be an integer from 1 to 100")
+            end
+            flag("-l", string.format("%.0f%%", options.percent))
+        end
+        if boolean("before") then
+            flag("-b")
+        end
+        if boolean("full_size") then
+            flag("-f")
+        end
+        if not selected then
+            flag("-d")
+        end
+        if context then
+            argv = guard(context, argv, target.id)
+        end
+    elseif kind == "respawn" then
+        if not inspect then
+            invalid("window respawn requires an owned WindowLink context", "invalid_target")
+        end
+        local context, err = inspect(state, options.context, "window_link")
+        if not context then
+            error(err, 0)
+        end
+        if context.window_id ~= ref.id or not rawequal(context.generation, ref.generation) then
+            invalid(
+                "respawn context must name this Window in the same generation",
+                "invalid_target"
+            )
+        end
+        argv[3] = link_target(context)
+        if boolean("kill") then
+            flag("-k")
+        end
+        domain.append_launch(argv, options, invalid)
+        argv = guard(context, argv)
     elseif kind == "rename" then
         bytes(input, 1024)
         if ref.kind == "session" and input:find("[.:\001-\031\127]") then
@@ -405,7 +521,10 @@ local function prepare(state, ref, kind, input, options, inspect)
         argv = copied[1],
         options = configured,
         bytes = cost,
-        guarded = ref.kind == "window_link",
+        guarded = ref.kind == "window_link"
+            or kind == "respawn"
+            or kind == "move_to" and options.target_link ~= nil,
+        cwd = options.cwd,
     }
 end
 
@@ -440,6 +559,13 @@ function M.run(state, owned, kind, input, options, inspect)
                     ref,
                     kind
                 )
+        end
+        if plan.cwd then
+            local valid
+            valid, err = domain.directory(state, plan.cwd, "window.respawn.cwd"):await()
+            if not valid then
+                return nil, err
+            end
         end
         -- Native aliases and hooks can change behavior or wait; submission is
         -- not a transaction and a nonzero exit does not establish rollback.
@@ -545,5 +671,18 @@ end
 
 ---@class libtmux.UnlinkOptions: libtmux.TopologyOptions
 ---@field kill_if_last? boolean Permit destruction if no links survive; defaults to false.
+
+---@class libtmux.RespawnWindowOptions: libtmux.CreationOptions
+---@field context libtmux.Entity<libtmux.SnapshotWindowLink> Required placement of this Window.
+---@field kill? boolean Permit replacing running pane processes; defaults to false.
+
+---@class libtmux.MovePaneOptions: libtmux.TopologyOptions
+---@field direction? "horizontal"|"vertical" Defaults to vertical.
+---@field size? integer Cell count from 1 to 10000; excludes percent.
+---@field percent? integer Percentage from 1 to 100; excludes size.
+---@field before? boolean Place before the target in native geometry.
+---@field full_size? boolean Extend across the full window.
+---@field select? boolean Defaults to false; true requires target_link.
+---@field target_link? libtmux.Entity<libtmux.SnapshotWindowLink> Guarded target pane placement.
 
 return M

@@ -228,6 +228,105 @@ local function work(runtime)
         assert(must(server:command({ "has-session", "-t", other_id }):await()).exit_code ~= 0)
         must(link_at(9):link({ session = session }):await())
         assert(field(sid .. ":1", "window_id") == wid .. "\n")
+    elseif mode == "window_respawn" then
+        must(pane:split({ argv = { "/bin/cat" } }):await())
+        local destination =
+            must(server:new_session({ name = "respawn-target", argv = { "/bin/cat" } }):await())
+        local target_sid = destination.session:reference().id
+        must(session:set_environment("SCOPE", "source"):await())
+        must(destination.session:set_environment("SCOPE", "target"):await())
+        must(created.window_link:link({ session = destination.session, index = 5 }):await())
+        local context = link_at(5, target_sid)
+        local value, err = window:respawn({ context = context }):await()
+        assert(value == nil and err and err.code == "exit_failed" and err.effect == "completed")
+        assert(field(wid, "window_panes") == "2\n")
+        must(window
+            :respawn({
+                context = context,
+                kill = true,
+                cwd = assert(os.getenv("LIBTMUX_TEST_DIRECTORY")),
+                environment = { VALUE = "literal#{pid};" },
+                argv = {
+                    assert(os.getenv("LIBTMUX_TEST_PYTHON")),
+                    assert(os.getenv("LIBTMUX_RESPAWN_SCRIPT")),
+                    assert(os.getenv("TMUX_BIN")),
+                    assert(os.getenv("TMUX_SOCKET")),
+                    assert(os.getenv("LIBTMUX_RESPAWN_REPORT")),
+                    'literal;$#{}\\"',
+                    "",
+                },
+            })
+            :await())
+        command({ "wait-for", "window-ready" })
+        assert(field(wid, "window_panes") == "1\n")
+        assert(field(wid, "pane_id") == pid .. "\n")
+        assert(field(target_sid .. ":5", "window_id") == wid .. "\n")
+        assert(field(sid .. ":0", "window_id") == wid .. "\n")
+        assert(field(pid, "pane_current_path") == os.getenv("LIBTMUX_TEST_DIRECTORY") .. "\n")
+    elseif mode == "window_respawn_stale" then
+        local value, err = window:respawn({ kill = true }):await()
+        assert(value == nil and err and err.code == "invalid_target" and err.effect == "not_sent")
+        value, err = window
+            :respawn({
+                context = created.window_link,
+                kill = true,
+                cwd = "/libtmux-lua-missing-directory",
+            })
+            :await()
+        assert(
+            value == nil and err and err.code == "invalid_directory" and err.effect == "not_sent"
+        )
+        local other = must(session:new_window({ index = 5, argv = { "/bin/cat" } }):await())
+        must(created.window_link:swap(other.window_link):await())
+        local old_pid = field(other.window:reference().id, "pane_pid")
+        value, err = window:respawn({ context = created.window_link, kill = true }):await()
+        assert(value == nil and err and err.code == "stale_target" and err.effect == "not_sent")
+        assert(field(other.window:reference().id, "pane_pid") == old_pid)
+        assert(field(sid .. ":5", "pane_id") == pid .. "\n")
+    elseif mode == "pane_move" then
+        local destination = must(session:new_window({ argv = { "/bin/cat" } }):await())
+        local target_pid = destination.pane:reference().id
+        must(created.window_link:link({ session = session, index = 9 }):await())
+        must(
+            pane:move_to(destination.pane, { direction = "horizontal", size = 20, before = true })
+                :await()
+        )
+        assert(field(pid, "window_id") == destination.window:reference().id .. "\n")
+        assert(field(pid, "pane_width") == "20\n")
+        assert(field(pid, "pane_left") == "0\n")
+        assert(field(destination.window:reference().id, "pane_id") == target_pid .. "\n")
+        assert(
+            command({ "list-windows", "-t", sid, "-F", "#{window_id}" })
+                == destination.window:reference().id .. "\n"
+        )
+        assert(field(pid, "pane_id") == pid .. "\n")
+    elseif mode == "pane_move_context" then
+        local sibling = must(pane:split({ argv = { "/bin/cat" } }):await()).pane
+        local destination =
+            must(server:new_session({ name = "move-destination", argv = { "/bin/cat" } }):await())
+        local target_sid = destination.session:reference().id
+        must(destination.window_link:link({ session = destination.session, index = 5 }):await())
+        local context = link_at(5, target_sid)
+        must(
+            pane:move_to(destination.pane, { target_link = context, select = true, percent = 30 })
+                :await()
+        )
+        assert(field(target_sid, "window_index") == "5\n")
+        assert(field(target_sid, "pane_id") == pid .. "\n")
+        assert(field(wid, "pane_id") == sibling:reference().id .. "\n")
+        local elsewhere = must(destination.session:new_window({ argv = { "/bin/cat" } }):await())
+        must(destination.pane:move_to(elsewhere.pane):await())
+        local value, err =
+            sibling:move_to(destination.pane, { target_link = context, select = true }):await()
+        assert(
+            value == nil and err and err.code == "stale_target" and err.effect == "not_sent",
+            tostring(value)
+                .. " / "
+                .. tostring(err)
+                .. " / "
+                .. tostring(err and err.partial and err.partial.stdout)
+        )
+        assert(field(sibling:reference().id, "window_id") == wid .. "\n")
     else
         error("unknown topology test case")
     end

@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import unittest
 
 from tests.support.tmux_fixture import TmuxFixture
@@ -21,6 +22,19 @@ class TopologyTests(unittest.TestCase):
                 env = dict(fixture.env, TMUX_BIN=shutil.which(fixture.binary),
                            TMUX_SOCKET=str(fixture.socket), LIBTMUX_TOPOLOGY_CASE=mode,
                            TMUX_DAEMON_VERSION=version)
+                if mode == "window_respawn":
+                    report = fixture.path / "respawn.bin"
+                    script = fixture.path / "respawn.py"
+                    script.write_text(
+                        "import os,subprocess,sys\n"
+                        "from pathlib import Path\n"
+                        "binary,socket,report=sys.argv[1:4]\n"
+                        "Path(report).write_bytes(b'\\0'.join(x.encode() for x in [os.environ['SCOPE'],os.environ['VALUE'],*sys.argv[4:]]))\n"
+                        "subprocess.run([binary,'-N','-S',socket,'wait-for','-S','window-ready'],check=True,timeout=.8)\n"
+                        "os.execl('/bin/cat','cat')\n"
+                    )
+                    env.update(LIBTMUX_RESPAWN_SCRIPT=str(script), LIBTMUX_RESPAWN_REPORT=str(report),
+                               LIBTMUX_TEST_PYTHON=sys.executable, LIBTMUX_TEST_DIRECTORY=str(fixture.path))
                 if host == "luv":
                     command = [os.environ.get("LIBTMUX_TEST_LUA") or shutil.which("lua"),
                                "tests/integration/topology.lua"]
@@ -33,6 +47,8 @@ class TopologyTests(unittest.TestCase):
                                         timeout=0.8)
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                 self.assertIn(f"public topology {mode} PASS".encode(), result.stdout)
+                if mode == "window_respawn":
+                    self.assertEqual(report.read_bytes(), b"target\0literal#{pid};\0literal;$#{}\\\"\0")
                 self.assertEqual(list(fixture.path.glob("libtmux-lua-pin-*")), [])
                 self.assertEqual(fixture.run("list-clients").stdout, "")
                 self.assertEqual(fixture.run("has-session", "-t", "$0").returncode, 0)
@@ -66,3 +82,15 @@ class TopologyTests(unittest.TestCase):
 
     def test_link_cross_session_move_swap_and_free_index(self):
         self.run_case("link_cross_session")
+
+    def test_window_respawn_launch_context_and_pane_identity(self):
+        self.run_case("window_respawn")
+
+    def test_window_respawn_refuses_invalid_and_replaced_context(self):
+        self.run_case("window_respawn_stale")
+
+    def test_pane_move_preserves_identity_geometry_and_destroys_empty_window(self):
+        self.run_case("pane_move")
+
+    def test_pane_move_selection_context_and_stale_membership(self):
+        self.run_case("pane_move_context")

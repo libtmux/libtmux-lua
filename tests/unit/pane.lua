@@ -366,6 +366,67 @@ function M.test_selection_title_and_swap_preserve_literal_private_targets()
     end)
 end
 
+function M.test_move_requires_explicit_selection_context_and_validates_geometry()
+    fixture(function(state, pane, generation, entity)
+        t.assertEquals(type(pane.move_to), "function", "Pane move_to API is missing")
+        local other = assert(
+            entity.from_reference(state, { kind = "pane", id = "%9", generation = generation })
+        )
+        local link = assert(entity.from_reference(state, {
+            kind = "window_link",
+            session_id = "$2",
+            window_id = "@3",
+            index = 5,
+            generation = generation,
+        }))
+        for _, options in ipairs({
+            { select = true },
+            { direction = "sideways" },
+            { size = 0 },
+            { percent = 101 },
+            { size = 1, percent = 20 },
+            { before = 1 },
+            { target_link = other },
+            { unknown = true },
+        }) do
+            local value, err = pane:move_to(other, options):await()
+            t.assertNil(value)
+            t.assertEquals(assert(err).effect, "not_sent")
+        end
+        local value, err = pane:move_to(pane):await()
+        t.assertNil(value)
+        t.assertEquals(assert(err).code, "invalid_target")
+        t.assertEquals(#state.calls, 0)
+        assert(pane:move_to(other):await())
+        t.assertEquals(state.calls[1].argv, { "join-pane", "-s", "%8", "-t", "%9", "-v", "-d" })
+        local options = {
+            target_link = link,
+            select = true,
+            direction = "horizontal",
+            percent = 30,
+            before = true,
+            full_size = true,
+        }
+        local pending = pane:move_to(other, options)
+        options.percent = 50
+        assert(pending:await())
+        local call = state.calls[2].argv
+        t.assertEquals(call[4], "$2:5")
+        local nested = call[6]:gsub("\\(%d%d%d)", function(part)
+            return string.char(tonumber(part, 8))
+        end)
+        t.assertStrContains(nested, '"if-shell" "-F" "-t" "%9"')
+        t.assertStrContains(nested, "#{==:#{pane_id},%9}")
+        local mutation = nested:gsub("\\(%d%d%d)", function(part)
+            return string.char(tonumber(part, 8))
+        end)
+        t.assertStrContains(
+            mutation,
+            '"join-pane" "-s" "%8" "-t" "$2:5.%9" "-h" "-l" "30%" "-b" "-f"'
+        )
+    end)
+end
+
 function M.test_topology_completion_preserves_effect_when_generation_is_invalidated()
     fixture(function(state, pane, generation)
         state.before = function()

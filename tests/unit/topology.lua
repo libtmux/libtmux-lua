@@ -153,6 +153,57 @@ function M.test_only_exact_guard_receipts_establish_stale_link_rejection()
     end)
 end
 
+function M.test_window_respawn_requires_matching_context_and_copies_launch_data()
+    fixture("window", "3.7c", function(state, run)
+        reject(run("respawn"), "invalid_target")
+        reject(run("respawn", nil, { context = state.other }), "invalid_target")
+        state.other_ref.window_id = "@3"
+        local options = {
+            context = state.other,
+            kill = true,
+            argv = { "/bin/cat" },
+            environment = { VALUE = "literal#{pid};" },
+        }
+        local pending = run("respawn", nil, options)
+        options.argv[1], options.environment.VALUE = "/wrong", "wrong"
+        assert(pending:await())
+        local call = state.calls[1].argv
+        t.assertEquals(call[4], "$4:9")
+        t.assertStrContains(call[5], "#{==:#{window_id},@3}")
+        local mutation = call[6]:gsub("\\(%d%d%d)", function(value)
+            return string.char(tonumber(value, 8))
+        end)
+        t.assertStrContains(mutation, '"respawn-window" "-t" "$4:9" "-k"')
+        t.assertStrContains(mutation, '"VALUE=literal#{pid};"')
+        t.assertStrContains(mutation, '"/usr/bin/env" "--" "/bin/cat"')
+        reject(run("respawn", nil, { context = state.other, argv = { "cat" }, shell = "cat" }))
+        reject(run("respawn", nil, { context = state.other, kill = 1 }))
+        reject(run("respawn", nil, { context = state.other, cwd = "relative" }))
+        t.assertEquals(#state.calls, 1)
+    end)
+end
+
+function M.test_window_respawn_validates_directory_before_dispatch()
+    fixture("window", "3.7c", function(state, run, _, driver)
+        state.other_ref.window_id = "@3"
+        local paths = {}
+        driver.uv = {
+            fs_stat = function(path, done)
+                paths[#paths + 1] = path
+                driver.defer(function()
+                    done(nil, { type = path == "/valid" and "directory" or "file" })
+                end)
+                return {}
+            end,
+        }
+        reject(run("respawn", nil, { context = state.other, cwd = "/file" }), "invalid_directory")
+        t.assertEquals(#state.calls, 0)
+        assert(run("respawn", nil, { context = state.other, cwd = "/valid" }):await())
+        t.assertEquals(paths, { "/file", "/valid" })
+        t.assertEquals(#state.calls, 1)
+    end)
+end
+
 function M.test_literal_rename_navigation_renumber_and_kill_use_private_stable_targets()
     fixture("session", "3.7c", function(state, run)
         assert(run("rename", "literal#{pid};λ"):await())
