@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {name: 'Unit Lua 5.1', gate: unit, lua: '5.1.5'}
+          - {name: 'Unit Lua 5.2', gate: unit, lua: '5.2.4'}
+          - {name: 'Unit Lua 5.3', gate: unit, lua: '5.3.6'}
+          - {name: 'Unit Lua 5.4', gate: unit, lua: '5.4.9'}
+          - {name: 'Unit Lua 5.5', gate: unit, lua: '5.5.1'}
+          - {name: 'Unit LuaJIT', gate: unit, lua: luajit}
+          - {name: 'Outer floor', gate: outer, lua: '5.1.5', tmux: '3.2a', nvim: '0.10.0'}
+          - {name: 'Outer current', gate: outer, lua: '5.5.1', tmux: '3.7c', nvim: '0.12.5'}
+          - {name: 'tmux 3.2a', gate: integration, lua: '5.5.1', tmux: '3.2a', nvim: '0.12.5'}
+          - {name: 'tmux 3.3', gate: integration, lua: '5.5.1', tmux: '3.3', nvim: '0.12.5'}
+          - {name: 'tmux 3.3a', gate: integration, lua: '5.5.1', tmux: '3.3a', nvim: '0.12.5'}
+          - {name: 'tmux 3.4', gate: integration, lua: '5.5.1', tmux: '3.4', nvim: '0.12.5'}
+          - {name: 'tmux 3.5', gate: integration, lua: '5.5.1', tmux: '3.5', nvim: '0.12.5'}
+          - {name: 'tmux 3.5a', gate: integration, lua: '5.5.1', tmux: '3.5a', nvim: '0.12.5'}
+          - {name: 'tmux 3.6', gate: integration, lua: '5.5.1', tmux: '3.6', nvim: '0.12.5'}
+          - {name: 'tmux 3.6a', gate: integration, lua: '5.5.1', tmux: '3.6a', nvim: '0.12.5'}
+          - {name: 'tmux 3.6b', gate: integration, lua: '5.5.1', tmux: '3.6b', nvim: '0.12.5'}
+          - {name: 'tmux 3.7', gate: integration, lua: '5.5.1', tmux: '3.7', nvim: '0.12.5'}
+          - {name: 'tmux 3.7a', gate: integration, lua: '5.5.1', tmux: '3.7a', nvim: '0.12.5'}
+          - {name: 'tmux 3.7b', gate: integration, lua: '5.5.1', tmux: '3.7b', nvim: '0.12.5'}
+          - {name: 'tmux 3.7c', gate: integration, lua: '5.5.1', tmux: '3.7c', nvim: '0.12.5'}
+    env:
+      CI_LUA: ${{ matrix.lua }}
+      CI_TMUX: ${{ matrix.tmux }}
+      CI_NVIM: ${{ matrix.nvim }}
+      CI_GATE: ${{ matrix.gate }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Native build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y build-essential cmake pkg-config autoconf automake libtool bison libevent-dev libncurses-dev libreadline-dev
+      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+        with:
+          version: 2026.9.9
+      - name: Select Lua and install test dependencies
+        run: |
+          mkdir -p .cache/ci
+          if [[ "$CI_LUA" == '5.5.1' ]]; then
+            test_lua="$(mise which lua)"
+          else
+            python scripts/bootstrap_runtimes.py "$CI_LUA" 2>&1 | tee .cache/ci/runtime.log
+            if [[ "$CI_LUA" == luajit ]]; then
+              test_lua="$PWD/.cache/toolchains/luajit-2.1/bin/luajit"
+            else
+              test_lua="$PWD/.cache/toolchains/lua-$CI_LUA/bin/lua"
+            fi
+          fi
+          echo "TEST_LUA=$test_lua" >> "$GITHUB_ENV"
+          python scripts/bootstrap.py dev live --lua="$test_lua" 2>&1 | tee .cache/ci/dependencies.log
+      - name: Build live-test prerequisites
+        if: matrix.gate != 'unit'
+        run: |
+          python scripts/bootstrap_hosts.py "$CI_NVIM" 2>&1 | tee .cache/ci/neovim.log
+          python scripts/bootstrap_native.py tmux --tmux-version="$CI_TMUX" 2>&1 | tee .cache/ci/tmux.log
+          echo "TMUX_BIN=$PWD/.cache/toolchains/tmux-$CI_TMUX/bin/tmux" >> "$GITHUB_ENV"
+      - name: Install outer-gate prerequisites
+        if: matrix.gate == 'outer'
+        run: |
+          mise install stylua@2.4.0
+          mise where stylua@2.4.0 >> "$GITHUB_PATH"
+          python scripts/bootstrap_runtimes.py 5.4.9
+          python scripts/bootstrap.py lint --lua=.cache/toolchains/lua-5.4.9/bin/lua
+          python scripts/bootstrap_native.py yaml luals
+          python scripts/bootstrap.py consumers --lua="$TEST_LUA" --yaml-dir=.cache/libyaml
+      - name: Record tool identities
+        run: |
+          {
+            git rev-parse HEAD
+            uname -a
+            cc --version
+            python --version
+            "$TEST_LUA" -v
+            luarocks --version
+            if [[ "$CI_GATE" != unit ]]; then
+              "$TMUX_BIN" -V
+              ".cache/toolchains/nvim-$CI_NVIM/bin/nvim" --version
+            fi
+          } 2>&1 | tee .cache/ci/identity.log
+      - name: Run offline gates
+        run: |
+          if [[ "$CI_GATE" == unit ]]; then
+            python scripts/check.py unit --lua="$TEST_LUA" 2>&1 | tee .cache/ci/check.log
+          else
+            python scripts/check.py "$CI_GATE" --lua="$TEST_LUA" --nvim=".cache/toolchains/nvim-$CI_NVIM/bin/nvim" 2>&1 | tee .cache/ci/check.log
+          fi
+      - name: Retain diagnostics
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: ci-${{ strategy.job-index }}
+          path: |
+            .cache/ci/
+            .cache/source/*-build.log
+            .cache/luals/
+          include-hidden-files: true
+          if-no-files-found: ignore
+          retention-days: 7

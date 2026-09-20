@@ -1,0 +1,1041 @@
+{
+  "schema_version": 1,
+  "support_floor": "3.2a",
+  "sources": {
+    "floor": {
+      "revision": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
+      "version": "3.2a",
+      "file": "format.c",
+      "url": "https://github.com/tmux/tmux/blob/3b929f332aafa7f1080eacc31feb11ffbb1d1841/format.c"
+    },
+    "added": {
+      "revision": "87fe00e8b44901240fc22d7120c1b31e4331f6f5",
+      "version": "3.3",
+      "file": "format.c",
+      "url": "https://github.com/tmux/tmux/blob/87fe00e8b44901240fc22d7120c1b31e4331f6f5/format.c"
+    },
+    "stable": {
+      "revision": "e476c1230b958df0cb12977517d24b3dc931375b",
+      "version": "3.7c",
+      "file": "format.c",
+      "url": "https://github.com/tmux/tmux/blob/e476c1230b958df0cb12977517d24b3dc931375b/format.c"
+    },
+    "upstream": {
+      "revision": "e880cf63e0a9fe095d7c5d313761520fb1a8653c",
+      "version": null,
+      "file": "format.c",
+      "url": "https://github.com/tmux/tmux/blob/e880cf63e0a9fe095d7c5d313761520fb1a8653c/format.c"
+    }
+  },
+  "entities": [
+    {
+      "name": "server",
+      "fields": [
+        {
+          "name": "pid",
+          "format": "pid",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "server",
+          "symbol": "format_cb_pid",
+          "lines": {
+            "floor": 500,
+            "added": 502,
+            "stable": 541,
+            "upstream": 558
+          },
+          "description": "Daemon process ID."
+        },
+        {
+          "name": "socket_path",
+          "format": "socket_path",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "server",
+          "symbol": "format_cb_socket_path",
+          "lines": {
+            "floor": 2088,
+            "added": 2187,
+            "stable": 2690,
+            "upstream": 3058
+          },
+          "description": "Socket path reported by the daemon."
+        },
+        {
+          "name": "version",
+          "format": "version",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "server",
+          "symbol": "format_cb_version",
+          "lines": {
+            "floor": 2095,
+            "added": 2194,
+            "stable": 2697,
+            "upstream": 3065
+          },
+          "description": "Daemon version string."
+        },
+        {
+          "name": "start_time",
+          "format": "start_time",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "server",
+          "symbol": "format_cb_start_time",
+          "lines": {
+            "floor": 2465,
+            "added": 2564,
+            "stable": 3107,
+            "upstream": 3510
+          },
+          "description": "Daemon start time in Unix seconds."
+        }
+      ]
+    },
+    {
+      "name": "session",
+      "fields": [
+        {
+          "name": "id",
+          "format": "session_id",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "session",
+          "symbol": "format_cb_session_id",
+          "lines": {
+            "floor": 2028,
+            "added": 2127,
+            "stable": 2630,
+            "upstream": 2998
+          },
+          "description": "Session ID, including its dollar-sign prefix."
+        },
+        {
+          "name": "name",
+          "format": "session_name",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "session",
+          "symbol": "format_cb_session_name",
+          "lines": {
+            "floor": 2061,
+            "added": 2160,
+            "stable": 2663,
+            "upstream": 3031
+          },
+          "description": "Session name."
+        },
+        {
+          "name": "created",
+          "format": "session_created",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "session",
+          "symbol": "format_cb_session_created",
+          "lines": {
+            "floor": 2447,
+            "added": 2546,
+            "stable": 3089,
+            "upstream": 3492
+          },
+          "description": "Creation time in Unix seconds."
+        },
+        {
+          "name": "activity",
+          "format": "session_activity",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "session",
+          "symbol": "format_cb_session_activity",
+          "lines": {
+            "floor": 2438,
+            "added": 2537,
+            "stable": 3080,
+            "upstream": 3483
+          },
+          "description": "Last activity time in Unix seconds."
+        },
+        {
+          "name": "attached",
+          "format": "session_attached",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "session",
+          "symbol": "format_cb_session_attached",
+          "lines": {
+            "floor": 1951,
+            "added": 2050,
+            "stable": 2553,
+            "upstream": 2921
+          },
+          "description": "Attached client count, not a boolean."
+        },
+        {
+          "name": "window_count",
+          "format": "session_windows",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "session",
+          "symbol": "format_cb_session_windows",
+          "lines": {
+            "floor": 2079,
+            "added": 2178,
+            "stable": 2681,
+            "upstream": 3049
+          },
+          "description": "Number of window links in this session."
+        },
+        {
+          "name": "group",
+          "format": "session_group",
+          "type": "string",
+          "nullable": true,
+          "since": "3.2a",
+          "source_scope": "session",
+          "symbol": "format_cb_session_group",
+          "lines": {
+            "floor": 1969,
+            "added": 2068,
+            "stable": 2571,
+            "upstream": 2939
+          },
+          "description": "Session group name; absent for an ungrouped session."
+        },
+        {
+          "name": "grouped",
+          "format": "session_grouped",
+          "type": "boolean",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "session",
+          "symbol": "format_cb_session_grouped",
+          "lines": {
+            "floor": 2016,
+            "added": 2115,
+            "stable": 2618,
+            "upstream": 2986
+          },
+          "description": "Whether this session belongs to a group."
+        },
+        {
+          "name": "path",
+          "format": "session_path",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "session",
+          "symbol": "format_cb_session_path",
+          "lines": {
+            "floor": 2070,
+            "added": 2169,
+            "stable": 2672,
+            "upstream": 3040
+          },
+          "description": "Session working directory."
+        }
+      ]
+    },
+    {
+      "name": "window",
+      "fields": [
+        {
+          "name": "id",
+          "format": "window_id",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "window",
+          "symbol": "format_cb_window_id",
+          "lines": {
+            "floor": 2231,
+            "added": 2330,
+            "stable": 2844,
+            "upstream": 3225
+          },
+          "description": "Window ID, including its at-sign prefix."
+        },
+        {
+          "name": "name",
+          "format": "window_name",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "window",
+          "symbol": "format_cb_window_name",
+          "lines": {
+            "floor": 2294,
+            "added": 2393,
+            "stable": 2936,
+            "upstream": 3326
+          },
+          "description": "Window name."
+        },
+        {
+          "name": "width",
+          "format": "window_width",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "window",
+          "symbol": "format_cb_window_width",
+          "lines": {
+            "floor": 2373,
+            "added": 2472,
+            "stable": 3015,
+            "upstream": 3405
+          },
+          "description": "Width in character cells."
+        },
+        {
+          "name": "height",
+          "format": "window_height",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "window",
+          "symbol": "format_cb_window_height",
+          "lines": {
+            "floor": 2222,
+            "added": 2321,
+            "stable": 2835,
+            "upstream": 3203
+          },
+          "description": "Height in character cells."
+        },
+        {
+          "name": "pane_count",
+          "format": "window_panes",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "window",
+          "symbol": "format_cb_window_panes",
+          "lines": {
+            "floor": 2331,
+            "added": 2430,
+            "stable": 2973,
+            "upstream": 3363
+          },
+          "description": "Number of panes owned by this window."
+        },
+        {
+          "name": "layout",
+          "format": "window_layout",
+          "type": "string",
+          "nullable": true,
+          "since": "3.2a",
+          "source_scope": "window",
+          "symbol": "format_cb_window_layout",
+          "lines": {
+            "floor": 766,
+            "added": 768,
+            "stable": 839,
+            "upstream": 856
+          },
+          "description": "Layout including panes hidden by zoom; absent without a layout tree."
+        },
+        {
+          "name": "visible_layout",
+          "format": "window_visible_layout",
+          "type": "string",
+          "nullable": true,
+          "since": "3.2a",
+          "source_scope": "window",
+          "symbol": "format_cb_window_visible_layout",
+          "lines": {
+            "floor": 780,
+            "added": 782,
+            "stable": 853,
+            "upstream": 880
+          },
+          "description": "Visible layout; absent without a layout tree."
+        },
+        {
+          "name": "zoomed",
+          "format": "window_zoomed_flag",
+          "type": "boolean",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "window",
+          "symbol": "format_cb_window_zoomed_flag",
+          "lines": {
+            "floor": 2382,
+            "added": 2481,
+            "stable": 3024,
+            "upstream": 3427
+          },
+          "description": "Whether this window is zoomed."
+        }
+      ]
+    },
+    {
+      "name": "window_link",
+      "fields": [
+        {
+          "name": "session_id",
+          "format": "session_id",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "session",
+          "symbol": "format_cb_session_id",
+          "lines": {
+            "floor": 2028,
+            "added": 2127,
+            "stable": 2630,
+            "upstream": 2998
+          },
+          "description": "Session owning this contextual link."
+        },
+        {
+          "name": "window_id",
+          "format": "window_id",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "window",
+          "symbol": "format_cb_window_id",
+          "lines": {
+            "floor": 2231,
+            "added": 2330,
+            "stable": 2844,
+            "upstream": 3225
+          },
+          "description": "Underlying window shared by links."
+        },
+        {
+          "name": "index",
+          "format": "window_index",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "winlink",
+          "symbol": "format_cb_window_index",
+          "lines": {
+            "floor": 2240,
+            "added": 2339,
+            "stable": 2853,
+            "upstream": 3234
+          },
+          "description": "tmux index within the session, not Lua array position."
+        },
+        {
+          "name": "active",
+          "format": "window_active",
+          "type": "boolean",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "winlink",
+          "symbol": "format_cb_window_active",
+          "lines": {
+            "floor": 2124,
+            "added": 2223,
+            "stable": 2737,
+            "upstream": 3105
+          },
+          "description": "Whether this link is the session current window."
+        },
+        {
+          "name": "flags",
+          "format": "window_flags",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "winlink",
+          "symbol": "format_cb_window_flags",
+          "lines": {
+            "floor": 2204,
+            "added": 2303,
+            "stable": 2817,
+            "upstream": 3185
+          },
+          "description": "Printable flags for this session/window link."
+        }
+      ]
+    },
+    {
+      "name": "pane",
+      "fields": [
+        {
+          "name": "id",
+          "format": "pane_id",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_id",
+          "lines": {
+            "floor": 1739,
+            "added": 1838,
+            "stable": 2152,
+            "upstream": 2444
+          },
+          "description": "Pane ID, including its percent-sign prefix."
+        },
+        {
+          "name": "window_id",
+          "format": "window_id",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "window",
+          "symbol": "format_cb_window_id",
+          "lines": {
+            "floor": 2231,
+            "added": 2330,
+            "stable": 2844,
+            "upstream": 3225
+          },
+          "description": "ID of the window that owns this pane."
+        },
+        {
+          "name": "index",
+          "format": "pane_index",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_index",
+          "lines": {
+            "floor": 1748,
+            "added": 1847,
+            "stable": 2161,
+            "upstream": 2453
+          },
+          "description": "tmux pane index within its window."
+        },
+        {
+          "name": "active",
+          "format": "pane_active",
+          "type": "boolean",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_active",
+          "lines": {
+            "floor": 1650,
+            "added": 1718,
+            "stable": 2028,
+            "upstream": 2207
+          },
+          "description": "Whether this pane is active in its window."
+        },
+        {
+          "name": "title",
+          "format": "pane_title",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_title",
+          "lines": {
+            "floor": 1897,
+            "added": 1996,
+            "stable": 2384,
+            "upstream": 2676
+          },
+          "description": "Pane title; an empty title remains an empty string."
+        },
+        {
+          "name": "width",
+          "format": "pane_width",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_width",
+          "lines": {
+            "floor": 1924,
+            "added": 2023,
+            "stable": 2411,
+            "upstream": 2779
+          },
+          "description": "Width in character cells."
+        },
+        {
+          "name": "height",
+          "format": "pane_height",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_height",
+          "lines": {
+            "floor": 1730,
+            "added": 1829,
+            "stable": 2143,
+            "upstream": 2435
+          },
+          "description": "Height in character cells."
+        },
+        {
+          "name": "left",
+          "format": "pane_left",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_left",
+          "lines": {
+            "floor": 1783,
+            "added": 1882,
+            "stable": 2225,
+            "upstream": 2517
+          },
+          "description": "Left cell offset in the window."
+        },
+        {
+          "name": "top",
+          "format": "pane_top",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_top",
+          "lines": {
+            "floor": 1906,
+            "added": 2005,
+            "stable": 2393,
+            "upstream": 2685
+          },
+          "description": "Top cell offset in the window."
+        },
+        {
+          "name": "pid",
+          "format": "pane_pid",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_pid",
+          "lines": {
+            "floor": 1843,
+            "added": 1942,
+            "stable": 2285,
+            "upstream": 2577
+          },
+          "description": "PID recorded for the pane process."
+        },
+        {
+          "name": "tty",
+          "format": "pane_tty",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_tty",
+          "lines": {
+            "floor": 1915,
+            "added": 2014,
+            "stable": 2402,
+            "upstream": 2694
+          },
+          "description": "Pseudo-terminal name; empty is preserved."
+        },
+        {
+          "name": "current_path",
+          "format": "pane_current_path",
+          "type": "string",
+          "nullable": true,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_current_path",
+          "lines": {
+            "floor": 828,
+            "added": 844,
+            "stable": 915,
+            "upstream": 979
+          },
+          "description": "Process working directory when the OS can determine it."
+        },
+        {
+          "name": "current_command",
+          "format": "pane_current_command",
+          "type": "string",
+          "nullable": true,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_current_command",
+          "lines": {
+            "floor": 804,
+            "added": 820,
+            "stable": 891,
+            "upstream": 955
+          },
+          "description": "Displayed command name; absent without pane shell context."
+        },
+        {
+          "name": "start_command",
+          "format": "pane_start_command",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_start_command",
+          "lines": {
+            "floor": 792,
+            "added": 794,
+            "stable": 865,
+            "upstream": 898
+          },
+          "description": "Stringified startup argv; this is not a shell-safe command."
+        },
+        {
+          "name": "dead",
+          "format": "pane_dead",
+          "type": "boolean",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_dead",
+          "lines": {
+            "floor": 1695,
+            "added": 1763,
+            "stable": 2075,
+            "upstream": 2254
+          },
+          "description": "Whether tmux has a ready dead-process status."
+        },
+        {
+          "name": "dead_status",
+          "format": "pane_dead_status",
+          "type": "number",
+          "nullable": true,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_dead_status",
+          "lines": {
+            "floor": 1707,
+            "added": 1792,
+            "stable": 2106,
+            "upstream": 2285
+          },
+          "description": "Exit status only when the process exited normally."
+        },
+        {
+          "name": "dead_signal",
+          "format": "pane_dead_signal",
+          "type": "string",
+          "nullable": true,
+          "since": "3.3",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_dead_signal",
+          "lines": {
+            "added": 1775,
+            "stable": 2089,
+            "upstream": 2268
+          },
+          "description": "Signal name only when the process terminated by signal."
+        },
+        {
+          "name": "dead_time",
+          "format": "pane_dead_time",
+          "type": "number",
+          "nullable": true,
+          "since": "3.3",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_dead_time",
+          "lines": {
+            "added": 1806,
+            "stable": 2120,
+            "upstream": 2299
+          },
+          "description": "Dead-pane display time in Unix seconds, when available."
+        },
+        {
+          "name": "mode",
+          "format": "pane_mode",
+          "type": "string",
+          "nullable": true,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_mode",
+          "lines": {
+            "floor": 1816,
+            "added": 1915,
+            "stable": 2258,
+            "upstream": 2550
+          },
+          "description": "Top mode name; absent outside pane modes."
+        },
+        {
+          "name": "mode_count",
+          "format": "pane_in_mode",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_in_mode",
+          "lines": {
+            "floor": 1022,
+            "added": 1044,
+            "stable": 1138,
+            "upstream": 1216
+          },
+          "description": "Number of active modes, not a boolean."
+        },
+        {
+          "name": "synchronized",
+          "format": "pane_synchronized",
+          "type": "boolean",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "pane",
+          "symbol": "format_cb_pane_synchronized",
+          "lines": {
+            "floor": 1885,
+            "added": 1984,
+            "stable": 2372,
+            "upstream": 2664
+          },
+          "description": "Effective synchronize-panes option."
+        }
+      ]
+    },
+    {
+      "name": "client",
+      "fields": [
+        {
+          "name": "name",
+          "format": "client_name",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "client",
+          "symbol": "format_cb_client_name",
+          "lines": {
+            "floor": 1292,
+            "added": 1314,
+            "stable": 1539,
+            "upstream": 1642
+          },
+          "description": "Observed client name; not a persistent identifier."
+        },
+        {
+          "name": "tty",
+          "format": "client_tty",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "client",
+          "symbol": "format_cb_client_tty",
+          "lines": {
+            "floor": 1376,
+            "added": 1398,
+            "stable": 1623,
+            "upstream": 1726
+          },
+          "description": "Observed terminal name; empty is preserved."
+        },
+        {
+          "name": "pid",
+          "format": "client_pid",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "client",
+          "symbol": "format_cb_client_pid",
+          "lines": {
+            "floor": 1301,
+            "added": 1323,
+            "stable": 1548,
+            "upstream": 1651
+          },
+          "description": "Client process ID."
+        },
+        {
+          "name": "session_name",
+          "format": "client_session",
+          "type": "string",
+          "nullable": true,
+          "since": "3.2a",
+          "source_scope": "client",
+          "symbol": "format_cb_client_session",
+          "lines": {
+            "floor": 1337,
+            "added": 1359,
+            "stable": 1584,
+            "upstream": 1687
+          },
+          "description": "Attached session name, not a session ID."
+        },
+        {
+          "name": "width",
+          "format": "client_width",
+          "type": "number",
+          "nullable": true,
+          "since": "3.2a",
+          "source_scope": "client",
+          "symbol": "format_cb_client_width",
+          "lines": {
+            "floor": 1397,
+            "added": 1448,
+            "stable": 1677,
+            "upstream": 1780
+          },
+          "description": "Terminal width; nullable without a started TTY."
+        },
+        {
+          "name": "height",
+          "format": "client_height",
+          "type": "number",
+          "nullable": true,
+          "since": "3.2a",
+          "source_scope": "client",
+          "symbol": "format_cb_client_height",
+          "lines": {
+            "floor": 1263,
+            "added": 1285,
+            "stable": 1510,
+            "upstream": 1613
+          },
+          "description": "Terminal height; nullable without a started TTY."
+        },
+        {
+          "name": "control_mode",
+          "format": "client_control_mode",
+          "type": "boolean",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "client",
+          "symbol": "format_cb_client_control_mode",
+          "lines": {
+            "floor": 1233,
+            "added": 1255,
+            "stable": 1480,
+            "upstream": 1583
+          },
+          "description": "Whether this is a control-mode client."
+        },
+        {
+          "name": "readonly",
+          "format": "client_readonly",
+          "type": "boolean",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "client",
+          "symbol": "format_cb_client_readonly",
+          "lines": {
+            "floor": 1325,
+            "added": 1347,
+            "stable": 1572,
+            "upstream": 1675
+          },
+          "description": "Whether this client is read-only."
+        },
+        {
+          "name": "created",
+          "format": "client_created",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "client",
+          "symbol": "format_cb_client_created",
+          "lines": {
+            "floor": 2429,
+            "added": 2528,
+            "stable": 3071,
+            "upstream": 3474
+          },
+          "description": "Creation time in Unix seconds."
+        },
+        {
+          "name": "activity",
+          "format": "client_activity",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "client",
+          "symbol": "format_cb_client_activity",
+          "lines": {
+            "floor": 2420,
+            "added": 2519,
+            "stable": 3062,
+            "upstream": 3465
+          },
+          "description": "Last activity time in Unix seconds."
+        }
+      ]
+    },
+    {
+      "name": "buffer",
+      "fields": [
+        {
+          "name": "name",
+          "format": "buffer_name",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "buffer",
+          "symbol": "format_cb_buffer_name",
+          "lines": {
+            "floor": 1184,
+            "added": 1206,
+            "stable": 1416,
+            "upstream": 1492
+          },
+          "description": "Buffer name; revalidate before later mutations."
+        },
+        {
+          "name": "size",
+          "format": "buffer_size",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "buffer",
+          "symbol": "format_cb_buffer_size",
+          "lines": {
+            "floor": 1202,
+            "added": 1224,
+            "stable": 1449,
+            "upstream": 1525
+          },
+          "description": "Buffer size in bytes."
+        },
+        {
+          "name": "sample",
+          "format": "buffer_sample",
+          "type": "string",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "buffer",
+          "symbol": "format_cb_buffer_sample",
+          "lines": {
+            "floor": 1193,
+            "added": 1215,
+            "stable": 1425,
+            "upstream": 1501
+          },
+          "description": "tmux printable preview; not complete buffer bytes."
+        },
+        {
+          "name": "created",
+          "format": "buffer_created",
+          "type": "number",
+          "nullable": false,
+          "since": "3.2a",
+          "source_scope": "buffer",
+          "symbol": "format_cb_buffer_created",
+          "lines": {
+            "floor": 2406,
+            "added": 2505,
+            "stable": 3048,
+            "upstream": 3451
+          },
+          "description": "Creation time in Unix seconds."
+        }
+      ]
+    }
+  ]
+}

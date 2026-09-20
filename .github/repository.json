@@ -1,7 +1,10 @@
 {
-  "private": true,
+  "visibility": {
+    "origin": "public",
+    "tony": "private"
+  },
   "default_branch": "master",
-  "description": "Scaffold for libtmux for Lua, a Lua port of Python libtmux. No library implementation yet.",
+  "description": "Lua libtmux foundation with async requests, snapshots and queries. Under development.",
   "topics": [
     "libtmux",
     "library",

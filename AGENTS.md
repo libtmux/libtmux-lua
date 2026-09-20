@@ -1,7 +1,8 @@
 # Agent instructions
 
-This repository is the scaffold for libtmux for Lua. It has no library
-implementation or package yet.
+This repository contains the libtmux Lua foundation: queries, explicit async
+requests, process execution, snapshots and private control observation.
+Domain coverage and the MCP/workspace products remain under development.
 
 Follow the existing project conventions and keep changes scoped to the
 requested work. Prefer `rg`, `ag`, and `fd` for discovery.
