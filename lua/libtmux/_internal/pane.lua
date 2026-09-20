@@ -7,6 +7,7 @@ local domain = require("libtmux._internal.domain")
 local M, Capture = {}, {}
 local commands = {
     capture = "capture-pane",
+    clear_history = "clear-history",
     send_text = "send-keys",
     send_keys = "send-keys",
     copy_mode = "copy-mode",
@@ -30,7 +31,13 @@ local allowed = {
         alternate_screen = true,
         mode_screen = true,
         trim_empty_cells = true,
+        pending_escape_sequences = true,
+        ignore_missing_alternate = true,
+        hyperlinks_only = true,
+        line_numbers = true,
+        line_flags = true,
     },
+    clear_history = { clear_hyperlinks = true },
     send_text = {},
     send_keys = { repeat_count = true },
     copy_mode = { page_up = true },
@@ -220,12 +227,18 @@ local function prepare(state, ref, kind, data, options, inspect)
             argv[#argv + 1] = tostring(value)
         end
     end
-    local function boolean(name, argument)
+    local function boolean(name, argument, minimum_minor)
         local value = options[name]
         if value ~= nil and type(value) ~= "boolean" then
             invalid(name .. " must be boolean")
         end
         if value then
+            if minimum_minor then
+                local major, minor = state.version:match("^(%d+)%.(%d+)")
+                if tonumber(major) == 3 and tonumber(minor) < minimum_minor then
+                    invalid(name .. " is unavailable on this tmux version", "unsupported")
+                end
+            end
             flag(argument)
         end
     end
@@ -262,6 +275,33 @@ local function prepare(state, ref, kind, data, options, inspect)
     end
     if kind == "capture" then
         flag("-p")
+        if options.pending_escape_sequences then
+            for key, value in next, options do
+                if
+                    key ~= "pending_escape_sequences"
+                    and key ~= "escape_nonprintable"
+                    and key ~= "process"
+                    and value ~= false
+                then
+                    invalid("pending_escape_sequences accepts only escape_nonprintable and process")
+                end
+            end
+        end
+        if options.ignore_missing_alternate and not options.alternate_screen then
+            invalid("ignore_missing_alternate requires alternate_screen")
+        end
+        if options.hyperlinks_only then
+            for _, name in ipairs({
+                "escape_sequences",
+                "escape_nonprintable",
+                "preserve_spaces",
+                "trim_empty_cells",
+            }) do
+                if options[name] then
+                    invalid("hyperlinks_only cannot be combined with " .. name)
+                end
+            end
+        end
         if options.history_lines ~= nil then
             if
                 not integer(options.history_lines, 0, 1000000)
@@ -295,7 +335,6 @@ local function prepare(state, ref, kind, data, options, inspect)
         then
             invalid("alternate_screen cannot be combined with history, ranges or mode_screen")
         end
-        local major, minor = state.version:match("^(%d+)%.(%d+)")
         for _, item in ipairs({
             { "join_lines", "-J" },
             { "preserve_spaces", "-N" },
@@ -304,20 +343,16 @@ local function prepare(state, ref, kind, data, options, inspect)
             { "alternate_screen", "-a" },
             { "mode_screen", "-M", 6 },
             { "trim_empty_cells", "-T", 4 },
+            { "pending_escape_sequences", "-P" },
+            { "ignore_missing_alternate", "-q" },
+            { "hyperlinks_only", "-H", 7 },
+            { "line_numbers", "-L", 7 },
+            { "line_flags", "-F", 7 },
         }) do
-            if options[item[1]] ~= nil and type(options[item[1]]) ~= "boolean" then
-                invalid(item[1] .. " must be boolean")
-            end
-            if
-                options[item[1]]
-                and item[3]
-                and tonumber(major) == 3
-                and tonumber(minor) < item[3]
-            then
-                invalid(item[1] .. " is unavailable on this tmux version", "unsupported")
-            end
-            boolean(item[1], item[2])
+            boolean(item[1], item[2], item[3])
         end
+    elseif kind == "clear_history" then
+        boolean("clear_hyperlinks", "-H", 4)
     elseif kind == "send_text" then
         string_value(data, 65536)
         if not utf8(data) then
@@ -544,7 +579,7 @@ function M.run(state, owned, kind, data, options, inspect)
 end
 
 ---@class libtmux.Capture
----@field bytes string Exact rendered stdout, including trailing newlines.
+---@field bytes string Exact capture stdout, including trailing newlines.
 ---@field target libtmux.Reference
 ---@field text fun(self:libtmux.Capture):string?,libtmux.Error? Strict UTF-8; no normalization.
 
@@ -562,6 +597,14 @@ end
 ---@field alternate_screen? boolean
 ---@field mode_screen? boolean Requires tmux 3.6.
 ---@field trim_empty_cells? boolean Requires tmux 3.4.
+---@field pending_escape_sequences? boolean Capture incomplete input instead of screen cells.
+---@field ignore_missing_alternate? boolean A missing alternate grid produces one newline.
+---@field hyperlinks_only? boolean List native URLs instead of cell text; requires tmux 3.7.
+---@field line_numbers? boolean Prefix rows with their native offsets; requires tmux 3.7.
+---@field line_flags? boolean Prefix rows with native flags; requires tmux 3.7.
+
+---@class libtmux.ClearHistoryOptions: libtmux.PaneOptions
+---@field clear_hyperlinks? boolean Also clear hyperlink storage; requires tmux 3.4.
 
 ---@class libtmux.KeyOptions: libtmux.PaneOptions
 ---@field repeat_count? integer From 1 to 1000.

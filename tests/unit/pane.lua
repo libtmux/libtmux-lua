@@ -219,6 +219,125 @@ function M.test_capture_capabilities_fail_before_dispatch_and_ranges_are_explici
     end)
 end
 
+function M.test_pending_capture_copies_options_and_rejects_ignored_screen_controls()
+    fixture(function(state, pane)
+        state.output = "\\033[\n"
+        ---@type table<string, boolean|integer>
+        local options = { pending_escape_sequences = true, escape_nonprintable = true }
+        local pending = pane:capture(options)
+        options.pending_escape_sequences, options.escape_nonprintable = false, false
+        local captured = assert(pending:await())
+        t.assertEquals(captured.bytes, "\\033[\n")
+        t.assertEquals(state.calls[1].argv, { "capture-pane", "-t", "%8", "-p", "-C", "-P" })
+        for _, incompatible in ipairs({
+            "history_lines",
+            "start_line",
+            "end_line",
+            "alternate_screen",
+            "mode_screen",
+            "join_lines",
+            "preserve_spaces",
+            "escape_sequences",
+            "trim_empty_cells",
+            "hyperlinks_only",
+            "line_numbers",
+            "line_flags",
+            "ignore_missing_alternate",
+        }) do
+            options = { pending_escape_sequences = true }
+            options[incompatible] = (
+                incompatible == "history_lines"
+                or incompatible == "start_line"
+                or incompatible == "end_line"
+            )
+                    and 0
+                or true
+            local value, err = pane:capture(options):await()
+            t.assertNil(value)
+            t.assertEquals(assert(err).code, "invalid_options")
+            t.assertEquals(err.effect, "not_sent")
+        end
+        t.assertEquals(#state.calls, 1)
+        state.output = "\n"
+        captured = assert(
+            pane:capture({ alternate_screen = true, ignore_missing_alternate = true }):await()
+        )
+        t.assertEquals(captured.bytes, "\n")
+        t.assertEquals(state.calls[2].argv, { "capture-pane", "-t", "%8", "-p", "-a", "-q" })
+        local value, err = pane:capture({ ignore_missing_alternate = true }):await()
+        t.assertNil(value)
+        t.assertEquals(assert(err).code, "invalid_options")
+        t.assertEquals(#state.calls, 2)
+    end)
+end
+
+function M.test_capture_hyperlinks_and_line_metadata_require_native_capabilities()
+    fixture(function(state, pane)
+        state.version = "3.6b"
+        for _, option in ipairs({ "hyperlinks_only", "line_numbers", "line_flags" }) do
+            local value, err = pane:capture({ [option] = true }):await()
+            t.assertNil(value)
+            t.assertEquals(assert(err).code, "unsupported")
+            t.assertEquals(err.effect, "not_sent")
+        end
+        t.assertEquals(#state.calls, 0)
+        state.version, state.output = "3.7", "-1 H https://example.invalid/\n"
+        local captured = assert(pane:capture({
+            start_line = "-",
+            hyperlinks_only = true,
+            line_numbers = true,
+            line_flags = true,
+        }):await())
+        t.assertEquals(captured.bytes, state.output)
+        t.assertEquals(state.calls[1].argv, {
+            "capture-pane",
+            "-t",
+            "%8",
+            "-p",
+            "-S",
+            "-",
+            "-H",
+            "-L",
+            "-F",
+        })
+        for _, option in ipairs({
+            "escape_sequences",
+            "escape_nonprintable",
+            "preserve_spaces",
+            "trim_empty_cells",
+        }) do
+            local value, err = pane:capture({ hyperlinks_only = true, [option] = true }):await()
+            t.assertNil(value)
+            t.assertEquals(assert(err).code, "invalid_options")
+        end
+        t.assertEquals(#state.calls, 1)
+    end)
+end
+
+function M.test_clear_history_is_scoped_and_checks_hyperlink_support_before_dispatch()
+    fixture(function(state, pane)
+        state.version = "3.3a"
+        assert(pane:clear_history():await())
+        t.assertEquals(state.calls[1].argv, { "clear-history", "-t", "%8" })
+        local value, err = pane:clear_history({ clear_hyperlinks = true }):await()
+        t.assertNil(value)
+        t.assertEquals(assert(err).code, "unsupported")
+        t.assertEquals(err.effect, "not_sent")
+        state.version = "3.4"
+        local options = { clear_hyperlinks = true }
+        local pending = pane:clear_history(options)
+        options.clear_hyperlinks = false
+        assert(pending:await())
+        t.assertEquals(state.calls[2].argv, { "clear-history", "-t", "%8", "-H" })
+        pending = pane:clear_history()
+        pending:cancel()
+        value, err = pending:await()
+        t.assertNil(value)
+        t.assertEquals(assert(err).effect, "not_sent")
+        t.assertEquals(#state.calls, 2)
+    end)
+end
+
 function M.test_byte_admission_and_generation_precede_effects()
     fixture(function(state, pane, generation)
         state.runtime._limits.max_bytes = 8

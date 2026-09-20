@@ -23,9 +23,9 @@ preserves tmux's stdout, including its terminal newline and invalid UTF-8.
 returns `nil, err` with `invalid_utf8`. It performs no replacement, trimming,
 newline conversion or tmux I/O.
 
-Capture reads rendered screen/history cells. It does not recover the original
-PTY byte stream, prove application completion, or establish an ordered handoff
-to observation. It does not enter, exit or navigate copy mode.
+Ordinary capture reads rendered screen/history cells. It does not recover the
+original PTY byte stream, prove application completion, or establish an
+ordered handoff to observation. It does not enter, exit or navigate copy mode.
 
 The default captures the visible terminal screen. `history_lines = N` adds
 up to N history rows, bounded at 1,000,000. Alternatively, `start_line` and
@@ -43,11 +43,49 @@ cannot be combined with `history_lines`. tmux clamps ranges to available data.
 | `alternate_screen` | Select tmux's alternate grid (`-a`); missing grid errors. | 3.2a+ |
 | `trim_empty_cells` | Omit trailing empty cells (`-T`). | 3.4+ |
 | `mode_screen` | Capture the active mode screen when available (`-M`). | 3.6+ |
+| `ignore_missing_alternate` | With `alternate_screen`, return one newline if the grid is missing (`-q`). | 3.2a+ |
+| `pending_escape_sequences` | Capture incomplete input held by tmux's parser (`-P`). | 3.2a+ |
+| `hyperlinks_only` | List native hyperlink URLs instead of cell text (`-H`). | 3.7+ |
+| `line_numbers` | Prefix rows with offsets relative to the visible screen (`-L`). | 3.7+ |
+| `line_flags` | Prefix rows with native grid flags (`-F`). | 3.7+ |
 
 `alternate_screen` cannot be combined with history, explicit ranges or
-`mode_screen`. Unsupported version flags fail before dispatch. Hyperlinks,
-line numbers, line flags, pending escape sequences and paste-buffer capture
-remain unimplemented typed options; raw commands remain available.
+`mode_screen`. Unsupported version flags fail before dispatch.
+
+`pending_escape_sequences` selects parser input instead of screen cells. Only
+`escape_nonprintable` and process limits apply; other enabled capture options
+are rejected. For example, a pending ESC followed by `[` produces `"\027[\n"`,
+or `"\\033[\n"` with native octal escaping. The final newline belongs to tmux's
+print output, not the pending input.
+
+`hyperlinks_only` preserves tmux's URL listing, including native deduplication
+and spacing. It does not guarantee an exhaustive URL inventory: tmux limits
+the number of distinct links collected to the grid width. Screen/range
+selection, joined rows and line metadata still apply. Attribute sequences,
+octal escaping, preserved spaces and empty-cell trimming are rejected because
+tmux ignores them in this mode. No matches produce one newline.
+
+`line_numbers` and `line_flags` preserve native prefixes; with both enabled,
+the number precedes the flags. Flags include `D`, `H`, `O`, `P`, `W` and `X`
+for dead, hyperlink, output-start, prompt-start, wrapped and extended rows;
+`-` means none. The result remains bytes, not parsed row records.
+
+Named paste-buffer capture remains an unfinished domain API. The executable
+[capture fixture](../tests/integration/capture.lua) demonstrates the supported
+capture modes with output barriers and cleanup.
+
+## Clear history
+
+`clear_history()` clears the pane's retained history and exits all its modes,
+including copy mode. It leaves visible screen cells intact. This is an
+explicit shared-state mutation; cancellation of an unrelated Request never
+calls it.
+
+`clear_history({ clear_hyperlinks = true })` also clears hyperlink storage,
+including links referenced by visible cells. This option requires tmux 3.4;
+older versions return `unsupported` before changing history or mode state.
+Success returns `true` under the same process, generation and error contracts
+as the other Pane mutations.
 
 ## Text, keys and copy mode
 

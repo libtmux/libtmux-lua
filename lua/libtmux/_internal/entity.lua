@@ -180,6 +180,11 @@ function Entity:capture(options)
     return pane.run(stored.server, stored.identity, "capture", nil, options)
 end
 
+function Entity:clear_history(options)
+    local stored = handles[self]
+    return pane.run(stored.server, stored.identity, "clear_history", nil, options)
+end
+
 function Entity:send_text(text, options)
     local stored = handles[self]
     return pane.run(stored.server, stored.identity, "send_text", text, options)
@@ -412,6 +417,8 @@ end
 --- libtmux.Request<libtmux.Creation>
 ---@field capture fun(self:libtmux.Entity<T>,options?:libtmux.CaptureOptions):
 --- libtmux.Request<libtmux.Capture>
+---@field clear_history fun(self:libtmux.Entity<T>,options?:libtmux.ClearHistoryOptions):
+--- libtmux.Request<boolean> Clears history and exits pane modes.
 ---@field send_text fun(self:libtmux.Entity<T>,text:string,options?:libtmux.PaneOptions):
 --- libtmux.Request<boolean>
 ---@field send_keys fun(self:libtmux.Entity<T>,keys:string[],options?:libtmux.KeyOptions):
