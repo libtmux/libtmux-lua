@@ -106,6 +106,7 @@ def main():
         elif gate == "generated":
             run([sys.executable, "scripts/generate_fields.py", "--check"], env=env, timeout=5)
             run([sys.executable, "scripts/generate_options.py", "--check"], env=env, timeout=5)
+            run([sys.executable, "scripts/release.py", "prepare", "--check"], timeout=5)
         elif gate == "integration":
             run([sys.executable, "tests/run_integration.py"], env=env)
         elif gate == "package":
@@ -117,6 +118,8 @@ def main():
             run([str(executable), "--check=.", "--checklevel=Warning", "--logpath=.cache/luals"], env=env)
             run([sys.executable, "scripts/check_editor.py"], env=env, timeout=20)
         elif gate == "mid":
+            run([sys.executable, "-m", "unittest", "discover", "-s", "tests/tooling", "-v"], timeout=5)
+            run([tool("actionlint")], timeout=5)
             for item in ("unit", "format", "lint", "generated", "docs"):
                 execute(item)
         elif gate == "outer":

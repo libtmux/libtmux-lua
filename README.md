@@ -5,7 +5,8 @@ query server state, and watch pane output. Use standalone Lua with luv or
 Neovim's event loop.
 
 **Under development.** Install from a checkout; the API is still changing.
-The separate MCP and workspace packages are scaffolds.
+The first core alpha, `0.1.0alpha1-1`, is being prepared. The separate MCP
+and workspace packages are unpublished scaffolds.
 
 [Install](#install) · [Read a server](#read-a-server) ·
 [Query](#query-captured-state) · [Create panes](#create-sessions-and-panes) ·
@@ -20,6 +21,17 @@ From this checkout, use LuaRocks configured for your Lua interpreter:
 ```console
 $ luarocks --local make rockspecs/libtmux-scm-1.rockspec
 ```
+
+After `0.1.0alpha1-1` is published on LuaRocks, install that exact version:
+
+```console
+$ luarocks --local install libtmux 0.1.0alpha1-1
+```
+
+See the [changelog](CHANGES.md) and
+[release instructions](.github/CONTRIBUTING.md#releases) for candidate status
+and verification. Alpha APIs may change; Linux is tested, while macOS remains
+unverified.
 
 Add the local rocks tree to Lua's module paths:
 

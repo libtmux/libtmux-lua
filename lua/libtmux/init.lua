@@ -1,1 +1,1 @@
-return { _VERSION = "scm" }
+return { _VERSION = "0.1.0alpha1" }

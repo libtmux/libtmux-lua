@@ -94,11 +94,6 @@ local function pure_imports(names)
 end
 -- luacheck: pop
 
-function tests.test_core_development_metadata()
-    local core = require("libtmux")
-    assert(core._VERSION == "scm", "core must identify the development build")
-end
-
 function tests.test_core_and_query_import_without_effects()
     pure_imports({ "libtmux", "libtmux.query", "libtmux.runtime.luv", "libtmux.runtime.nvim" })
 end
