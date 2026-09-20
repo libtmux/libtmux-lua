@@ -19,6 +19,33 @@ LUALS = {
 }
 
 
+def tmux(version):
+    releases = json.loads((ROOT / "data/tmux-options.json").read_text())["releases"]
+    if version not in releases:
+        raise SystemExit("Select a tmux release from docs/compatibility.md")
+    revision = releases[version]["revision"]
+    source = CACHE / "source" / f"tmux-{version}"
+    prefix = CACHE / "toolchains" / f"tmux-{version}"
+    if not source.exists():
+        subprocess.run(["git", "clone", "--depth=1", f"--branch={version}", "--",
+                        "https://github.com/tmux/tmux.git", str(source)], check=True)
+    actual = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
+    if actual != revision:
+        raise SystemExit("Cached tmux source differs from the option catalog revision")
+    if subprocess.check_output(["git", "-C", str(source), "status", "--porcelain", "--untracked-files=no"]):
+        raise SystemExit("Cached tmux tracked source has local edits")
+    with (CACHE / "source" / f"tmux-{version}-build.log").open("w") as output:
+        for command in (["sh", "autogen.sh"], ["./configure", f"--prefix={prefix}"],
+                        ["make", "-j2"], ["make", "install"]):
+            subprocess.run(command, cwd=source, stdout=output, stderr=subprocess.STDOUT, check=True)
+    executable = prefix / "bin/tmux"
+    reported = subprocess.check_output([str(executable), "-V"], text=True).strip()
+    if reported != f"tmux {version}":
+        raise SystemExit(f"Built tmux reports an unexpected version: {reported}")
+    print(json.dumps({"tmux": reported, "source_revision": revision,
+                      "executable_sha256": hashlib.sha256(executable.read_bytes()).hexdigest()}), flush=True)
+
+
 def yaml():
     source = CACHE / "source/libyaml"
     prefix = CACHE / "libyaml"
@@ -57,12 +84,18 @@ def luals():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("components", nargs="+", choices=("yaml", "luals"))
+    parser.add_argument("components", nargs="+", choices=("yaml", "luals", "tmux"))
+    parser.add_argument("--tmux-version", help="exact released tmux version from the option catalog")
     args = parser.parse_args()
+    if ("tmux" in args.components) != (args.tmux_version is not None):
+        parser.error("tmux requires --tmux-version, which applies only to tmux")
     (CACHE / "source").mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
     for name in args.components:
-        {"yaml": yaml, "luals": luals}[name]()
+        if name == "tmux":
+            tmux(args.tmux_version)
+        else:
+            {"yaml": yaml, "luals": luals}[name]()
     print(json.dumps({"bootstrap_seconds": round(time.monotonic() - started, 4)}))
 
 

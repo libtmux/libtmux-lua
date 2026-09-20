@@ -34,6 +34,13 @@ on x86_64. Record it in the WSL2 lane; it does not close the native Linux or
 macOS gates. Selected PUC, LuaJIT, Neovim and tmux foundation tests have passed
 there while the complete product is still being implemented.
 
+The [CI workflow](../.github/workflows/ci.yml) covers Linux unit runtimes,
+floor/current outer gates and the released-tmux integration sweep. Its
+[setup and coverage](../.github/CONTRIBUTING.md#github-actions) use the same
+local gate commands. A passing run establishes those implemented checks at
+its tested revision; macOS, additional host/runtime combinations and
+unfinished product requirements remain open.
+
 Version evidence comes from [Lua's version history](https://www.lua.org/versions.html),
 [LuaJIT's release policy](https://luajit.org/status.html), the
 [luv release](https://github.com/luvit/luv/releases/tag/1.52.1-0),

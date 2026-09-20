@@ -1,8 +1,8 @@
 # Contributing
 
-This repository contains the Lua query and package foundation for libtmux.
-Live transport and consumer features are under development. CI and complete
-product compatibility remain unverified.
+This repository contains the Lua query, transport and package foundation for
+libtmux. Domain coverage and consumer features remain under development.
+Complete product compatibility remains unverified.
 
 [AGENTS.md](../AGENTS.md) governs scope and change discipline.
 [WRITING.md](WRITING.md) governs prose and commit messages.
@@ -145,8 +145,8 @@ $ mise exec -- python scripts/check.py integration \
 ```
 
 Set `TMUX_BIN` to the intended floor or current executable for each run.
-Local checks currently run under WSL2; record that platform separately from
-native Linux and macOS. The official Neovim 0.10.0 archive reports
+Local WSL2 checks are recorded separately from hosted Linux and macOS.
+The official Neovim 0.10.0 archive reports
 `prerelease="dev"` through `vim.version()` despite its release CLI version;
 the bootstrap records both values and verifies the exact artifact checksum.
 
@@ -184,6 +184,37 @@ $ git diff --cached --check
 
 Report which checks ran and which remain unavailable. Missing or skipped
 compatibility, examples and CI evidence remain open gates.
+
+### GitHub Actions
+
+[CI](workflows/ci.yml) runs on pull requests, pushes to `master` and manual
+dispatch. Ubuntu 24.04 jobs run the existing offline gates after a separate
+dependency bootstrap:
+
+- Unit suites on every accepted PUC Lua version and standalone LuaJIT.
+- Full outer checks at Lua/tmux/Neovim floor and current versions, including
+  format, lint, generated files, docs, installed rocks and LuaLS completion.
+- The full integration suite on every accepted tmux release, using current
+  Lua and Neovim.
+
+Jobs retain tool identities, gate output and build diagnostics. Actions use
+pinned commits and read-only repository permissions. Setup failures fail the
+job; gates do not install missing dependencies. The job deadline includes
+bootstrap and does not replace the test-loop budgets below.
+
+CI builds tmux at the commit recorded in the option catalog, checks the
+reported version and records the binary hash. To reproduce that setup:
+
+```console
+$ mise exec -- python scripts/bootstrap_native.py tmux \
+    --tmux-version=3.7c
+```
+
+The build requires Autoconf, Automake, a C compiler, make, pkg-config, Bison,
+libevent and ncurses development headers. Select its result through
+`TMUX_BIN=.cache/toolchains/tmux-3.7c/bin/tmux` when running a gate.
+macOS, remaining runtime/host combinations and unfinished product gates stay
+open in the [compatibility matrix](../docs/compatibility.md).
 
 ### Test loops
 
