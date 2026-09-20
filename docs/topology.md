@@ -59,11 +59,16 @@ oracle. Resizing affects every link to the Window.
 
 - `named`: `even-horizontal`, `even-vertical`, `main-horizontal`,
   `main-vertical` or `tiled`. The mirrored main layouts require tmux 3.5+.
-- `layout`: a nonempty native layout string, bounded at 65,536 bytes.
+- `layout`: an exported native layout string with a four-digit hexadecimal
+  checksum, comma and body, bounded at 65,536 bytes.
 - `next = true`, `previous = true` or `restore = true`.
 
-Layout operations unzoom before native layout validation. A rejected layout
-can therefore change zoom state. A nonzero native exit carries its receipt
+Malformed custom-layout headers return `invalid_layout` before dispatch.
+This avoids faulty error handling in tmux 3.3/3.3a and short-header reads in
+older native parsers. Use `named` for standard layout names.
+
+Layout operations unzoom before native checksum and body validation. A rejected
+layout can therefore change zoom state. A nonzero native exit carries its receipt
 and `effect = "completed"`; it does not establish rollback. Custom layout
 syntax is tmux's grammar and is not evaluated as Lua or shell text.
 

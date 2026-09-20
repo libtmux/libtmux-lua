@@ -215,7 +215,13 @@ local function prepare(state, ref, kind, input, options)
             end
             flag("--", options.named)
         elseif options.layout ~= nil then
-            flag("--", bytes(options.layout, 65536))
+            local layout = bytes(options.layout, 65536)
+            -- Older native parsers read past short headers; 3.3/3.3a also
+            -- leave the error cause unset when the checksum header is absent.
+            if not layout:match("^%x%x%x%x,.") then
+                invalid("custom layout requires a four-digit checksum and body", "invalid_layout")
+            end
+            flag("--", layout)
         else
             flag(next_layout and "-n" or previous and "-p" or "-o")
         end
@@ -347,7 +353,7 @@ end
 
 ---@class libtmux.LayoutOptions: libtmux.TopologyOptions
 ---@field named? libtmux.NamedLayout
----@field layout? string Bounded native layout text; native validation can unzoom first.
+---@field layout? string Exported checksum-prefixed layout; native validation can unzoom first.
 ---@field next? boolean Select exactly one of named/layout/next/previous/restore.
 ---@field previous? boolean
 ---@field restore? boolean

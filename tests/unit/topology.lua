@@ -112,7 +112,7 @@ function M.test_resize_and_layout_select_exactly_one_explicit_native_mode()
         assert(run("resize", nil, { largest = true }):await())
         assert(run("resize", nil, { smallest = true }):await())
         assert(run("layout", nil, { named = "tiled" }):await())
-        assert(run("layout", nil, { layout = "native-layout-text" }):await())
+        assert(run("layout", nil, { layout = "abcd,80x24,0,0,1" }):await())
         assert(run("layout", nil, { next = true }):await())
         assert(run("layout", nil, { previous = true }):await())
         assert(run("layout", nil, { restore = true }):await())
@@ -123,7 +123,7 @@ function M.test_resize_and_layout_select_exactly_one_explicit_native_mode()
             { "resize-window", "-t", "@3", "-A" },
             { "resize-window", "-t", "@3", "-a" },
             { "select-layout", "-t", "@3", "--", "tiled" },
-            { "select-layout", "-t", "@3", "--", "native-layout-text" },
+            { "select-layout", "-t", "@3", "--", "abcd,80x24,0,0,1" },
             { "select-layout", "-t", "@3", "-n" },
             { "select-layout", "-t", "@3", "-p" },
             { "select-layout", "-t", "@3", "-o" },
@@ -132,6 +132,25 @@ function M.test_resize_and_layout_select_exactly_one_explicit_native_mode()
             t.assertEquals(state.calls[index].argv, argv)
         end
     end)
+end
+
+function M.test_custom_layout_header_is_validated_before_native_parser()
+    for _, version in ipairs({ "3.2a", "3.3", "3.3a", "3.7c" }) do
+        fixture("window", version, function(state, run)
+            for _, value in ipairs({ "invalid-layout", "a", "1234", "1234,", "ffff:80x24" }) do
+                reject(run("layout", nil, { layout = value }), "invalid_layout")
+            end
+            t.assertEquals(#state.calls, 0)
+            assert(run("layout", nil, { layout = "0000,invalid-layout" }):await())
+            t.assertEquals(state.calls[1].argv, {
+                "select-layout",
+                "-t",
+                "@3",
+                "--",
+                "0000,invalid-layout",
+            })
+        end)
+    end
 end
 
 function M.test_invalid_modes_inputs_process_options_and_metatables_precede_native_effects()
@@ -248,7 +267,7 @@ function M.test_retained_receipts_native_failure_and_post_completion_stale_are_t
             effect = "completed",
             partial = state.result,
         })
-        local value, err = run("layout", nil, { layout = "bad-native-layout" }):await()
+        local value, err = run("layout", nil, { layout = "0000,bad-native-layout" }):await()
         t.assertNil(value)
         t.assertIs(err, state.failure)
         t.assertEquals(err.effect, "completed")
