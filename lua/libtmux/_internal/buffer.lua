@@ -114,6 +114,12 @@ local function prepare(state, ref, kind, name, bytes, options)
     elseif bytes ~= nil then
         invalid("invalid_argument", "only buffer set accepts a value")
     end
+    if kind == "delete" and version < 4 then
+        invalid(
+            "unsupported",
+            "named buffer deletion requires tmux 3.4+; older releases can delete another buffer"
+        )
+    end
     if options ~= nil and not plain(options) then
         invalid("invalid_options", "buffer options must be a plain record")
     end

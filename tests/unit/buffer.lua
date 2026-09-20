@@ -142,6 +142,15 @@ function M.test_paste_modes_are_literal_and_gated_by_exact_daemon_release()
     end, "pane", "3.8")
 end
 
+function M.test_delete_refuses_releases_that_fall_back_to_another_buffer()
+    for _, version in ipairs({ "3.2a", "3.3", "3.3a" }) do
+        fixture(function(state, run)
+            rejected(run("delete", "missing"), "unsupported")
+            t.assertEquals(#state.calls, 0)
+        end, nil, version)
+    end
+end
+
 function M.test_invalid_options_names_values_and_scope_fail_before_io()
     fixture(function(state, run)
         for _, name in ipairs({

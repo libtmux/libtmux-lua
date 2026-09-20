@@ -18,12 +18,18 @@ local function work(runtime)
         :await())
     local name = "-buffer #{pid};λ;"
     if mode == "storage" then
+        local version = must(server:snapshot():await()).capabilities.version
+        local unsafe_delete = version == "3.2a" or version == "3.3" or version == "3.3a"
         local pieces = {}
         for byte = 0, 255 do
             pieces[#pieces + 1] = string.char(byte)
         end
         local bytes = table.concat(pieces) .. "\000tail\n\n"
         must(server:set_buffer(name, bytes):await())
+        local deleted, delete_error = server:delete_buffer("missing-buffer"):await()
+        assert(deleted == nil and delete_error, "missing-name delete must fail")
+        assert(delete_error.code == (unsafe_delete and "unsupported" or "exit_failed"))
+        assert(delete_error.effect == (unsafe_delete and "not_sent" or "completed"))
         local shown = must(server:show_buffer(name):await())
         assert(shown.name == name and shown.bytes == bytes)
         local value, err = shown:text()
@@ -37,9 +43,15 @@ local function work(runtime)
         assert(must(must(server:show_buffer(name):await()):text()) == "UTF8 λ雪\000\n")
         value, err = server:show_buffer(name, { process = { max_output_bytes = 2 } }):await()
         assert(value == nil and err and err.code == "output_limit")
-        must(server:delete_buffer(name):await())
-        value, err = server:show_buffer(name):await()
-        assert(value == nil and err and err.code == "exit_failed" and err.effect == "completed")
+        if unsafe_delete then
+            value, err = server:delete_buffer(name):await()
+            assert(value == nil and err and err.code == "unsupported" and err.effect == "not_sent")
+            assert(must(server:show_buffer(name):await()).bytes == "UTF8 λ雪\000\n")
+        else
+            must(server:delete_buffer(name):await())
+            value, err = server:show_buffer(name):await()
+            assert(value == nil and err and err.code == "exit_failed" and err.effect == "completed")
+        end
         value, err = server:set_buffer("bad\\name", "value"):await()
         assert(value == nil and err and err.code == "unsupported_name" and err.effect == "not_sent")
     else

@@ -25,6 +25,10 @@ matrix. Local tmux 3.7d and 3.8-rc results are diagnostic evidence and cannot
 replace released-version checks. Neovim's LuaJIT results do not prove stock
 PUC Lua 5.1 yield behavior. A Neovim build using PUC Lua is a separate host gate.
 
+Named buffer deletion requires tmux 3.4 or later. The typed API refuses older
+releases because a missing target can delete another buffer. The older-release
+deletion parity requirement remains open; see [buffers](buffers.md).
+
 Exact operating-system images, binary hashes, compiler and module ABI identities
 belong with each result. Missing and skipped cells remain unverified. No complete
 product compatibility cell has passed yet.

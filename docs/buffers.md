@@ -39,9 +39,16 @@ performs no trimming, replacement or newline normalization. Invalid UTF-8
 returns `nil, err` with `invalid_utf8`. Mutating this returned record changes
 neither the daemon's value nor future Requests.
 
-`server:delete_buffer(name)` removes the current value. Read, delete and paste
-also accept broader exact observed names: nonempty NUL-free strings up to
-4,096 bytes. A missing buffer retains tmux's error and native receipt.
+`server:delete_buffer(name)` removes the current value on tmux 3.4 and later.
+It returns `unsupported` before dispatch on 3.2a, 3.3 and 3.3a: those releases
+can delete the most recent buffer when the requested name is missing. Checking
+existence first would still race with other clients. This limitation does not
+affect `paste_buffer` with `delete_after`, whose native lookup rejects missing
+names before deletion.
+
+Read, delete and paste accept broader exact observed names: nonempty NUL-free
+strings up to 4,096 bytes. On supported operations, a missing buffer retains
+tmux's error and native receipt.
 
 A name identifies a current slot, not a persistent buffer incarnation. Another
 client can replace its value after a snapshot or read. These methods operate
