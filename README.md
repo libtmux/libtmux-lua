@@ -194,6 +194,7 @@ server running. See [runtime ownership and cancellation](docs/runtime.md).
 
 ## Guides
 
+- **Clients:** [switch sessions and detach terminals](docs/clients.md).
 - **Read and watch:** [snapshots](docs/snapshots.md),
   [session notifications and pane streams](docs/control.md).
 - **Run and arrange:** [commands and batches](docs/commands.md),

@@ -44,6 +44,7 @@ build = {
         ["libtmux._internal.topology"] = "lua/libtmux/_internal/topology.lua",
         ["libtmux._internal.text"] = "lua/libtmux/_internal/text.lua",
         ["libtmux._internal.buffer"] = "lua/libtmux/_internal/buffer.lua",
+        ["libtmux._internal.client"] = "lua/libtmux/_internal/client.lua",
         ["libtmux._internal.planner"] = "lua/libtmux/_internal/planner.lua",
         ["libtmux._internal.live_query"] = "lua/libtmux/_internal/live_query.lua",
         ["libtmux.runtime.luv"] = "lua/libtmux/runtime/luv.lua",

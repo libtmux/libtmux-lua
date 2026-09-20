@@ -1,6 +1,7 @@
 local settings = require("libtmux._internal.settings")
 local environment = require("libtmux._internal.environment")
 local buffer = require("libtmux._internal.buffer")
+local client = require("libtmux._internal.client")
 local errors = require("libtmux._internal.error")
 local graph = require("libtmux._internal.graph")
 local identity = require("libtmux._internal.identity")
@@ -144,6 +145,11 @@ end
 
 function Entity:reference()
     return reference(handles[self])
+end
+
+function Entity:attach()
+    local stored = handles[self]
+    return client.attach(stored.server, stored.identity)
 end
 
 function M.inspect(state, handle, kind)
@@ -397,6 +403,8 @@ end
 --- options?:libtmux.EnvironmentOptions):
 --- libtmux.Request<boolean>
 ---@field reference fun(self:libtmux.Entity<T>):libtmux.Reference?, libtmux.Error?
+---@field attach fun(self:libtmux.Entity<T>):libtmux.Request<boolean>
+--- Requires an interactive terminal capability; current adapters return unsupported_tty.
 ---@field snapshot fun(self:libtmux.Entity<T>):libtmux.Request<T>
 ---@field new_window fun(self:libtmux.Entity<T>,options?:libtmux.NewWindowOptions):
 --- libtmux.Request<libtmux.Creation>
