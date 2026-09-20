@@ -1,6 +1,6 @@
-# Session and window operations
+# Topology operations
 
-Session, Window and WindowLink handles perform explicit mutations through
+Session, Window, Pane and WindowLink handles perform explicit mutations through
 the PROCESS endpoint. Each operation returns a Request that resolves to
 `true` when tmux successfully processes it. Refresh or capture a snapshot
 explicitly to inspect the resulting state; existing records do not change
@@ -160,6 +160,33 @@ last Pane destroys the old Window and all its placements. Native layout and
 selection changes can happen before a later error. Moving a Pane preserves
 its ID and running process; it does not restart that process.
 
+## Break a pane into a window
+
+`pane:break_out(source_link, destination, options)` requires the Pane's exact
+source WindowLink. Destinations accept a Session with an optional numeric
+index, or an anchor WindowLink with `position = "before"|"after"`, as described
+under [window placements](#window-placements). Replacement is not supported;
+an occupied numeric destination returns the native error.
+
+The source placement and current Pane membership are checked in the native
+queue, along with any destination anchor. The operation preserves the Pane ID
+and running process. With multiple panes, tmux creates a new Window and keeps
+the source Window's links. With one pane, it moves the specified placement of
+the existing Window; other links to that Window survive. `select` defaults to
+false, though removal of an active placement can force native selection.
+
+`name` follows the Window name rules above. Omitting it preserves native
+naming: a singleton retains its existing Window name and options; a newly
+created Window takes the native default name and inherited options. An
+explicit name disables automatic rename for the resulting Window.
+
+Exact tmux 3.7 has a native multi-pane naming defect. The library supplies a
+placeholder when no name is requested, avoiding the faulty native null-name
+path. For a named multi-pane break, it follows the break with a rename of the
+same Pane's Window. This repair fires native rename notifications and
+`after-rename-window` hooks. Singleton breaks and other releases need no
+repair. A repair failure can occur after the Pane has moved; it is not rollback.
+
 ## Effects and boundaries
 
 Options are copied before dispatch and must be plain records. These methods
@@ -171,4 +198,4 @@ Mutations are never retried automatically.
 
 Native [aliases and hooks](commands.md) remain observable. These APIs do not
 promise transactions or protection against aliases that replace a built-in
-command. Pane break-out remains a pending typed domain operation.
+command.

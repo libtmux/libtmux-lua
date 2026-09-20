@@ -195,6 +195,22 @@ function M.test_program_validation_rejects_ambiguous_records_and_untrusted_table
     t.assertFalse(touched)
 end
 
+function M.test_compact_programs_keep_expansion_bytes_escaped_and_bound_nested_guards()
+    local value = assert(
+        command.prepare_program(
+            { commands = { { "display-message", '#{pane_id}; $HOME~"\\\n\255' } } },
+            true
+        )
+    )
+    t.assertEquals(value, '"display-message" "#{pane_id}; \\044HOME\\176\\042\\134\\012\\377"')
+    for _ = 1, 4 do
+        value = assert(
+            command.prepare_program({ commands = { { "if-shell", "-F", "1", value } } }, true)
+        )
+    end
+    t.assertTrue(#value < 16300, "generated guards must fit the native command message")
+end
+
 function M.test_program_limits_cover_encoded_expansion_commands_and_aggregate_arguments()
     local maximum = 1048576
     t.assertEquals(#assert(program({ source = string.rep("x", maximum) })), maximum)

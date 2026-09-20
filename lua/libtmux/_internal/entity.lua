@@ -264,6 +264,18 @@ function Entity:move_to(other, options)
     return topology.run(stored.server, stored.identity, "move_to", other, options, M.inspect)
 end
 
+function Entity:break_out(source_link, destination, options)
+    local stored = handles[self]
+    return topology.run(
+        stored.server,
+        stored.identity,
+        "break_out",
+        { source_link = source_link, destination = destination },
+        options,
+        M.inspect
+    )
+end
+
 function Entity:set_title(text, options)
     local stored = handles[self]
     return pane.run(stored.server, stored.identity, "set_title", text, options)
@@ -424,6 +436,9 @@ end
 --- libtmux.Request<boolean>
 ---@field move_to fun(self:libtmux.Entity<T>,other:libtmux.Entity<libtmux.SnapshotPane>,
 --- options?:libtmux.MovePaneOptions):libtmux.Request<boolean>
+---@field break_out fun(self:libtmux.Entity<T>,
+--- source_link:libtmux.Entity<libtmux.SnapshotWindowLink>,
+--- destination:libtmux.LinkDestination,options?:libtmux.BreakPaneOptions):libtmux.Request<boolean>
 ---@field rename fun(self:libtmux.Entity<T>,name:string,options?:libtmux.TopologyOptions):
 --- libtmux.Request<boolean>
 ---@field navigate_window fun(self:libtmux.Entity<T>,direction:"next"|"previous"|"last",

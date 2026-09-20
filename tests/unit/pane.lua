@@ -427,6 +427,62 @@ function M.test_move_requires_explicit_selection_context_and_validates_geometry(
     end)
 end
 
+function M.test_break_requires_owned_context_and_handles_exact_3_7_naming()
+    fixture(function(state, pane, generation, entity)
+        t.assertEquals(type(pane.break_out), "function", "Pane break_out API is missing")
+        local source = assert(entity.from_reference(state, {
+            kind = "window_link",
+            session_id = "$2",
+            window_id = "@3",
+            index = 5,
+            generation = generation,
+        }))
+        local session = assert(
+            entity.from_reference(state, { kind = "session", id = "$4", generation = generation })
+        )
+        for _, options in ipairs({
+            { name = "" },
+            { name = "bad\000" },
+            { select = 1 },
+            { replace = true },
+        }) do
+            local value, err = pane:break_out(source, { session = session }, options):await()
+            t.assertNil(value)
+            t.assertEquals(assert(err).effect, "not_sent")
+        end
+        local value, err = pane:break_out(pane, { session = session }):await()
+        t.assertNil(value)
+        t.assertEquals(assert(err).code, "invalid_target")
+        t.assertEquals(#state.calls, 0)
+        for _, version in ipairs({ "3.7", "3.7a" }) do
+            state.version = version
+            for _, named in ipairs({ false, true }) do
+                local options = named and { name = "literal#{pid};" } or {}
+                local pending = pane:break_out(source, { session = session, index = 9 }, options)
+                options.name = "changed"
+                assert(pending:await())
+                local argv = state.calls[#state.calls].argv
+                t.assertEquals(argv[4], "$2:5")
+                local expanded = argv[6]
+                for _ = 1, 4 do
+                    expanded = expanded:gsub("\\(%d%d%d)", function(part)
+                        return string.char(tonumber(part, 8))
+                    end)
+                end
+                t.assertStrContains(expanded, '"break-pane" "-s" "$2:5.%8" "-t" "$4:9" "-d"')
+                t.assertEquals(expanded:find("#{window_panes}", 1, true) ~= nil, version == "3.7")
+                t.assertEquals(
+                    expanded:find("rename-window", 1, true) ~= nil,
+                    version == "3.7" and named
+                )
+                if named then
+                    t.assertStrContains(expanded, '"-n" "literal#{pid};"')
+                end
+            end
+        end
+    end)
+end
+
 function M.test_topology_completion_preserves_effect_when_generation_is_invalidated()
     fixture(function(state, pane, generation)
         state.before = function()

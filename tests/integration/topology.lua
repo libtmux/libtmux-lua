@@ -4,7 +4,7 @@ local mode = assert(os.getenv("LIBTMUX_TOPOLOGY_CASE"))
 
 local function must(value, err)
     if err then
-        error(tostring(err), 2)
+        error(tostring(err) .. (err.partial and err.partial.stderr or ""), 2)
     end
     return value
 end
@@ -254,6 +254,7 @@ local function work(runtime)
                     assert(os.getenv("LIBTMUX_RESPAWN_REPORT")),
                     'literal;$#{}\\"',
                     "",
+                    "~$HOME'\n #literal\r\tλ",
                 },
             })
             :await())
@@ -327,6 +328,78 @@ local function work(runtime)
                 .. tostring(err and err.partial and err.partial.stdout)
         )
         assert(field(sibling:reference().id, "window_id") == wid .. "\n")
+    elseif mode:sub(1, 6) == "break_" then
+        local multiple = mode:find("multi", 1, true) ~= nil or mode == "break_refusal"
+        local named = mode:find("named", 1, true) ~= nil
+        local automatic = os.getenv("LIBTMUX_BREAK_AUTOMATIC") == "1"
+        must(server:set_option("automatic-rename", automatic, { scope = "global_window" }):await())
+        must(window:rename("kept"):await())
+        must(window:set_option("automatic-rename", automatic):await())
+        if multiple then
+            must(pane:split({ argv = { "/bin/cat" } }):await())
+        end
+        local destination =
+            must(server:new_session({ name = "break-destination", argv = { "/bin/cat" } }):await())
+        local target_sid, target_wid =
+            destination.session:reference().id, destination.window:reference().id
+        must(created.window_link:link({ session = session, index = 5 }):await())
+        must(destination.window_link:link({ session = destination.session, index = 10 }):await())
+        local source = link_at(5)
+        local process = field(pid, "pane_pid")
+        command({ "set-hook", "-g", "after-rename-window", "set-option -g @rename-repair yes" })
+        if mode == "break_refusal" then
+            local value, err = pane
+                :break_out(source, { session = destination.session, index = 0 }, {
+                    name = "occupied",
+                })
+                :await()
+            assert(value == nil and err and err.code == "exit_failed" and err.effect == "completed")
+            assert(field(pid, "window_id") == wid .. "\n")
+            assert(field(target_sid .. ":0", "window_id") == target_wid .. "\n")
+            assert(command({ "show-option", "-gqv", "@rename-repair" }) == "")
+            must(pane:move_to(destination.pane):await())
+            value, err = pane:break_out(source, { session = destination.session, index = 3 })
+                :await()
+            assert(value == nil and err and err.code == "stale_target" and err.effect == "not_sent")
+            assert(field(pid, "window_id") == target_wid .. "\n")
+        else
+            local options = named and { name = "literal#{pane_id};name", select = true } or {}
+            local placement, index, duplicate_index
+            if named then
+                placement = { link = destination.window_link, position = "after" }
+                index, duplicate_index = 1, 10
+            elseif multiple then
+                placement = { link = link_at(10, target_sid), position = "before" }
+                index, duplicate_index = 10, 11
+            else
+                placement = { session = destination.session, index = 3 }
+                index, duplicate_index = 3, 10
+            end
+            must(pane:break_out(source, placement, options):await())
+            local new_wid = field(pid, "window_id"):sub(1, -2)
+            assert((new_wid ~= wid) == multiple)
+            assert(field(pid, "pane_pid") == process)
+            assert(field(target_sid .. ":" .. index, "pane_id") == pid .. "\n")
+            assert(field(sid .. ":0", "window_id") == wid .. "\n")
+            if multiple then
+                assert(field(sid .. ":5", "window_id") == wid .. "\n")
+            end
+            assert(field(target_sid .. ":" .. duplicate_index, "window_id") == target_wid .. "\n")
+            assert(field(target_sid, "window_index") == (named and index .. "\n" or "0\n"))
+            assert(
+                command({ "show-option", "-wAv", "-t", new_wid, "automatic-rename" })
+                    == (automatic and not named and "on\n" or "off\n")
+            )
+            if named then
+                assert(field(pid, "window_name") == "literal#{pane_id};name\n")
+            elseif not multiple and not automatic then
+                assert(field(pid, "window_name") == "kept\n")
+            end
+            local repaired = os.getenv("TMUX_DAEMON_VERSION") == "3.7" and multiple and named
+            assert(
+                command({ "show-option", "-gqv", "@rename-repair" }) == (repaired and "yes\n" or "")
+            )
+        end
     else
         error("unknown topology test case")
     end

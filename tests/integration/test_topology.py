@@ -13,7 +13,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class TopologyTests(unittest.TestCase):
-    def run_case(self, mode):
+    def run_case(self, mode, automatic=False):
         for host in ("luv", "nvim"):
             fixture = TmuxFixture()
             fixture.env.update(LC_ALL="C", LANG="C")
@@ -21,7 +21,8 @@ class TopologyTests(unittest.TestCase):
                 version = fixture.run("display-message", "-p", "#{version}").stdout.strip()
                 env = dict(fixture.env, TMUX_BIN=shutil.which(fixture.binary),
                            TMUX_SOCKET=str(fixture.socket), LIBTMUX_TOPOLOGY_CASE=mode,
-                           TMUX_DAEMON_VERSION=version)
+                           TMUX_DAEMON_VERSION=version,
+                           LIBTMUX_BREAK_AUTOMATIC="1" if automatic else "0")
                 if mode == "window_respawn":
                     report = fixture.path / "respawn.bin"
                     script = fixture.path / "respawn.py"
@@ -48,7 +49,8 @@ class TopologyTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                 self.assertIn(f"public topology {mode} PASS".encode(), result.stdout)
                 if mode == "window_respawn":
-                    self.assertEqual(report.read_bytes(), b"target\0literal#{pid};\0literal;$#{}\\\"\0")
+                    self.assertEqual(report.read_bytes(),
+                                     "target\0literal#{pid};\0literal;$#{}\\\"\0\0~$HOME'\n #literal\r\tλ".encode())
                 self.assertEqual(list(fixture.path.glob("libtmux-lua-pin-*")), [])
                 self.assertEqual(fixture.run("list-clients").stdout, "")
                 self.assertEqual(fixture.run("has-session", "-t", "$0").returncode, 0)
@@ -94,3 +96,22 @@ class TopologyTests(unittest.TestCase):
 
     def test_pane_move_selection_context_and_stale_membership(self):
         self.run_case("pane_move_context")
+
+    def test_pane_break_singleton_named(self):
+        for automatic in (False, True):
+            self.run_case("break_single_named", automatic)
+
+    def test_pane_break_singleton_default_name(self):
+        for automatic in (False, True):
+            self.run_case("break_single_default", automatic)
+
+    def test_pane_break_multiple_named(self):
+        for automatic in (False, True):
+            self.run_case("break_multi_named", automatic)
+
+    def test_pane_break_multiple_default_name(self):
+        for automatic in (False, True):
+            self.run_case("break_multi_default", automatic)
+
+    def test_pane_break_occupied_destination_and_stale_membership(self):
+        self.run_case("break_refusal")

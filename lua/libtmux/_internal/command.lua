@@ -1,6 +1,7 @@
 local errors = require("libtmux._internal.error")
 local process = require("libtmux._internal.process")
 local M = {}
+local quoted_escapes = '[%z\001-\031\127-\255"$\\~]'
 
 local function string_value(value, nonempty)
     return type(value) == "string"
@@ -34,7 +35,7 @@ local function invalid(code, message)
 end
 
 -- This is tmux program text, distinct from the outer process argv encoding below.
-function M.prepare_program(input)
+function M.prepare_program(input, compact)
     if not plain(input) then
         return invalid("invalid_program", "program must be a plain record")
     end
@@ -79,7 +80,11 @@ function M.prepare_program(input)
             if type(value) ~= "string" then
                 return invalid("invalid_program", "program arguments must be strings")
             end
-            bytes = bytes + 2 + #value * 4
+            local escaped = #value
+            if compact then
+                escaped = select(2, value:gsub(quoted_escapes, ""))
+            end
+            bytes = bytes + 2 + #value + escaped * 3
             if bytes > maximum_bytes then
                 return invalid("invalid_program", "encoded program exceeds one MiB")
             end
@@ -95,7 +100,7 @@ function M.prepare_program(input)
         local words = {}
         for argument, value in ipairs(argv) do
             words[argument] = '"'
-                .. value:gsub(".", function(byte)
+                .. value:gsub(compact and quoted_escapes or ".", function(byte)
                     return string.format("\\%03o", byte:byte())
                 end)
                 .. '"'

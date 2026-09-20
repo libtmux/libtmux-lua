@@ -121,7 +121,7 @@ def main():
             lines.append('  local created_pane = created.pane')
             complete('  created_pane:', {"split", "reference", "capture", "send_text", "send_keys",
                                         "copy_mode", "copy_command", "resize", "kill", "respawn",
-                                        "select", "set_title", "swap", "paste_buffer", "move_to"})
+                                        "select", "set_title", "swap", "paste_buffer", "move_to", "break_out"})
             lines.append('  local pane_capture_request = created_pane:capture({history_lines=20})')
             complete('  pane_capture_request:', {"await", "cancel", "result", "on_complete"})
             lines.append('  local pane_capture = assert(pane_capture_request:await())')

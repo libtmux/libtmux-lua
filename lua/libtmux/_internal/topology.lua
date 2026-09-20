@@ -49,6 +49,7 @@ local allowed = {
         select = true,
         target_link = true,
     },
+    break_out = { name = true, select = true },
     respawn = {
         context = true,
         kill = true,
@@ -79,7 +80,7 @@ local targets = {
         swap = "swap-window",
         unlink = "unlink-window",
     },
-    pane = { move_to = "join-pane" },
+    pane = { move_to = "join-pane", break_out = "break-pane" },
 }
 local layouts = {
     ["even-horizontal"] = 2,
@@ -135,7 +136,8 @@ local function link_target(ref)
 end
 
 local function program(argv)
-    local value, err = command.prepare_program({ commands = { argv } })
+    -- Escape expansion bytes while keeping nested guards within tmux's message limit.
+    local value, err = command.prepare_program({ commands = { argv } }, true)
     if not value then
         error(err, 0)
     end
@@ -176,7 +178,7 @@ local function guard(ref, argv, pane_id)
     }
 end
 
-local function prepare_link(state, ref, kind, input, options, inspect, invalid)
+local function prepare_link(state, ref, kind, input, options, inspect, invalid, pane_id)
     local function owned(value, expected)
         if not inspect then
             invalid("operation requires an owned destination", "invalid_target")
@@ -196,7 +198,7 @@ local function prepare_link(state, ref, kind, input, options, inspect, invalid)
         end
         return options[name] == true
     end
-    local argv = { targets.window_link[kind] }
+    local argv = { kind == "break_out" and "break-pane" or targets.window_link[kind] }
     local destination
     local function flag(name, value)
         argv[#argv + 1] = name
@@ -213,7 +215,7 @@ local function prepare_link(state, ref, kind, input, options, inspect, invalid)
             flag("-k")
         end
     else
-        flag("-s", link_target(ref))
+        flag("-s", link_target(ref) .. (pane_id and "." .. pane_id or ""))
         if kind == "swap" then
             destination = owned(input, "window_link")
             flag("-t", link_target(destination))
@@ -268,10 +270,43 @@ local function prepare_link(state, ref, kind, input, options, inspect, invalid)
             end
         end
     end
+    if kind == "break_out" then
+        if options.name then
+            flag("-n", options.name)
+        end
+        if state.version == "3.7" then
+            local multi = {}
+            for index, value in ipairs(argv) do
+                multi[index] = value
+            end
+            if not options.name then
+                multi[#multi + 1], multi[#multi + 2] = "-n", "libtmux-break-placeholder"
+            end
+            local commands = { multi }
+            if options.name then
+                commands[2] = { "rename-window", "-t", pane_id, (options.name:gsub("#", "##")) }
+            end
+            local encoded, err = command.prepare_program({ commands = commands }, true)
+            if not encoded then
+                error(err, 0)
+            end
+            -- Exact 3.7 inverts the multi-pane name test. A placeholder avoids
+            -- its NULL path; only a requested multi-pane name needs repair.
+            argv = {
+                "if-shell",
+                "-F",
+                "-t",
+                pane_id,
+                "#{==:#{window_panes},1}",
+                program(argv),
+                encoded,
+            }
+        end
+    end
     if destination then
         argv = guard(destination, argv)
     end
-    return guard(ref, argv)
+    return guard(ref, argv, pane_id)
 end
 
 local function prepare(state, ref, kind, input, options, inspect)
@@ -296,6 +331,7 @@ local function prepare(state, ref, kind, input, options, inspect)
         and kind ~= "rename"
         and kind ~= "navigate_window"
         and kind ~= "move_to"
+        and kind ~= "break_out"
         and input ~= nil
     then
         invalid("this topology operation does not take an input value", "invalid_argument")
@@ -326,6 +362,16 @@ local function prepare(state, ref, kind, input, options, inspect)
     end
     if ref.kind == "window_link" then
         argv = prepare_link(state, ref, kind, input, options, inspect, invalid)
+    elseif kind == "break_out" then
+        local context, err = inspect(state, input.source_link, "window_link")
+        if not context then
+            error(err, 0)
+        end
+        if options.name ~= nil then
+            bytes(options.name, 1024)
+        end
+        argv =
+            prepare_link(state, context, kind, input.destination, options, inspect, invalid, ref.id)
     elseif kind == "move_to" then
         local target, err = inspect(state, input, "pane")
         if not target then
@@ -523,6 +569,7 @@ local function prepare(state, ref, kind, input, options, inspect)
         bytes = cost,
         guarded = ref.kind == "window_link"
             or kind == "respawn"
+            or kind == "break_out"
             or kind == "move_to" and options.target_link ~= nil,
         cwd = options.cwd,
     }
@@ -684,5 +731,9 @@ end
 ---@field full_size? boolean Extend across the full window.
 ---@field select? boolean Defaults to false; true requires target_link.
 ---@field target_link? libtmux.Entity<libtmux.SnapshotWindowLink> Guarded target pane placement.
+
+---@class libtmux.BreakPaneOptions: libtmux.TopologyOptions
+---@field name? string Nonempty native Window name; omitted preserves native default naming.
+---@field select? boolean Defaults to false; source removal may force native selection.
 
 return M
