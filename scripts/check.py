@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import time
+from urllib.parse import unquote
 
 if __package__:
     from .runtime_config import clean_environment, executable_path, identify
@@ -57,13 +58,36 @@ def lua_environment(lua):
 def docs():
     files = [ROOT / "AGENTS.md", *ROOT.glob("README*.md"),
              *ROOT.glob(".github/*.md"), *ROOT.glob("docs/**/*.md")]
+    files = [path for path in files if "_build" not in path.parts]
+    anchors = {}
+
+    def markdown_anchors(path):
+        if path not in anchors:
+            counts = {}
+            found = set(re.findall(r'<a\s+(?:name|id)="([^"]+)"', path.read_text()))
+            for heading in re.findall(r"^#{1,6}\s+(.+?)\s*#*\s*$", path.read_text(), re.MULTILINE):
+                plain = re.sub(r"<[^>]+>|[`*_~]", "", heading).lower()
+                slug = re.sub(r"[^\w\- ]", "", plain)
+                slug = re.sub(r"\s+", "-", slug.strip())
+                duplicate = counts.get(slug, 0)
+                counts[slug] = duplicate + 1
+                found.add(f"{slug}-{duplicate}" if duplicate else slug)
+            anchors[path] = found
+        return anchors[path]
+
     for path in files:
         for target in re.findall(r"\]\(([^)]+)\)", path.read_text()):
             if target.startswith(("https:", "http:", "#", "mailto:")):
-                continue
-            destination = target.split("#", 1)[0]
-            if destination and not (path.parent / destination).exists():
+                destination = path if target.startswith("#") else None
+            else:
+                destination_name = target.split("#", 1)[0]
+                destination = path.parent / destination_name if destination_name else path
+            if destination and not destination.exists():
                 raise SystemExit(f"Broken link in {path.relative_to(ROOT)}: {target}")
+            if destination and destination.suffix == ".md" and "#" in target:
+                fragment = unquote(target.split("#", 1)[1])
+                if fragment and fragment not in markdown_anchors(destination):
+                    raise SystemExit(f"Broken anchor in {path.relative_to(ROOT)}: {target}")
     if not (ROOT / "CLAUDE.md").is_symlink() or os.readlink(ROOT / "CLAUDE.md") != "AGENTS.md":
         raise SystemExit("CLAUDE.md must remain a relative symlink to AGENTS.md")
     run(["git", "diff", "--check"], timeout=5)
@@ -116,6 +140,7 @@ def main():
             if not executable.exists():
                 raise SystemExit("Missing pinned LuaLS 3.19.1; see CONTRIBUTING.md")
             run([str(executable), "--check=.", "--checklevel=Warning", "--logpath=.cache/luals"], env=env)
+            run([sys.executable, "scripts/export-docs", "--luals", str(executable), "--check"], env=env)
             run([sys.executable, "scripts/check_editor.py"], env=env, timeout=20)
         elif gate == "mid":
             run([sys.executable, "-m", "unittest", "discover", "-s", "tests/tooling", "-v"], timeout=5)

@@ -1,5 +1,6 @@
 local runtime = require("libtmux._internal.runtime")
 local errors = require("libtmux._internal.error")
+---@class libtmux.runtime.luv
 local M = {}
 local running = false
 
