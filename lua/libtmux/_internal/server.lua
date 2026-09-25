@@ -601,30 +601,31 @@ end
 ---@field error? libtmux.Error
 
 ---@class libtmux.Server
----@field get_option fun(self:libtmux.Server,name:string,options?:libtmux.SettingOptions):
+---@field get_option fun(self:libtmux.Server,name:string,options?:libtmux.SettingGetOptions):
 --- libtmux.Request<libtmux.OptionRecord>
----@field list_options fun(self:libtmux.Server,options?:libtmux.SettingOptions):
+---@field list_options fun(self:libtmux.Server,options?:libtmux.SettingListOptions):
 --- libtmux.Request<libtmux.OptionRecord[]>
 ---@field set_option fun(self:libtmux.Server,name:string,value:libtmux.OptionInput,
---- options?:libtmux.SettingOptions):
+--- options?:libtmux.SettingSetOptions):
 --- libtmux.Request<boolean>
----@field unset_option fun(self:libtmux.Server,name:string,options?:libtmux.SettingOptions):
+---@field unset_option fun(self:libtmux.Server,name:string,options?:libtmux.SettingUnsetOptions):
 --- libtmux.Request<boolean>
----@field get_hook fun(self:libtmux.Server,name:string,options?:libtmux.SettingOptions):
+---@field get_hook fun(self:libtmux.Server,name:string,options?:libtmux.SettingGetOptions):
 --- libtmux.Request<libtmux.HookRecord>
----@field list_hooks fun(self:libtmux.Server,options?:libtmux.SettingOptions):
+---@field list_hooks fun(self:libtmux.Server,options?:libtmux.SettingListOptions):
 --- libtmux.Request<libtmux.HookRecord[]>
 ---@field set_hook fun(self:libtmux.Server,name:string,value:libtmux.HookProgram,
---- options?:libtmux.SettingOptions):
+--- options?:libtmux.SettingSetOptions):
 --- libtmux.Request<boolean>
----@field unset_hook fun(self:libtmux.Server,name:string,options?:libtmux.SettingOptions):
+---@field unset_hook fun(self:libtmux.Server,name:string,options?:libtmux.SettingUnsetOptions):
 --- libtmux.Request<boolean>
----@field get_environment fun(self:libtmux.Server,name:string,options?:libtmux.EnvironmentOptions):
+---@field get_environment fun(self:libtmux.Server,name:string,
+--- options?:libtmux.EnvironmentGetOptions):
 --- libtmux.Request<libtmux.EnvironmentRecord>
----@field list_environment fun(self:libtmux.Server,options?:libtmux.EnvironmentOptions):
+---@field list_environment fun(self:libtmux.Server,options?:libtmux.EnvironmentListOptions):
 --- libtmux.Request<libtmux.EnvironmentRecord[]>
 ---@field set_environment fun(self:libtmux.Server,name:string,value:string,
---- options?:libtmux.EnvironmentOptions):
+--- options?:libtmux.EnvironmentSetOptions):
 --- libtmux.Request<boolean>
 ---@field unset_environment fun(self:libtmux.Server,name:string,
 --- options?:libtmux.EnvironmentOptions):

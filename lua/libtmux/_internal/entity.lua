@@ -388,26 +388,28 @@ end
 --- Options and hooks, shared by sessions, windows and panes.
 --- Scopes are limited to the handle's own kind; global scopes belong to the Server.
 ---@class libtmux.Configurable<T>: libtmux.Entity<T>
----@field get_option fun(self:libtmux.Configurable<T>,name:string,options?:libtmux.SettingOptions):
+---@field get_option fun(self:libtmux.Configurable<T>,name:string,
+--- options?:libtmux.SettingGetOptions):
 --- libtmux.Request<libtmux.OptionRecord> Reads one option.
----@field list_options fun(self:libtmux.Configurable<T>,options?:libtmux.SettingOptions):
+---@field list_options fun(self:libtmux.Configurable<T>,options?:libtmux.SettingListOptions):
 --- libtmux.Request<libtmux.OptionRecord[]> Lists the options set at this scope.
 ---@field set_option fun(self:libtmux.Configurable<T>,name:string,value:libtmux.OptionInput,
---- options?:libtmux.SettingOptions):
+--- options?:libtmux.SettingSetOptions):
 --- libtmux.Request<boolean> Sets one option.
 ---@field unset_option fun(self:libtmux.Configurable<T>,name:string,
---- options?:libtmux.SettingOptions):
+--- options?:libtmux.SettingUnsetOptions):
 --- libtmux.Request<boolean> Unsets one option.
----@field get_hook fun(self:libtmux.Configurable<T>,name:string,options?:libtmux.SettingOptions):
+---@field get_hook fun(self:libtmux.Configurable<T>,name:string,options?:libtmux.SettingGetOptions):
 --- libtmux.Request<libtmux.HookRecord> Reads one hook.
----@field list_hooks fun(self:libtmux.Configurable<T>,options?:libtmux.SettingOptions):
+---@field list_hooks fun(self:libtmux.Configurable<T>,options?:libtmux.SettingListOptions):
 --- libtmux.Request<libtmux.HookRecord[]> Lists the hooks set at this scope.
 ---@field set_hook fun(self:libtmux.Configurable<T>,name:string,value:libtmux.HookProgram,
---- options?:libtmux.SettingOptions):
+--- options?:libtmux.SettingSetOptions):
 --- libtmux.Request<boolean> Sets one hook.
----@field unset_hook fun(self:libtmux.Configurable<T>,name:string,options?:libtmux.SettingOptions):
+---@field unset_hook fun(self:libtmux.Configurable<T>,name:string,
+--- options?:libtmux.SettingUnsetOptions):
 --- libtmux.Request<boolean> Unsets one hook.
----@field run_hook fun(self:libtmux.Configurable<T>,name:string,options?:libtmux.SettingOptions):
+---@field run_hook fun(self:libtmux.Configurable<T>,name:string,options?:libtmux.RunHookOptions):
 --- libtmux.Request<boolean> Runs one hook now.
 
 --- A tmux session.
@@ -425,12 +427,12 @@ end
 ---@field attach fun(self:libtmux.Session):libtmux.Request<boolean>
 --- Requires an interactive terminal capability; current adapters return unsupported_tty.
 ---@field get_environment fun(self:libtmux.Session,name:string,
---- options?:libtmux.EnvironmentOptions):
+--- options?:libtmux.EnvironmentGetOptions):
 --- libtmux.Request<libtmux.EnvironmentRecord> Reads one environment variable.
----@field list_environment fun(self:libtmux.Session,options?:libtmux.EnvironmentOptions):
+---@field list_environment fun(self:libtmux.Session,options?:libtmux.EnvironmentListOptions):
 --- libtmux.Request<libtmux.EnvironmentRecord[]> Lists this session's environment.
 ---@field set_environment fun(self:libtmux.Session,name:string,value:string,
---- options?:libtmux.EnvironmentOptions):
+--- options?:libtmux.EnvironmentSetOptions):
 --- libtmux.Request<boolean> Sets one environment variable.
 ---@field unset_environment fun(self:libtmux.Session,name:string,
 --- options?:libtmux.EnvironmentOptions):

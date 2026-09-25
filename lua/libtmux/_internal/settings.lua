@@ -651,11 +651,26 @@ end
 
 ---@alias libtmux.OptionInput string|number|boolean|libtmux.HookProgram|libtmux.OptionArrayInput
 
+--- What every option and hook operation accepts. Each operation's own class
+--- adds the fields it reads; anything else fails with `invalid_options`.
 ---@class libtmux.SettingOptions
 ---@field scope? 'server'|'session'|'window'|'pane'|'global_session'|'global_window'
+---@field process? libtmux.CreationProcessOptions
+
+---@class libtmux.SettingListOptions: libtmux.SettingOptions
 ---@field inherit? boolean Read fallback values; defaults to true.
+
+---@class libtmux.SettingGetOptions: libtmux.SettingListOptions
 ---@field index? integer Array slot; reads still inspect the whole array.
+
+---@class libtmux.SettingUnsetOptions: libtmux.SettingOptions
+---@field index? integer Array slot.
+
+---@class libtmux.SettingSetOptions: libtmux.SettingUnsetOptions
 ---@field append? boolean String concatenation or unindexed built-in hook append.
+
+--- Running a hook reads only its handle's own scope.
+---@class libtmux.RunHookOptions
 ---@field process? libtmux.CreationProcessOptions
 
 ---@class libtmux.OptionRecord
