@@ -479,10 +479,10 @@ end
 ---@field select? boolean Defaults to false.
 
 ---@class libtmux.Creation
----@field session libtmux.Entity<libtmux.SnapshotSession>
----@field window libtmux.Entity<libtmux.SnapshotWindow>
----@field pane libtmux.Entity<libtmux.SnapshotPane>
----@field window_link libtmux.Entity<libtmux.SnapshotWindowLink>
+---@field session libtmux.Session
+---@field window libtmux.Window
+---@field pane libtmux.Pane
+---@field window_link libtmux.WindowLink
 ---@field created string[] Names of newly created entities in this receipt.
 
 return M

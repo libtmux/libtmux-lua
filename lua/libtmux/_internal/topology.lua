@@ -704,9 +704,9 @@ end
 ---@field restore? boolean
 
 ---@class libtmux.LinkDestination
----@field session? libtmux.Entity<libtmux.SnapshotSession> Excludes link and position.
+---@field session? libtmux.Session Excludes link and position.
 ---@field index? integer Native free index if omitted; excludes link.
----@field link? libtmux.Entity<libtmux.SnapshotWindowLink> Guarded anchor or explicit victim.
+---@field link? libtmux.WindowLink Guarded anchor or explicit victim.
 ---@field position? "before"|"after"|"at" At requires replace=true.
 
 ---@class libtmux.SwapLinkOptions: libtmux.TopologyOptions
@@ -720,7 +720,7 @@ end
 ---@field kill_if_last? boolean Permit destruction if no links survive; defaults to false.
 
 ---@class libtmux.RespawnWindowOptions: libtmux.CreationOptions
----@field context libtmux.Entity<libtmux.SnapshotWindowLink> Required placement of this Window.
+---@field context libtmux.WindowLink Required placement of this Window.
 ---@field kill? boolean Permit replacing running pane processes; defaults to false.
 
 ---@class libtmux.MovePaneOptions: libtmux.TopologyOptions
@@ -730,7 +730,7 @@ end
 ---@field before? boolean Place before the target in native geometry.
 ---@field full_size? boolean Extend across the full window.
 ---@field select? boolean Defaults to false; true requires target_link.
----@field target_link? libtmux.Entity<libtmux.SnapshotWindowLink> Guarded target pane placement.
+---@field target_link? libtmux.WindowLink Guarded target pane placement.
 
 ---@class libtmux.BreakPaneOptions: libtmux.TopologyOptions
 ---@field name? string Nonempty native Window name; omitted preserves native default naming.

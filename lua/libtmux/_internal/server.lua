@@ -632,7 +632,7 @@ end
 ---@field remove_environment fun(self:libtmux.Server,name:string,
 --- options?:libtmux.EnvironmentOptions):
 --- libtmux.Request<boolean>
----@field observe fun(self:libtmux.Server,session:libtmux.Entity<libtmux.SnapshotSession>,
+---@field observe fun(self:libtmux.Server,session:libtmux.Session,
 --- options?:libtmux.ObservationOptions):libtmux.Request<libtmux.Observation>
 ---@field query fun(self:libtmux.Server,options?:libtmux.LiveQueryOptions):
 --- libtmux.Request<libtmux.LiveQueryResult<table>>
@@ -654,10 +654,21 @@ end
 ---@field detach_client fun(self:libtmux.Server,selector:libtmux.ClientSelector,
 --- options?:libtmux.ClientOptions):libtmux.Request<boolean>
 ---@field switch_client fun(self:libtmux.Server,selector:libtmux.ClientSelector,
---- session:libtmux.Entity<libtmux.SnapshotSession>,options?:libtmux.SwitchClientOptions):
+--- session:libtmux.Session,options?:libtmux.SwitchClientOptions):
 --- libtmux.Request<boolean>
----@field handle fun<T>(self:libtmux.Server, snapshot:libtmux.Snapshot,
---- record:T):libtmux.Entity<T>?, libtmux.Error?
+---@field handle (fun(self:libtmux.Server,snapshot:libtmux.Snapshot,
+--- record:libtmux.SnapshotSession):libtmux.Session?,libtmux.Error?)|(fun(
+--- self:libtmux.Server,snapshot:libtmux.Snapshot,
+--- record:libtmux.SnapshotWindow):libtmux.Window?,libtmux.Error?)|(fun(
+--- self:libtmux.Server,snapshot:libtmux.Snapshot,
+--- record:libtmux.SnapshotWindowLink):libtmux.WindowLink?,libtmux.Error?)|(fun(
+--- self:libtmux.Server,snapshot:libtmux.Snapshot,
+--- record:libtmux.SnapshotPane):libtmux.Pane?,libtmux.Error?)|(fun(
+--- self:libtmux.Server,snapshot:libtmux.Snapshot,
+--- record:libtmux.SnapshotClient):libtmux.Client?,libtmux.Error?)|(fun(
+--- self:libtmux.Server,snapshot:libtmux.Snapshot,
+--- record:libtmux.SnapshotBuffer):libtmux.Buffer?,libtmux.Error?)
+--- Binds a snapshot record to a live handle of its class.
 ---@field command fun(self:libtmux.Server, argv:string[],
 --- options?:libtmux.CommandOptions):libtmux.Request<libtmux.CommandResult>
 ---@field group fun(self:libtmux.Server, commands:string[][],

@@ -74,13 +74,13 @@ def main():
             'local link = {}',
             'link.',
         ]
-        checks = [(4, 9, {"where", "filter", "first", "one", "count"}),
-                  (7, 8, {"id", "active"}),
-                  (11, 5, {"id", "active", "current_path", "dead_status"}),
-                  (14, 5, {"session_id", "window_id", "index", "active"})]
+        checks = [(4, 9, {"where", "filter", "first", "one", "count"}, frozenset()),
+                  (7, 8, {"id", "active"}, frozenset()),
+                  (11, 5, {"id", "active", "current_path", "dead_status"}, frozenset()),
+                  (14, 5, {"session_id", "window_id", "index", "active"}, frozenset())]
 
-        def complete(line, required):
-            checks.append((len(lines), len(line), required))
+        def complete(line, required, forbidden=frozenset()):
+            checks.append((len(lines), len(line), required, forbidden))
             lines.append(line)
 
         for adapter, entry in (("luv", "run"), ("nvim", "start")):
@@ -99,11 +99,14 @@ def main():
             complete('  created.', {"session", "window", "pane", "window_link", "created"})
             lines.append('  local created_session = created.session')
             complete('  created_session:', {"new_window", "reference", "get_option", "set_hook", "run_hook", "get_environment",
-                                           "rename", "kill", "navigate_window", "renumber_windows"})
+                                           "rename", "kill", "navigate_window", "renumber_windows"},
+                     {"send_keys", "split", "capture", "layout", "unlink"})
             lines.append('  local created_window = created.window')
-            complete('  created_window:', {"rename", "kill", "resize", "layout", "respawn"})
+            complete('  created_window:', {"rename", "kill", "resize", "layout", "respawn"},
+                     {"new_window", "send_keys", "get_environment", "unlink"})
             lines.append('  local created_link = created.window_link')
-            complete('  created_link:', {"select", "link", "move", "swap", "unlink", "reference"})
+            complete('  created_link:', {"select", "link", "move", "swap", "unlink", "reference"},
+                     {"get_option", "rename", "kill", "send_keys"})
             lines.append('  local option_record = assert(created_session:get_option("mouse"):await())')
             complete('  option_record.', {"name", "present", "inherited", "value", "entries", "target"})
             lines.append('  local hook_record = assert(created_session:get_hook("session-renamed"):await())')
@@ -121,7 +124,8 @@ def main():
             lines.append('  local created_pane = created.pane')
             complete('  created_pane:', {"split", "reference", "capture", "send_text", "send_keys",
                                         "copy_mode", "copy_command", "resize", "kill", "respawn",
-                                        "select", "set_title", "swap", "paste_buffer", "move_to", "break_out"})
+                                        "select", "set_title", "swap", "paste_buffer", "move_to", "break_out"},
+                     {"new_window", "rename", "layout", "get_environment", "link"})
             lines.append('  local pane_capture_request = created_pane:capture({history_lines=20})')
             complete('  pane_capture_request:', {"await", "cancel", "result", "on_complete"})
             lines.append('  local pane_capture = assert(pane_capture_request:await())')
@@ -143,7 +147,8 @@ def main():
             lines.extend(('    local window = pane.window', '    if window then'))
             complete('      window.', {"id", "name", "panes", "window_links"})
             lines.extend(('    end', '    local handle = assert(server:handle(snapshot, pane))'))
-            complete('    handle:', {"snapshot", "reference"})
+            complete('    handle:', {"snapshot", "reference", "send_keys", "capture", "split"},
+                     {"new_window", "unlink", "get_environment"})
             lines.append('    local refreshed = assert(handle:snapshot():await())')
             complete('    refreshed.', {"id", "title", "window_id", "window"})
             lines.extend(('  end', '  local command = assert(server:command({"display-message", "-p", "ok"}):await())'))
@@ -161,7 +166,7 @@ def main():
         }})
         # LuaLS waits for workspace readiness on this request, unlike completion.
         request(2, "textDocument/documentSymbol", {"textDocument": {"uri": uri}})
-        for identity, (line, character, required) in enumerate(checks, start=3):
+        for identity, (line, character, required, forbidden) in enumerate(checks, start=3):
             result = request(identity, "textDocument/completion", {
                 "textDocument": {"uri": uri}, "position": {"line": line, "character": character},
             })
@@ -170,6 +175,9 @@ def main():
             if not required <= labels:
                 raise RuntimeError(f"missing chained completions at line {line + 1}: "
                                    f"{sorted(required - labels)}; got {sorted(labels)}")
+            if forbidden & labels:
+                raise RuntimeError(f"completions this handle kind rejects at line {line + 1}: "
+                                   f"{sorted(forbidden & labels)}")
         request(len(checks) + 3, "shutdown", None)
         send({"jsonrpc": "2.0", "method": "exit", "params": None})
         process.stdin.close()
