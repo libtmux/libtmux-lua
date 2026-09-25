@@ -382,11 +382,11 @@ end
 ---@field ready boolean
 
 ---@class libtmux.Observation
----@field watch_pane fun(self:libtmux.Observation,pane:libtmux.Entity<libtmux.SnapshotPane>,
+---@field watch_pane fun(self:libtmux.Observation,pane:libtmux.Pane,
 --- options?:libtmux.WatchOptions):libtmux.Request<libtmux.Watch>
 ---@field watch_notifications fun(self:libtmux.Observation,
 --- options?:libtmux.WatchOptions):libtmux.Request<libtmux.Watch>
----@field subscribe_format fun(self:libtmux.Observation,pane:libtmux.Entity<libtmux.SnapshotPane>,
+---@field subscribe_format fun(self:libtmux.Observation,pane:libtmux.Pane,
 --- fields:string[],options?:libtmux.WatchOptions):libtmux.Request<libtmux.Watch>
 ---@field coverage fun(self:libtmux.Observation):libtmux.ObservationCoverage?,libtmux.Error?
 ---@field close fun(self:libtmux.Observation):libtmux.Request<boolean>

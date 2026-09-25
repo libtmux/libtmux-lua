@@ -51,7 +51,10 @@ Refresh by calling `snapshot` again. It returns fresh records. Tables remain
 mutable, so do not edit them during traversal. Editing a record does not
 refresh the server, another snapshot or its private identity index.
 
-Create a handle with `server:handle(snapshot, record)`. It copies the record's
+Create a handle with `server:handle(snapshot, record)`. The record's kind picks
+the handle's class: a `SnapshotPane` gives a `libtmux.Pane`, a
+`SnapshotSession` a `libtmux.Session`, and so on, so LuaLS offers only the
+methods tmux accepts for that kind. It copies the record's
 private identity, so edits to exposed `id` or `ref` fields cannot redirect it.
 `handle:reference()` returns a separate reference table without I/O.
 `handle:snapshot():await()` explicitly captures fresh state and returns the

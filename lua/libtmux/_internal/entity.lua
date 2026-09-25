@@ -377,99 +377,136 @@ end
 ---@field window_id? string
 ---@field index? integer
 
+--- A handle to one tmux object, bound to the snapshot generation it came from.
+--- Every handle kind can report its reference and refresh its snapshot record;
+--- the concrete classes below add what tmux allows for that kind.
 ---@class libtmux.Entity<T>
----@field get_option fun(self:libtmux.Entity<T>,name:string,options?:libtmux.SettingOptions):
---- libtmux.Request<libtmux.OptionRecord>
----@field list_options fun(self:libtmux.Entity<T>,options?:libtmux.SettingOptions):
---- libtmux.Request<libtmux.OptionRecord[]>
----@field set_option fun(self:libtmux.Entity<T>,name:string,value:libtmux.OptionInput,
---- options?:libtmux.SettingOptions):
---- libtmux.Request<boolean>
----@field unset_option fun(self:libtmux.Entity<T>,name:string,options?:libtmux.SettingOptions):
---- libtmux.Request<boolean>
----@field get_hook fun(self:libtmux.Entity<T>,name:string,options?:libtmux.SettingOptions):
---- libtmux.Request<libtmux.HookRecord>
----@field list_hooks fun(self:libtmux.Entity<T>,options?:libtmux.SettingOptions):
---- libtmux.Request<libtmux.HookRecord[]>
----@field set_hook fun(self:libtmux.Entity<T>,name:string,value:libtmux.HookProgram,
---- options?:libtmux.SettingOptions):
---- libtmux.Request<boolean>
----@field unset_hook fun(self:libtmux.Entity<T>,name:string,options?:libtmux.SettingOptions):
---- libtmux.Request<boolean>
----@field run_hook fun(self:libtmux.Entity<T>,name:string,options?:libtmux.SettingOptions):
---- libtmux.Request<boolean>
----@field get_environment fun(self:libtmux.Entity<T>,name:string,
---- options?:libtmux.EnvironmentOptions):
---- libtmux.Request<libtmux.EnvironmentRecord>
----@field list_environment fun(self:libtmux.Entity<T>,options?:libtmux.EnvironmentOptions):
---- libtmux.Request<libtmux.EnvironmentRecord[]>
----@field set_environment fun(self:libtmux.Entity<T>,name:string,value:string,
---- options?:libtmux.EnvironmentOptions):
---- libtmux.Request<boolean>
----@field unset_environment fun(self:libtmux.Entity<T>,name:string,
---- options?:libtmux.EnvironmentOptions):
---- libtmux.Request<boolean>
----@field remove_environment fun(self:libtmux.Entity<T>,name:string,
---- options?:libtmux.EnvironmentOptions):
---- libtmux.Request<boolean>
 ---@field reference fun(self:libtmux.Entity<T>):libtmux.Reference?, libtmux.Error?
----@field attach fun(self:libtmux.Entity<T>):libtmux.Request<boolean>
+--- Resolves the handle's current identity without sending a command.
+---@field snapshot fun(self:libtmux.Entity<T>):libtmux.Request<T> Re-reads this object's record.
+
+--- Options and hooks, shared by sessions, windows and panes.
+--- Scopes are limited to the handle's own kind; global scopes belong to the Server.
+---@class libtmux.Configurable<T>: libtmux.Entity<T>
+---@field get_option fun(self:libtmux.Configurable<T>,name:string,options?:libtmux.SettingOptions):
+--- libtmux.Request<libtmux.OptionRecord> Reads one option.
+---@field list_options fun(self:libtmux.Configurable<T>,options?:libtmux.SettingOptions):
+--- libtmux.Request<libtmux.OptionRecord[]> Lists the options set at this scope.
+---@field set_option fun(self:libtmux.Configurable<T>,name:string,value:libtmux.OptionInput,
+--- options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean> Sets one option.
+---@field unset_option fun(self:libtmux.Configurable<T>,name:string,
+--- options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean> Unsets one option.
+---@field get_hook fun(self:libtmux.Configurable<T>,name:string,options?:libtmux.SettingOptions):
+--- libtmux.Request<libtmux.HookRecord> Reads one hook.
+---@field list_hooks fun(self:libtmux.Configurable<T>,options?:libtmux.SettingOptions):
+--- libtmux.Request<libtmux.HookRecord[]> Lists the hooks set at this scope.
+---@field set_hook fun(self:libtmux.Configurable<T>,name:string,value:libtmux.HookProgram,
+--- options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean> Sets one hook.
+---@field unset_hook fun(self:libtmux.Configurable<T>,name:string,options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean> Unsets one hook.
+---@field run_hook fun(self:libtmux.Configurable<T>,name:string,options?:libtmux.SettingOptions):
+--- libtmux.Request<boolean> Runs one hook now.
+
+--- A tmux session.
+---@class libtmux.Session: libtmux.Configurable<libtmux.SnapshotSession>
+---@field new_window fun(self:libtmux.Session,options?:libtmux.NewWindowOptions):
+--- libtmux.Request<libtmux.Creation> Creates a window in this session.
+---@field rename fun(self:libtmux.Session,name:string,options?:libtmux.TopologyOptions):
+--- libtmux.Request<boolean> Renames this session.
+---@field kill fun(self:libtmux.Session,options?:libtmux.TopologyOptions):
+--- libtmux.Request<boolean> Kills this session.
+---@field navigate_window fun(self:libtmux.Session,direction:"next"|"previous"|"last",
+--- options?:libtmux.NavigateWindowOptions):libtmux.Request<boolean> Selects another window.
+---@field renumber_windows fun(self:libtmux.Session,options?:libtmux.TopologyOptions):
+--- libtmux.Request<boolean> Closes gaps in window indexes.
+---@field attach fun(self:libtmux.Session):libtmux.Request<boolean>
 --- Requires an interactive terminal capability; current adapters return unsupported_tty.
----@field snapshot fun(self:libtmux.Entity<T>):libtmux.Request<T>
----@field new_window fun(self:libtmux.Entity<T>,options?:libtmux.NewWindowOptions):
---- libtmux.Request<libtmux.Creation>
----@field split fun(self:libtmux.Entity<T>,options?:libtmux.SplitOptions):
---- libtmux.Request<libtmux.Creation>
----@field capture fun(self:libtmux.Entity<T>,options?:libtmux.CaptureOptions):
---- libtmux.Request<libtmux.Capture>
----@field clear_history fun(self:libtmux.Entity<T>,options?:libtmux.ClearHistoryOptions):
+---@field get_environment fun(self:libtmux.Session,name:string,
+--- options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<libtmux.EnvironmentRecord> Reads one environment variable.
+---@field list_environment fun(self:libtmux.Session,options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<libtmux.EnvironmentRecord[]> Lists this session's environment.
+---@field set_environment fun(self:libtmux.Session,name:string,value:string,
+--- options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<boolean> Sets one environment variable.
+---@field unset_environment fun(self:libtmux.Session,name:string,
+--- options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<boolean> Marks one variable as removed from new processes.
+---@field remove_environment fun(self:libtmux.Session,name:string,
+--- options?:libtmux.EnvironmentOptions):
+--- libtmux.Request<boolean> Deletes one variable from this session's environment.
+
+--- A tmux window. Placement in a session belongs to its window links.
+---@class libtmux.Window: libtmux.Configurable<libtmux.SnapshotWindow>
+---@field rename fun(self:libtmux.Window,name:string,options?:libtmux.TopologyOptions):
+--- libtmux.Request<boolean> Renames this window.
+---@field kill fun(self:libtmux.Window,options?:libtmux.TopologyOptions):
+--- libtmux.Request<boolean> Kills this window in every session that links it.
+---@field resize fun(self:libtmux.Window,options:libtmux.ResizeWindowOptions):
+--- libtmux.Request<boolean> Resizes this window.
+---@field layout fun(self:libtmux.Window,options:libtmux.LayoutOptions):
+--- libtmux.Request<boolean> Applies a layout to this window's panes.
+---@field respawn fun(self:libtmux.Window,options:libtmux.RespawnWindowOptions):
+--- libtmux.Request<boolean> Restarts this window's command; needs a context link.
+
+--- One placement of a window in a session: a window can be linked into several.
+---@class libtmux.WindowLink: libtmux.Entity<libtmux.SnapshotWindowLink>
+---@field select fun(self:libtmux.WindowLink,options?:libtmux.TopologyOptions):
+--- libtmux.Request<boolean> Makes this the session's current window.
+---@field swap fun(self:libtmux.WindowLink,other:libtmux.WindowLink,
+--- options?:libtmux.SwapLinkOptions):libtmux.Request<boolean> Exchanges two placements.
+---@field link fun(self:libtmux.WindowLink,destination:libtmux.LinkDestination,
+--- options?:libtmux.LinkOptions):libtmux.Request<boolean> Links this window somewhere else too.
+---@field move fun(self:libtmux.WindowLink,destination:libtmux.LinkDestination,
+--- options?:libtmux.LinkOptions):libtmux.Request<boolean> Moves this placement.
+---@field unlink fun(self:libtmux.WindowLink,options?:libtmux.UnlinkOptions):
+--- libtmux.Request<boolean> Removes this placement.
+
+--- A tmux pane.
+---@class libtmux.Pane: libtmux.Configurable<libtmux.SnapshotPane>
+---@field send_keys fun(self:libtmux.Pane,keys:string[],options?:libtmux.KeyOptions):
+--- libtmux.Request<boolean> Sends key names, as tmux's send-keys reads them.
+---@field send_text fun(self:libtmux.Pane,text:string,options?:libtmux.PaneOptions):
+--- libtmux.Request<boolean> Sends literal text.
+---@field capture fun(self:libtmux.Pane,options?:libtmux.CaptureOptions):
+--- libtmux.Request<libtmux.Capture> Captures the screen, and history on request.
+---@field split fun(self:libtmux.Pane,options?:libtmux.SplitOptions):
+--- libtmux.Request<libtmux.Creation> Splits this pane.
+---@field kill fun(self:libtmux.Pane,options?:libtmux.PaneOptions):
+--- libtmux.Request<boolean> Kills this pane.
+---@field select fun(self:libtmux.Pane,options?:libtmux.SelectPaneOptions):
+--- libtmux.Request<boolean> Makes this the window's active pane.
+---@field resize fun(self:libtmux.Pane,options:libtmux.ResizePaneOptions):
+--- libtmux.Request<boolean> Resizes this pane.
+---@field respawn fun(self:libtmux.Pane,options?:libtmux.RespawnOptions):
+--- libtmux.Request<boolean> Restarts this pane's command.
+---@field set_title fun(self:libtmux.Pane,text:string,options?:libtmux.PaneOptions):
+--- libtmux.Request<boolean> Sets the pane title.
+---@field clear_history fun(self:libtmux.Pane,options?:libtmux.ClearHistoryOptions):
 --- libtmux.Request<boolean> Clears history and exits pane modes.
----@field capture_to_buffer fun(self:libtmux.Entity<T>,name:string,options?:libtmux.CaptureOptions):
+---@field capture_to_buffer fun(self:libtmux.Pane,name:string,options?:libtmux.CaptureOptions):
 --- libtmux.Request<boolean> Stores native bytes; empty capture leaves the buffer unchanged.
----@field send_text fun(self:libtmux.Entity<T>,text:string,options?:libtmux.PaneOptions):
---- libtmux.Request<boolean>
----@field send_keys fun(self:libtmux.Entity<T>,keys:string[],options?:libtmux.KeyOptions):
---- libtmux.Request<boolean>
----@field copy_mode fun(self:libtmux.Entity<T>,options?:libtmux.CopyModeOptions):
---- libtmux.Request<boolean>
----@field copy_command fun(self:libtmux.Entity<T>,action:string,
---- args?:string[],options?:libtmux.KeyOptions):libtmux.Request<boolean>
----@field resize fun(self:libtmux.Entity<T>,
---- options:libtmux.ResizePaneOptions|libtmux.ResizeWindowOptions):
---- libtmux.Request<boolean>
----@field kill fun(self:libtmux.Entity<T>,options?:libtmux.PaneOptions):
---- libtmux.Request<boolean>
----@field respawn fun(self:libtmux.Entity<T>,
---- options?:libtmux.RespawnOptions|libtmux.RespawnWindowOptions):
---- libtmux.Request<boolean>
----@field select fun(self:libtmux.Entity<T>,
---- options?:libtmux.SelectPaneOptions|libtmux.TopologyOptions):
---- libtmux.Request<boolean>
----@field set_title fun(self:libtmux.Entity<T>,text:string,options?:libtmux.PaneOptions):
---- libtmux.Request<boolean>
----@field swap fun(self:libtmux.Entity<T>,
---- other:libtmux.Entity<libtmux.SnapshotPane>|libtmux.Entity<libtmux.SnapshotWindowLink>,
---- options?:libtmux.SwapPaneOptions|libtmux.SwapLinkOptions):libtmux.Request<boolean>
----@field link fun(self:libtmux.Entity<T>,destination:libtmux.LinkDestination,
---- options?:libtmux.LinkOptions):libtmux.Request<boolean>
----@field move fun(self:libtmux.Entity<T>,destination:libtmux.LinkDestination,
---- options?:libtmux.LinkOptions):libtmux.Request<boolean>
----@field unlink fun(self:libtmux.Entity<T>,options?:libtmux.UnlinkOptions):
---- libtmux.Request<boolean>
----@field move_to fun(self:libtmux.Entity<T>,other:libtmux.Entity<libtmux.SnapshotPane>,
---- options?:libtmux.MovePaneOptions):libtmux.Request<boolean>
----@field break_out fun(self:libtmux.Entity<T>,
---- source_link:libtmux.Entity<libtmux.SnapshotWindowLink>,
---- destination:libtmux.LinkDestination,options?:libtmux.BreakPaneOptions):libtmux.Request<boolean>
----@field rename fun(self:libtmux.Entity<T>,name:string,options?:libtmux.TopologyOptions):
---- libtmux.Request<boolean>
----@field navigate_window fun(self:libtmux.Entity<T>,direction:"next"|"previous"|"last",
---- options?:libtmux.NavigateWindowOptions):libtmux.Request<boolean>
----@field renumber_windows fun(self:libtmux.Entity<T>,options?:libtmux.TopologyOptions):
---- libtmux.Request<boolean>
----@field layout fun(self:libtmux.Entity<T>,options:libtmux.LayoutOptions):
---- libtmux.Request<boolean>
----@field paste_buffer fun(self:libtmux.Entity<T>,name:string,options?:libtmux.PasteBufferOptions):
---- libtmux.Request<boolean>
+---@field paste_buffer fun(self:libtmux.Pane,name:string,options?:libtmux.PasteBufferOptions):
+--- libtmux.Request<boolean> Pastes a named buffer into this pane.
+---@field copy_mode fun(self:libtmux.Pane,options?:libtmux.CopyModeOptions):
+--- libtmux.Request<boolean> Enters copy mode.
+---@field copy_command fun(self:libtmux.Pane,action:string,
+--- args?:string[],options?:libtmux.KeyOptions):libtmux.Request<boolean> Runs a copy-mode command.
+---@field swap fun(self:libtmux.Pane,other:libtmux.Pane,options?:libtmux.SwapPaneOptions):
+--- libtmux.Request<boolean> Exchanges two panes.
+---@field move_to fun(self:libtmux.Pane,other:libtmux.Pane,options?:libtmux.MovePaneOptions):
+--- libtmux.Request<boolean> Joins this pane beside another.
+---@field break_out fun(self:libtmux.Pane,source_link:libtmux.WindowLink,
+--- destination:libtmux.LinkDestination,options?:libtmux.BreakPaneOptions):
+--- libtmux.Request<boolean> Moves this pane into a window of its own.
+
+--- A client attached to the server.
+---@class libtmux.Client: libtmux.Entity<libtmux.SnapshotClient>
+
+--- A paste buffer. Buffer contents are read and written through the Server.
+---@class libtmux.Buffer: libtmux.Entity<libtmux.SnapshotBuffer>
 
 return M
