@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import re
 import unittest
 
 
@@ -27,6 +28,13 @@ class DocsExportTest(unittest.TestCase):
         self.assertIn('parser.add_argument("--source"', source)
         self.assertIn("shutil.copytree(SOURCE / \"lua\"", source)
         self.assertIn("if marker not in text", source)
+
+    def test_every_handle_class_is_a_required_export(self):
+        entity = (ROOT / "lua/libtmux/_internal/entity.lua").read_text()
+        classes = re.findall(r"^---@class (libtmux\.\w+)", entity, re.MULTILINE)
+        self.assertIn("libtmux.Session", classes)
+        exporter = (ROOT / "scripts/export-docs").read_text()
+        self.assertEqual([name for name in classes if f'"{name}"' not in exporter], [])
 
     def test_committed_product_scaffolds_are_not_export_inputs(self):
         exporter = ROOT / "scripts/export-docs"

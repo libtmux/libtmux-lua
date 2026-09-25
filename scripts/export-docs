@@ -22,8 +22,10 @@ EXPECTED_MODULES = {
     "libtmux.runtime.nvim": {"start"},
 }
 EXPECTED_TYPES = {
-    "libtmux.Entity", "libtmux.Request", "libtmux.Runtime", "libtmux.Selection",
-    "libtmux.Server", "libtmux.Snapshot",
+    "libtmux.Buffer", "libtmux.Client", "libtmux.Configurable", "libtmux.Entity",
+    "libtmux.Pane", "libtmux.Reference", "libtmux.Request", "libtmux.Runtime", "libtmux.Selection",
+    "libtmux.Server", "libtmux.Session", "libtmux.Snapshot", "libtmux.Window",
+    "libtmux.WindowLink",
 }
 
 
