@@ -434,11 +434,18 @@ end
 ---@field inherited boolean True only for a global fallback requested through a session.
 ---@field target? libtmux.Reference Session storage identity; omitted for global storage.
 
+--- What every environment operation accepts; unset and remove take no more.
 ---@class libtmux.EnvironmentOptions
 ---@field scope? "global"|"session" Must match the receiving handle.
 ---@field process? libtmux.CreationProcessOptions
----@field inherit? boolean Reads only; session fallback to global, default false.
----@field include_hidden? boolean Lists only; default true.
----@field hidden? boolean Set only; default false.
+
+---@class libtmux.EnvironmentGetOptions: libtmux.EnvironmentOptions
+---@field inherit? boolean Session fallback to global; default false.
+
+---@class libtmux.EnvironmentListOptions: libtmux.EnvironmentGetOptions
+---@field include_hidden? boolean Default true.
+
+---@class libtmux.EnvironmentSetOptions: libtmux.EnvironmentOptions
+---@field hidden? boolean Default false.
 
 return M
