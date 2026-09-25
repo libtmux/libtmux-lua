@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0alpha2-1
+
 - Types: declare `libtmux.Session`, `Window`, `WindowLink`, `Pane`, `Client`
   and `Buffer` handle classes. Each lists only the methods tmux accepts for
   that kind; `Server:handle` returns the class that matches the record.
