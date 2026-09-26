@@ -23,10 +23,13 @@ local result = must(adapter.run(function(runtime)
     local split =
         must(logs.pane:split({ direction = "right", percent = 40, argv = { "/bin/cat" } }):await())
 
+    -- The pane signals through the same tmux binary; a bare `tmux` there may be
+    -- another build that cannot reach this server.
     local marker = "libtmux-lua-quickstart"
-    must(created.pane:send_text("printf 'libtmux ready\\n'; tmux wait-for -S " .. marker):await())
+    local signal = ("printf 'libtmux ready\\n'; '%s' wait-for -S %s"):format(binary, marker)
+    must(created.pane:send_text(signal):await())
     must(created.pane:send_keys({ "Enter" }):await())
-    must(server:command({ "wait-for", marker }):await())
+    must(server:command({ "wait-for", marker }, { timeout = 10000 }):await())
 
     local capture = must(created.pane:capture({ history_lines = 20 }):await())
     assert(must(capture:text()):find("libtmux ready", 1, true), "pane output was not captured")
