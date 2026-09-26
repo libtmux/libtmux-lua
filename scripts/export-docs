@@ -1,0 +1,224 @@
+#!/usr/bin/env python3
+"""Export the public LuaLS model, source guides, and examples as deterministic JSON."""
+
+import argparse
+import json
+import os
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import tempfile
+
+
+ROOT = Path(__file__).resolve().parent.parent
+SOURCE = ROOT
+EXPECTED_MODULES = {
+    "libtmux.query": {
+        "NULL", "compile", "count", "decode_json", "encode_json", "exists", "filter",
+        "first", "iter", "one", "one_or_nil", "select", "to_table", "where",
+    },
+    "libtmux.runtime.luv": {"run"},
+    "libtmux.runtime.nvim": {"start"},
+}
+EXPECTED_TYPES = {
+    "libtmux.Buffer", "libtmux.Client", "libtmux.Configurable", "libtmux.Entity",
+    "libtmux.Pane", "libtmux.Reference", "libtmux.Request", "libtmux.Runtime", "libtmux.Selection",
+    "libtmux.Server", "libtmux.Session", "libtmux.Snapshot", "libtmux.Window",
+    "libtmux.WindowLink",
+}
+
+
+class ExportError(RuntimeError):
+    pass
+
+
+def source_revision():
+    result = subprocess.run(
+        ["git", "rev-parse", "HEAD"], cwd=SOURCE, check=True, capture_output=True, text=True,
+    )
+    revision = result.stdout.strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", revision):
+        raise ExportError("could not resolve source revision")
+    return revision
+
+
+def tool_version(executable):
+    result = subprocess.run([str(executable), "--version"], check=True, capture_output=True, text=True)
+    match = re.search(r"\d+\.\d+\.\d+", result.stdout + result.stderr)
+    if not match:
+        raise ExportError("could not resolve LuaLS version")
+    return match.group(0)
+
+
+def normalize(value, key=None):
+    if isinstance(value, dict):
+        result = {}
+        for child_key, child in value.items():
+            if child_key == "DOC":
+                continue
+            result[child_key] = normalize(child, child_key)
+        if isinstance(result.get("file"), str):
+            result["file"] = "lua/" + result["file"].removeprefix("lua/")
+        return result
+    if isinstance(value, list):
+        if key in {"start", "finish"} and len(value) == 2 and all(isinstance(item, int) for item in value):
+            return [value[0] + 1, value[1]]
+        return [normalize(item) for item in value]
+    return value
+
+
+def declaration_sort_key(item):
+    return (
+        item.get("name", ""), item.get("type", ""), item.get("file", ""),
+        item.get("start", [0, 0])[0],
+    )
+
+
+def public_declarations(raw):
+    declarations = []
+    for entry in raw:
+        name = entry.get("name", "")
+        if not name.startswith("libtmux."):
+            continue
+        item = normalize(entry)
+        item["fields"] = sorted(
+            (field for field in item.get("fields", []) if not field.get("name", "").startswith("_")),
+            key=declaration_sort_key,
+        )
+        item["defines"] = sorted(item.get("defines", []), key=declaration_sort_key)
+        declarations.append(item)
+    return sorted(declarations, key=lambda item: item["name"])
+
+
+def rock_metadata():
+    rockspecs = sorted((SOURCE / "rockspecs").glob("libtmux-*.rockspec"))
+    if not rockspecs:
+        raise ExportError("could not find libtmux rockspec")
+    release = next((path for path in rockspecs if "-scm-" not in path.name), rockspecs[-1])
+    rockspec = release.read_text()
+    version = re.search(r'^version = "([^"]+)"', rockspec, re.MULTILINE)
+    tag = re.search(r'^\s+tag = "([^"]+)"', rockspec, re.MULTILINE)
+    if not version or not tag:
+        raise ExportError("could not read rock version and source tag")
+    return {"name": "libtmux", "version": version.group(1), "source_tag": tag.group(1)}
+
+
+def content_files(patterns):
+    paths = sorted({path for pattern in patterns for path in SOURCE.glob(pattern) if path.is_file()})
+    return [{"path": path.relative_to(SOURCE).as_posix(), "content": path.read_text()} for path in paths]
+
+
+def validate(payload):
+    declarations = {entry["name"]: entry for entry in payload["declarations"]}
+    missing = EXPECTED_TYPES - declarations.keys()
+    if missing:
+        raise ExportError(f"missing public types: {', '.join(sorted(missing))}")
+    for module, expected in EXPECTED_MODULES.items():
+        entry = declarations.get(module)
+        if not entry:
+            raise ExportError(f"missing public module: {module}")
+        actual = {field["name"] for field in entry.get("fields", [])}
+        if actual != expected:
+            raise ExportError(
+                f"public module coverage differs for {module}: "
+                f"missing={sorted(expected - actual)} extra={sorted(actual - expected)}"
+            )
+    for entry in payload["declarations"]:
+        for node in [*entry.get("defines", []), *entry.get("fields", [])]:
+            path = node.get("file")
+            if path and (not path.startswith("lua/") or "/tests/" in path):
+                raise ExportError(f"invalid declaration source: {path}")
+            if node.get("name", "").startswith("_"):
+                raise ExportError(f"private helper exported: {entry['name']}.{node['name']}")
+    text = json.dumps(payload, sort_keys=True)
+    if re.search(r"/(?:home|Users)/", text):
+        raise ExportError("machine-specific path in export")
+    if "luals.config" in text or "package.loaded" in text:
+        raise ExportError("tool configuration leaked into export")
+
+
+def build_payload(luals):
+    with tempfile.TemporaryDirectory(prefix="libtmux-lua-docs-") as temporary:
+        temporary = Path(temporary)
+        output = temporary / "output"
+        log = temporary / "log"
+        annotated = temporary / "source"
+        shutil.copytree(SOURCE / "lua", annotated / "lua")
+        for relative, module in {
+            "libtmux/query.lua": "libtmux.query",
+            "libtmux/runtime/luv.lua": "libtmux.runtime.luv",
+            "libtmux/runtime/nvim.lua": "libtmux.runtime.nvim",
+        }.items():
+            path = annotated / "lua" / relative
+            text = path.read_text()
+            marker = f"---@class {module}"
+            if marker not in text:
+                text, count = re.subn(r"^(local M = \{\})$", f"{marker}\\n\\1", text, count=1, flags=re.MULTILINE)
+                if count != 1:
+                    raise ExportError(f"could not annotate public module {module}")
+                path.write_text(text)
+        output.mkdir()
+        log.mkdir()
+        command = [
+            str(luals), f"--doc={annotated / 'lua'}", f"--doc_out_path={output}",
+            f"--configpath={ROOT / '.luarc.json'}", f"--logpath={log}",
+        ]
+        result = subprocess.run(command, cwd=SOURCE, capture_output=True, text=True)
+        if result.returncode:
+            raise ExportError(f"LuaLS export failed: {result.stdout}{result.stderr}")
+        raw = json.loads((output / "doc.json").read_text())
+
+    payload = {
+        "schema": 1,
+        "port": "lua",
+        "source": {"repository": "libtmux/libtmux-lua", "revision": source_revision()},
+        "exporter": {"name": "scripts/export-docs", "version": 1, "luals": tool_version(luals)},
+        "package": rock_metadata(),
+        "declarations": public_declarations(raw),
+        "guides": content_files(["README.md", "docs/**/*.md"]),
+        "examples": content_files(["examples/**/*.lua"]),
+    }
+    validate(payload)
+    return payload
+
+
+def write_bundle(output, name, files):
+    directory = output / name
+    shutil.rmtree(directory, ignore_errors=True)
+    for entry in files:
+        target = directory / entry["path"]
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(entry["content"])
+
+
+def main():
+    global SOURCE
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--source", type=Path, default=ROOT)
+    parser.add_argument("--luals", type=Path, default=ROOT / ".cache/tools/luals-3.19.1/bin/lua-language-server")
+    parser.add_argument("--output", type=Path, default=ROOT / "docs/_build")
+    parser.add_argument("--check", action="store_true")
+    args = parser.parse_args()
+    SOURCE = args.source.resolve()
+    if not (SOURCE / "lua/libtmux/init.lua").is_file():
+        raise SystemExit(f"Invalid source checkout: {SOURCE}")
+    if not args.luals.is_file():
+        raise SystemExit("Missing pinned LuaLS 3.19.1; see CONTRIBUTING.md")
+    try:
+        payload = build_payload(args.luals)
+        if not args.check:
+            args.output.mkdir(parents=True, exist_ok=True)
+            (args.output / "api.json").write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+            write_bundle(args.output, "guides", payload["guides"])
+            write_bundle(args.output, "examples", payload["examples"])
+        print(
+            f"Documentation export: {len(payload['declarations'])} declarations; "
+            f"{sum(len(item.get('fields', [])) for item in payload['declarations'])} fields"
+        )
+    except (ExportError, OSError, subprocess.SubprocessError, json.JSONDecodeError) as error:
+        raise SystemExit(str(error)) from error
+
+
+if __name__ == "__main__":
+    main()

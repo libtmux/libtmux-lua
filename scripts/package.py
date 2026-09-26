@@ -7,6 +7,7 @@ import io
 import json
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -129,8 +130,13 @@ def live_example(prefix, version, *, lua, cwd, env):
             raise RuntimeError("installed snapshot example returned unexpected output")
         if list(fixture.path.glob("libtmux-lua-pin-*")):
             raise RuntimeError("installed snapshot example leaked its socket alias")
+        quickstart = run([lua, "quickstart.lua"], cwd=cwd, env=child_env)
+        if not re.fullmatch(r"\$\d+\t@\d+\t%\d+\n", quickstart):
+            raise RuntimeError(f"installed quickstart returned unexpected output: {quickstart!r}")
+        if fixture.run("has-session", "-t", "quickstart", check=False).returncode == 0:
+            raise RuntimeError("installed quickstart left its session running")
         fixture.run("has-session", "-t", "$0")
-    print("PASS installed public snapshot example and borrowed-server cleanup", flush=True)
+    print("PASS installed public snapshot/quickstart examples and borrowed-server cleanup", flush=True)
 
 
 def source_rock(spec, work, env, *, rocks, public_tag):
@@ -285,6 +291,7 @@ def main():
         shutil.copyfile(ROOT / "tests/unit/imports.lua", work / "imports.lua")
         shutil.copyfile(ROOT / "examples/native_query.lua", work / "native_query.lua")
         shutil.copyfile(ROOT / "examples/snapshot.lua", work / "snapshot.lua")
+        shutil.copyfile(ROOT / "examples/quickstart.lua", work / "quickstart.lua")
         artifacts = work / "artifacts"
         artifacts.mkdir()
         dependency_rocks = {}
