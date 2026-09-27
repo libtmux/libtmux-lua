@@ -1,3 +1,12 @@
+<!-- libtmux-logo -->
+<p align="center">
+  <picture>
+    <source srcset="assets/logo.svg" type="image/svg+xml">
+    <img src="assets/logo.png" width="128" height="128" alt="libtmux for Lua">
+  </picture>
+</p>
+<!-- /libtmux-logo -->
+
 # libtmux for Lua
 
 Script tmux from Lua: create sessions and panes, capture terminal output,
