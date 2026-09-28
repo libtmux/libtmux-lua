@@ -7,11 +7,15 @@
 </p>
 <!-- /libtmux-logo -->
 
+<div align="center">
+
 # libtmux for Lua
 
 Script tmux from Lua: create sessions and panes, capture terminal output,
 query server state, and watch pane output. Use standalone Lua with luv or
 Neovim's event loop.
+
+</div>
 
 **Alpha software.** The core API is still changing. The separate MCP and
 workspace packages are unpublished scaffolds.
