@@ -95,7 +95,11 @@ end
 -- luacheck: pop
 
 function tests.test_core_and_query_import_without_effects()
-    pure_imports({ "libtmux", "libtmux.query", "libtmux.runtime.luv", "libtmux.runtime.nvim" })
+    pure_imports({ "libtmux", "libtmux.query", "libtmux.runtime.nvim" })
+end
+
+function tests.test_luv_import_without_effects()
+    pure_imports({ "libtmux.runtime.luv" })
 end
 
 function tests.test_mcp_import_without_effects()

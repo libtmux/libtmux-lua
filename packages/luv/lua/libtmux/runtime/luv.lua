@@ -1,110 +1,10 @@
 local runtime = require("libtmux._internal.runtime")
+local driver_module = require("libtmux._internal.driver")
 local errors = require("libtmux._internal.error")
 local M = {}
 local running = false
 
--- The driver owns its timers and dispatches; uv itself always remains borrowed.
-function M._driver(uv, schedule)
-    local driver = { uv = uv, pending = 0 }
-    local idle = {}
-    local function notify_idle()
-        if driver.pending == 0 and #idle > 0 then
-            local callbacks = idle
-            idle = {}
-            for _, callback in ipairs(callbacks) do
-                driver.defer(callback)
-            end
-        end
-    end
-    local function deliver(fn)
-        if schedule then
-            driver.pending = driver.pending + 1
-            local ok, err = pcall(schedule, function()
-                driver.pending = driver.pending - 1
-                fn()
-                notify_idle()
-            end)
-            if not ok then
-                driver.pending = driver.pending - 1
-                error(errors.wrap(err, "host_error"), 0)
-            end
-        else
-            fn()
-            notify_idle()
-        end
-    end
-    function driver.now()
-        return uv.hrtime() / 1000000
-    end
-    function driver.timer(delay, fn)
-        if
-            type(delay) ~= "number"
-            or delay ~= delay
-            or delay < 0
-            or delay > runtime.MAX_TIMER_DELAY
-        then
-            error(errors.new("invalid_timer", "timer delay exceeds the portable host limit"), 2)
-        end
-        local created, handle, cause = pcall(uv.new_timer)
-        if not created or not handle then
-            error(errors.wrap(created and cause or handle, "host_error"), 2)
-        end
-        driver.pending = driver.pending + 1
-        local cancelled, closing = false, false
-        local function close(fired)
-            if closing then
-                return
-            end
-            closing = true
-            handle:stop()
-            handle:close(function()
-                driver.pending = driver.pending - 1
-                if fired and not cancelled then
-                    deliver(function()
-                        if not cancelled then
-                            fn()
-                        end
-                    end)
-                else
-                    notify_idle()
-                end
-            end)
-        end
-        local started, result, message = pcall(handle.start, handle, math.ceil(delay), 0, function()
-            close(true)
-        end)
-        if not started or result == nil then
-            cancelled = true
-            close(false)
-            error(errors.wrap(started and message or result, "host_error"), 2)
-        end
-        return function()
-            cancelled = true
-            close(false)
-        end
-    end
-    function driver.defer(fn)
-        if schedule then
-            deliver(fn)
-        else
-            driver.timer(0, fn)
-        end
-    end
-    function driver.after_idle(fn)
-        idle[#idle + 1] = fn
-        notify_idle()
-    end
-    return driver
-end
-
-function M._result(root, rt)
-    local value, err = root:result()
-    local cleanup = rt:errors()
-    if not err and #cleanup > 0 then
-        return nil, errors.new("cleanup_failed", "runtime cleanup failed", { errors = cleanup })
-    end
-    return value, err
-end
+M._driver, M._result = driver_module.new, driver_module.result
 
 ---@generic T
 ---@param fn fun(runtime:libtmux.Runtime):T?, libtmux.Error?
@@ -117,7 +17,13 @@ function M.run(fn, options)
     if running or (co and not is_main) or host then
         return nil, errors.new("invalid_run_context", "run needs a standalone top-level caller")
     end
-    local uv = require("luv")
+    local loaded, uv = pcall(require, "luv")
+    if not loaded then
+        return nil,
+            errors.new("unsupported_host", "standalone runtime requires the luv module", {
+                cause = uv,
+            })
+    end
     if not debug or type(debug.getinfo) ~= "function" then
         return nil, errors.new("invalid_run_context", "run cannot verify the standalone call stack")
     end
@@ -138,7 +44,7 @@ function M.run(fn, options)
     if uv.loop_alive() then
         return nil, errors.new("invalid_run_context", "run needs a quiescent standalone loop")
     end
-    local driver = M._driver(uv)
+    local driver = driver_module.new(uv)
     local rt = runtime.new(driver, options)
     local root = rt:start(fn)
     local failure, guard, expired, guard_failed
@@ -206,7 +112,7 @@ function M.run(fn, options)
                 end
             end
         end
-        local value, err = M._result(root, rt)
+        local value, err = driver_module.result(root, rt)
         if failure and not err then
             return nil, failure
         end

@@ -446,6 +446,23 @@ function tests.test_luv_adapter_is_optional_and_drains_owned_loop_work()
     lu.assertFalse(native_uv().loop_alive())
 end
 
+function tests.test_luv_adapter_reports_a_missing_luv_module_as_data()
+    local adapter = require("libtmux.runtime.luv")
+    local loaded, preload = package.loaded.luv, package.preload.luv
+    package.loaded.luv = nil
+    package.preload.luv = function()
+        error("simulated missing luv")
+    end
+    local ok, value, err = pcall(adapter.run, function()
+        return "unreachable"
+    end)
+    package.loaded.luv, package.preload.luv = loaded, preload
+    lu.assertTrue(ok, "run raised instead of returning an error")
+    lu.assertNil(value)
+    lu.assertEquals(assert(err).code, "unsupported_host")
+    lu.assertStrContains(tostring(err.cause), "simulated missing luv")
+end
+
 function tests.test_luv_adapter_rejects_borrowed_or_nested_loop_driving()
     local ok, adapter = pcall(require, "libtmux.runtime.luv")
     lu.assertTrue(ok, "luv adapter implementation is missing")

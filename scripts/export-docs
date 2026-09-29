@@ -145,6 +145,8 @@ def build_payload(luals):
         log = temporary / "log"
         annotated = temporary / "source"
         shutil.copytree(SOURCE / "lua", annotated / "lua")
+        # The standalone adapter ships as its own rock but stays in the public API reference.
+        shutil.copytree(SOURCE / "packages/luv/lua", annotated / "lua", dirs_exist_ok=True)
         for relative, module in {
             "libtmux/query.lua": "libtmux.query",
             "libtmux/runtime/luv.lua": "libtmux.runtime.luv",

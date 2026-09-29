@@ -45,6 +45,7 @@ def lua_environment(lua):
     library = tree / "lib" / "lua" / version
     env["LUA_PATH"] = ";".join(str(p) for p in (
         ROOT / "lua/?.lua", ROOT / "lua/?/init.lua",
+        ROOT / "packages/luv/lua/?.lua", ROOT / "packages/luv/lua/?/init.lua",
         ROOT / "packages/mcp/lua/?.lua", ROOT / "packages/mcp/lua/?/init.lua",
         ROOT / "packages/workspace/lua/?.lua", ROOT / "packages/workspace/lua/?/init.lua",
         ROOT / "?.lua", ROOT / "?/init.lua", share / "?.lua", share / "?/init.lua"

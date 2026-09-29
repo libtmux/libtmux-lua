@@ -1,5 +1,5 @@
 local runtime = require("libtmux._internal.runtime")
-local luv = require("libtmux.runtime.luv")
+local driver_module = require("libtmux._internal.driver")
 local errors = require("libtmux._internal.error")
 local M = {}
 
@@ -17,12 +17,12 @@ function M.start(fn, on_done, options)
     if type(on_done) ~= "function" then
         return nil, errors.new("invalid_callback", "Neovim start needs a completion callback")
     end
-    local driver = luv._driver(host.uv or host.loop, host.schedule)
+    local driver = driver_module.new(host.uv or host.loop, host.schedule)
     local rt = runtime.new(driver, options)
     local root
     rt._on_close = function()
         driver.after_idle(function()
-            local value, err = luv._result(root, rt)
+            local value, err = driver_module.result(root, rt)
             local ok, cause = pcall(on_done, value, err)
             if not ok then
                 rt:_record(errors.wrap(cause, "callback_error"))

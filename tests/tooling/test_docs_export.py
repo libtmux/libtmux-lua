@@ -11,13 +11,13 @@ class DocsExportTest(unittest.TestCase):
     def test_export_annotations_are_isolated_from_runtime_modules(self):
         modules = {
             "lua/libtmux/query.lua": "libtmux.query",
-            "lua/libtmux/runtime/luv.lua": "libtmux.runtime.luv",
+            "packages/luv/lua/libtmux/runtime/luv.lua": "libtmux.runtime.luv",
             "lua/libtmux/runtime/nvim.lua": "libtmux.runtime.nvim",
         }
         exporter = (ROOT / "scripts/export-docs").read_text()
         for relative, name in modules.items():
             self.assertNotIn(f"---@class {name}", (ROOT / relative).read_text(), relative)
-            self.assertIn(f'"{relative.removeprefix("lua/")}": "{name}"', exporter)
+            self.assertIn(f'"{relative.split("lua/", 1)[1]}": "{name}"', exporter)
 
     def test_exporter_is_a_deterministic_json_entrypoint(self):
         exporter = ROOT / "scripts/export-docs"

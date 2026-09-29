@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEPENDENCIES = {"luv": "1.52.1-0", "lunajson": "1.2.3-1", "lyaml": "6.2.9-1"}
 PACKAGES = {
     "libtmux": ("lua", []),
+    "libtmux-luv": ("packages/luv/lua", ["luv"]),
     "libtmux-mcp": ("packages/mcp/lua", ["luv", "lunajson"]),
     "libtmux-workspace": ("packages/workspace/lua", ["luv", "lunajson", "lyaml"]),
 }
@@ -98,12 +99,13 @@ for _, dep in ipairs({"luv", "lunajson", "lyaml", "libtmux_mcp", "libtmux_worksp
 end
 """
     else:
-        consumer = "mcp" if name == "libtmux-mcp" else "workspace"
+        consumer = {"libtmux-luv": "luv", "libtmux-mcp": "mcp", "libtmux-workspace": "workspace"}[name]
         source += f"tests.test_{consumer}_import_without_effects()\n"
         for dependency in PACKAGES[name][1]:
             source += f'assert(type(require("{dependency}")) == "table")\n'
-        other = "libtmux_workspace" if consumer == "mcp" else "libtmux_mcp"
-        source += f'assert(not pcall(require, "{other}"), "consumer dependency leaked")\n'
+        for other in ("libtmux_mcp", "libtmux_workspace"):
+            if other != f"libtmux_{consumer}":
+                source += f'assert(not pcall(require, "{other}"), "consumer dependency leaked")\n'
         source += 'assert(not require("luv").loop_alive(), "import started a loop")\n'
     run([lua, "-"], cwd=cwd, env=child_env, source=source)
     if name == "libtmux":
@@ -212,6 +214,12 @@ def check_release(work, env, *, rocks, lua, runtime, cache, output, public_tag):
     rocks([f"--tree={cache}", "pack", "luv", DEPENDENCIES["luv"]], cwd=work)
     luv = next(work.glob(f"luv-{DEPENDENCIES['luv']}.*.rock"))
     rocks([f"--tree={prefix}", "install", "--deps-mode=one", str(luv)], cwd=work)
+    adapter = work / "build-release-adapter"
+    adapter.mkdir()
+    shutil.copytree(ROOT / "packages/luv/lua", adapter / "packages/luv/lua")
+    shutil.copyfile(ROOT / "rockspecs/libtmux-luv-scm-1.rockspec", adapter / "libtmux-luv-scm-1.rockspec")
+    shutil.copyfile(ROOT / "LICENSE", adapter / "LICENSE")
+    rocks([f"--tree={prefix}", "make", "--deps-mode=none", "libtmux-luv-scm-1.rockspec"], cwd=adapter)
     live_example(prefix, runtime.version, lua=lua, cwd=work, env=env)
     if output:
         output.mkdir(parents=True, exist_ok=True)

@@ -48,7 +48,7 @@ build = {
         ["libtmux._internal.client"] = "lua/libtmux/_internal/client.lua",
         ["libtmux._internal.planner"] = "lua/libtmux/_internal/planner.lua",
         ["libtmux._internal.live_query"] = "lua/libtmux/_internal/live_query.lua",
-        ["libtmux.runtime.luv"] = "lua/libtmux/runtime/luv.lua",
+        ["libtmux._internal.driver"] = "lua/libtmux/_internal/driver.lua",
         ["libtmux.runtime.nvim"] = "lua/libtmux/runtime/nvim.lua",
     },
 }
