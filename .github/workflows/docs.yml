@@ -176,7 +176,14 @@ jobs:
 
   build:
     needs: identity
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      LIBTMUX_DOCS_PORT: lua
+      LIBTMUX_DOCS_VERSION: ${{ matrix.version }}
+      LIBTMUX_DOCS_SOURCE_REPOSITORY: ${{ needs.identity.outputs.source-repository }}
+      LIBTMUX_DOCS_CHECKOUT_LUA: ${{ github.workspace }}/port
+      LIBTMUX_DOCS_GENERATOR_CHECKOUT: ${{ github.workspace }}/docs-generator
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.identity.outputs.matrix) }}
@@ -186,9 +193,11 @@ jobs:
           repository: ${{ needs.identity.outputs.source-repository }}
           ref: ${{ needs.identity.outputs.source-ref }}
           fetch-depth: 0
+          path: port
           persist-credentials: false
 
       - id: source
+        working-directory: port
         env:
           SELECTED_REF: ${{ needs.identity.outputs.source-ref }}
         run: |
@@ -204,43 +213,50 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.sha }}
-          path: .docs-generator
+          path: docs-generator
           persist-credentials: false
 
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: libtmux/docs
-          ref: 8fda4b89071621b9ed2c4722a68d61f6ecf9c1c4
-          path: .site
+          ref: 42dd5b71e6eefd785b9bf8ce11d34e8f1a058a22
+          path: docs
           persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '26'
+
+      - name: Snapshot source and exporter before native generation
+        working-directory: docs
+        env:
+          LIBTMUX_DOCS_SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: node scripts/publication-provenance.mjs snapshot "$RUNNER_TEMP/build-inputs.json" "$PWD"
 
       - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
         with:
           version: 2026.9.9
+          working_directory: port
+          cache: false
 
       - name: Bootstrap the pinned LuaLS exporter
-        run: python .docs-generator/scripts/bootstrap_native.py luals
+        run: python docs-generator/scripts/bootstrap_native.py luals
 
       - name: Export the selected Lua source
         run: |
-          python .docs-generator/scripts/export-docs \
-            --source "$GITHUB_WORKSPACE" \
-            --luals "$GITHUB_WORKSPACE/.docs-generator/.cache/tools/luals-3.19.1/bin/lua-language-server" \
-            --output "$GITHUB_WORKSPACE/docs/_build"
+          python docs-generator/scripts/export-docs \
+            --source "$GITHUB_WORKSPACE/port" \
+            --luals "$GITHUB_WORKSPACE/docs-generator/.cache/tools/luals-3.19.1/bin/lua-language-server" \
+            --output "$GITHUB_WORKSPACE/port/docs/_build"
 
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         with:
-          package_json_file: .site/package.json
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: '26'
-          cache: pnpm
-          cache-dependency-path: .site/pnpm-lock.yaml
+          package_json_file: docs/package.json
       - run: pnpm install --frozen-lockfile
-        working-directory: .site
+        working-directory: docs
 
       - name: Build the selected Lua documentation tree
-        working-directory: .site
+        working-directory: docs
         env:
           LIBTMUX_DOCS_PORT: lua
           LIBTMUX_DOCS_VERSION: ${{ matrix.version }}
@@ -249,13 +265,30 @@ jobs:
           LIBTMUX_DOCS_RESOLVES_TO: ${{ matrix.resolvesTo }}
           LIBTMUX_DOCS_SOURCE_REF: ${{ needs.identity.outputs.source-ref }}
           LIBTMUX_DOCS_SOURCE_SHA: ${{ steps.source.outputs.sha }}
-          LIBTMUX_DOCS_CHECKOUT_LUA: ${{ github.workspace }}
+          LIBTMUX_DOCS_INPUT_SNAPSHOT: ${{ runner.temp }}/build-inputs.json
         run: ./scripts/build-site.sh --ports lua --versions "${{ matrix.version }}" --skip-refs --skip-pagefind
 
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - id: content
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: docs-lua-${{ matrix.version }}
-          path: .site/_site/en/lua/${{ matrix.version }}
+          path: docs/_site/en/lua/${{ matrix.version }}
+          if-no-files-found: error
+          retention-days: 1
+          include-hidden-files: true
+
+      - name: Describe the uploaded artifact
+        working-directory: docs
+        env:
+          ARTIFACT_ID: ${{ steps.content.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.content.outputs.artifact-digest }}
+          ARTIFACT_NAME: docs-lua-${{ matrix.version }}
+          SOURCE_SHA: ${{ steps.source.outputs.sha }}
+        run: node scripts/publication-provenance.mjs descriptor "$RUNNER_TEMP/publication.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: docs-lua-${{ matrix.version }}-publication
+          path: ${{ runner.temp }}/publication.json
           if-no-files-found: error
           retention-days: 1
 
@@ -268,7 +301,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: libtmux/docs/.github/workflows/reusable-deploy.yml@8fda4b89071621b9ed2c4722a68d61f6ecf9c1c4
+    uses: libtmux/docs/.github/workflows/reusable-deploy.yml@42dd5b71e6eefd785b9bf8ce11d34e8f1a058a22
     with:
       path-prefix: lua/${{ matrix.version }}
       artifact: docs-lua-${{ matrix.version }}
