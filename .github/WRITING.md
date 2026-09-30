@@ -85,8 +85,8 @@ URLs, paths, and identifiers may exceed the limit when they cannot be split.
 Use a heredoc or message file to preserve real newlines when committing.
 
 Keep each commit focused. Describe the concrete change rather than "wip",
-"misc fixes", or "address review". Do not add a pull-request number to the
-subject or reproduce file and line counts from the diff.
+"misc fixes", or "address review". Do not add a pull-request number to an
+ordinary commit subject or reproduce file and line counts from the diff.
 
 ## Changelogs and release notes
 
