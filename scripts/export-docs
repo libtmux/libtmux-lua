@@ -10,6 +10,8 @@ import shutil
 import subprocess
 import tempfile
 
+from api_examples import load_examples, public_symbols
+
 
 ROOT = Path(__file__).resolve().parent.parent
 SOURCE = ROOT
@@ -169,16 +171,20 @@ def build_payload(luals):
             raise ExportError(f"LuaLS export failed: {result.stdout}{result.stderr}")
         raw = json.loads((output / "doc.json").read_text())
 
+    declarations = public_declarations(raw)
     payload = {
         "schema": 1,
         "port": "lua",
         "source": {"repository": "libtmux/libtmux-lua", "revision": source_revision()},
         "exporter": {"name": "scripts/export-docs", "version": 1, "luals": tool_version(luals)},
         "package": rock_metadata(),
-        "declarations": public_declarations(raw),
+        "declarations": declarations,
         "guides": content_files(["README.md", "docs/**/*.md"]),
-        "examples": content_files(["examples/**/*.lua"]),
+        "examples": content_files(["examples/**/*.lua", "examples/api/run.sh"]),
     }
+    # Historical sources predate complete examples; an opted-in directory must validate.
+    if (SOURCE / "examples/api").exists():
+        payload["api_examples"] = load_examples(SOURCE, public_symbols(declarations))
     validate(payload)
     return payload
 
@@ -216,7 +222,7 @@ def main():
             f"Documentation export: {len(payload['declarations'])} declarations; "
             f"{sum(len(item.get('fields', [])) for item in payload['declarations'])} fields"
         )
-    except (ExportError, OSError, subprocess.SubprocessError, json.JSONDecodeError) as error:
+    except (ExportError, OSError, ValueError, subprocess.SubprocessError) as error:
         raise SystemExit(str(error)) from error
 
 

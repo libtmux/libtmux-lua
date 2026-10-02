@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Docs: add complete common API examples with private tmux setup and cleanup.
+
 ## 0.1.0alpha2-1
 
 - Types: declare `libtmux.Session`, `Window`, `WindowLink`, `Pane`, `Client`

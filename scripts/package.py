@@ -17,9 +17,11 @@ import time
 import zipfile
 
 if __package__:
+    from .api_examples import load_examples
     from .release import REPOSITORY, candidate, identity, prepare
     from .runtime_config import executable_path, identify
 else:
+    from api_examples import load_examples
     from release import REPOSITORY, candidate, identity, prepare
     from runtime_config import executable_path, identify
 
@@ -139,6 +141,44 @@ def live_example(prefix, version, *, lua, cwd, env):
     print("PASS installed public snapshot/quickstart examples and borrowed-server cleanup", flush=True)
 
 
+def complete_api_examples(prefix, version, *, lua, cwd, env):
+    manifest = load_examples(ROOT)
+    directory = cwd / "complete-api-examples"
+    directory.mkdir(exist_ok=True)
+    # Endpoint aliases also use this directory; keep Unix socket paths short.
+    temporary = Path(tempfile.mkdtemp(prefix="libtmux-lua-api-check-", dir="/tmp"))
+    launcher = directory / "run.sh"
+    shutil.copyfile(ROOT / manifest["setup"]["launcher"], launcher)
+    child_env = dict(env, LUA_BIN=lua, TMPDIR=str(temporary),
+                     TMUX_BIN=shutil.which(env.get("TMUX_BIN", "tmux")))
+    child_env["LUA_PATH"] = f"{prefix}/share/lua/{version}/?.lua;{prefix}/share/lua/{version}/?/init.lua"
+    child_env["LUA_CPATH"] = f"{prefix}/lib/lua/{version}/?.so"
+    for example in manifest["examples"]:
+        program = directory / Path(example["file"]).name
+        shutil.copyfile(ROOT / example["file"], program)
+        output = run(["sh", str(launcher), str(program)], cwd=directory, env=child_env)
+        if output != example["stdout"]:
+            raise RuntimeError(f"{program.name}: complete example output differs: {output!r}")
+        if list(temporary.iterdir()):
+            raise RuntimeError(f"{program.name}: complete example left a socket directory")
+    for name, source in {
+        "import": 'require("libtmux_example_missing_module")\n',
+        "runtime": (directory / "connect.lua").read_text().replace(
+            '    print("connected")', '    error("intentional example failure", 0)'),
+    }.items():
+        program = directory / f"failure-{name}.lua"
+        program.write_text(source)
+        result = subprocess.run(["sh", str(launcher), str(program)], cwd=directory,
+                                env=child_env, capture_output=True, text=True, timeout=10)
+        expected = "libtmux_example_missing_module" if name == "import" else "intentional example failure"
+        if result.returncode == 0 or expected not in result.stderr:
+            raise RuntimeError(f"{name}: example failure did not propagate")
+        if list(temporary.iterdir()):
+            raise RuntimeError(f"{name}: failing example left a socket directory")
+    temporary.rmdir()
+    print("PASS seven complete API programs and import/runtime failure cleanup", flush=True)
+
+
 def source_rock(spec, work, env, *, rocks, public_tag):
     """Pack the committed spec, using an isolated source tree before the public tag exists."""
     packing = work / "source-rock"
@@ -213,6 +253,7 @@ def check_release(work, env, *, rocks, lua, runtime, cache, output, public_tag):
     luv = next(work.glob(f"luv-{DEPENDENCIES['luv']}.*.rock"))
     rocks([f"--tree={prefix}", "install", "--deps-mode=one", str(luv)], cwd=work)
     live_example(prefix, runtime.version, lua=lua, cwd=work, env=env)
+    complete_api_examples(prefix, runtime.version, lua=lua, cwd=work, env=env)
     if output:
         output.mkdir(parents=True, exist_ok=True)
         names = (spec.name, artifact.name)
