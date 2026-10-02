@@ -1,0 +1,77 @@
+{
+  "schema": 1,
+  "setup": {
+    "lua": "5.5.1",
+    "luv": "1.52.1-0",
+    "launcher": "examples/api/run.sh"
+  },
+  "examples": [
+    {
+      "id": "connect",
+      "symbols": [
+        "libtmux.Runtime:connect"
+      ],
+      "file": "examples/api/connect.lua",
+      "description": "Connect to an existing tmux daemon without taking ownership of it.",
+      "stdout": "connected\n"
+    },
+    {
+      "id": "snapshot",
+      "symbols": [
+        "libtmux.Server:snapshot",
+        "libtmux.Snapshot.sessions",
+        "libtmux.Snapshot.windows",
+        "libtmux.Snapshot.panes"
+      ],
+      "file": "examples/api/snapshot.lua",
+      "description": "List sessions, windows, and panes from one captured server snapshot.",
+      "stdout": "sessions: bootstrap, demo\nwindows: bootstrap, main\npanes: 2\n"
+    },
+    {
+      "id": "new_session",
+      "symbols": [
+        "libtmux.Server:new_session"
+      ],
+      "file": "examples/api/new_session.lua",
+      "description": "Create a session and use the session, window, and pane handles returned with it.",
+      "stdout": "session: demo\n"
+    },
+    {
+      "id": "new_window",
+      "symbols": [
+        "libtmux.Session:new_window"
+      ],
+      "file": "examples/api/new_window.lua",
+      "description": "Create a named window in a particular session.",
+      "stdout": "window: logs\n"
+    },
+    {
+      "id": "query",
+      "symbols": [
+        "libtmux.Server:query"
+      ],
+      "file": "examples/api/query.lua",
+      "description": "Find sessions by name with a live query and inspect its captured rows.",
+      "stdout": "matched: demo\n"
+    },
+    {
+      "id": "send_keys",
+      "symbols": [
+        "libtmux.Pane:send_text",
+        "libtmux.Pane:send_keys"
+      ],
+      "file": "examples/api/send_keys.lua",
+      "description": "Send literal text and press Enter in a pane.",
+      "stdout": "lua input ready\n"
+    },
+    {
+      "id": "capture",
+      "symbols": [
+        "libtmux.Pane:capture"
+      ],
+      "file": "examples/api/capture.lua",
+      "description": "Capture a completed command's output from a pane.",
+      "stdout": "lua capture ready\n"
+    }
+  ]
+}
