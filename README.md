@@ -230,3 +230,16 @@ server running. See [runtime ownership and cancellation](docs/runtime.md).
 
 Live tests use private sockets and clean up their own servers. See the
 contributing guide for the same offline checks that run in CI.
+
+## Attribution
+
+Please use the following BibTeX template to cite libtmux-lua in scientific discourse:
+
+```bibtex
+@misc{libtmux-lua,
+   author = {Tony Narlock},
+   year = {2026},
+   note = {https://libtmux.org/en/lua/},
+   title = {libtmux-lua: Lua wrapper for tmux}
+}
+```
