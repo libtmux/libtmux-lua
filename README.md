@@ -169,7 +169,8 @@ window. These calls use the same `must` helper:
 ```lua
 local work = must(server:new_session({ name = "work" }):await())
 local editor = must(work.session:new_window({ name = "editor" }):await())
-local split = must(editor.pane:split({ direction = "right", percent = 40 }):await())
+local right = { direction = "right", percent = 40 }
+local split = must(editor.pane:split(right):await())
 
 must(split.pane:send_text("printf '%s\\n' hello"):await())
 must(split.pane:send_keys({ "Enter" }):await())
