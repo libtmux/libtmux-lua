@@ -23,7 +23,8 @@ must(adapter.run(function(runtime)
         return "'" .. text:gsub("'", "'\\''") .. "'"
     end
 
-    -- Signal completion on this socket; do not guess when the shell has printed.
+    -- Signal completion on this socket; do not guess when the shell
+    -- has printed.
     local command = "printf '\\nlua capture ready\\n'; "
         .. quote(binary)
         .. " -S "
@@ -31,11 +32,8 @@ must(adapter.run(function(runtime)
         .. " wait-for -S example-ready"
     must(pane:send_text(command):await())
     must(pane:send_keys({ "Enter" }):await())
-    must(
-        server
-            :command({ "wait-for", "example-ready" }, { timeout = 1000 })
-            :await()
-    )
+    local wait = { "wait-for", "example-ready" }
+    must(server:command(wait, { timeout = 1000 }):await())
     local capture = must(pane:capture({ history_lines = 20 }):await())
     local found = false
     for line in must(capture:text()):gmatch("[^\r\n]+") do
