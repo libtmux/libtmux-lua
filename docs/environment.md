@@ -18,7 +18,9 @@ local result, err = adapter.run(function(runtime)
     assert(session:set_environment("APP_MODE", "local"):await())
     local local_value = assert(session:get_environment("APP_MODE"):await())
     assert(session:unset_environment("APP_MODE"):await())
-    local inherited = assert(session:get_environment("APP_MODE", { inherit = true }):await())
+    local inherit = { inherit = true }
+    local request = session:get_environment("APP_MODE", inherit)
+    local inherited = assert(request:await())
     return { local_value = local_value, inherited = inherited }
 end)
 assert(result, tostring(err))
