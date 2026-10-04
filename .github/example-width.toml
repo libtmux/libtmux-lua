@@ -1,0 +1,24 @@
+width = 80
+markdown = ["**/*.md"]
+sources = ["examples/**/*.lua", "examples/api/run.sh"]
+allow_ceiling = 1
+shared_digest = "872d3f4cb1eb2b5cd9c5b7adc9cd140a153e4bbed3cb5bd0b7400a905e6dae4d"
+checker_digest = "14cdcbb3b543a2818179511f1b9aa1086fb2c12ebe848b06809fd66b4c6f4e74"
+
+[[allow]]
+path = ".github/WRITING.md"
+line = 'local split = must(editor.pane:split({ direction = "right", percent = 40 }):await())'
+reason = "the Bad example in the port block; it shows the width problem the Good example fixes"
+
+[[exclude]]
+glob = "examples/stylua.toml"
+reason = "a copy of stylua.toml that [[formatter_copies]] already compares"
+
+[[exclude]]
+glob = "examples/api/manifest.json"
+reason = "a machine-read index; its description and stdout values are JSON strings that cannot wrap, and tests compare them"
+
+[[formatter_copies]]
+copy = "examples/stylua.toml"
+root = "stylua.toml"
+key = "column_width"
