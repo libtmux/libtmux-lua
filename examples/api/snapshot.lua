@@ -15,13 +15,12 @@ local socket =
 must(adapter.run(function(runtime)
     local server =
         must(runtime:connect({ binary = binary, socket_path = socket }):await())
-    must(server
-        :new_session({
-            name = "demo",
-            window_name = "main",
-            argv = { "/bin/cat" },
-        })
-        :await())
+    local session_options = {
+        name = "demo",
+        window_name = "main",
+        argv = { "/bin/cat" },
+    }
+    must(server:new_session(session_options):await())
     local snapshot = must(server:snapshot({ strict = true }):await())
     local sessions, windows = {}, {}
     for _, session in ipairs(snapshot.sessions) do
