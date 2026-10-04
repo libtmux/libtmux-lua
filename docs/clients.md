@@ -7,6 +7,7 @@ the snapshot. Client records do not prove attachment continuity.
 Inside a [runtime task](runtime.md), with a connected `server`, choose the
 client and destination session by their observed names:
 
+<!-- lua: compile-only: needs an attached client -->
 ```lua
 local snapshot = assert(server:snapshot():await())
 local observed = snapshot.clients:where({ name = "/dev/pts/7" }):one()

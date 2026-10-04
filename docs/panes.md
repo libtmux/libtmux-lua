@@ -5,6 +5,7 @@ PROCESS endpoint. Each method returns a Request; await it inside a managed
 runtime task or use its completion callback. Snapshot records remain plain
 captured data. Obtain a handle from a creation receipt or `server:handle`.
 
+<!-- lua: fragment -->
 ```lua
 local capture = assert(pane:capture({ history_lines = 20 }):await())
 local text = assert(capture:text())
@@ -130,6 +131,7 @@ The initial action subset includes cursor/word/paragraph/page/history
 navigation, selection marking, rectangle modes, refresh, search and jumps.
 For example:
 
+<!-- lua: fragment -->
 ```lua
 assert(pane:copy_mode():await())
 assert(pane:copy_command("search-forward-text", { "ready" }):await())

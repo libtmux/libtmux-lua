@@ -6,6 +6,7 @@ the PROCESS endpoint. Each operation returns a Request that resolves to
 explicitly to inspect the resulting state; existing records do not change
 in place.
 
+<!-- lua: fragment -->
 ```lua
 assert(session:rename("build"):await())
 assert(window:resize({ width = 120, height = 40 }):await())

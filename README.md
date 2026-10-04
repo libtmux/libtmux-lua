@@ -67,6 +67,7 @@ for exact versions and remaining platform coverage.
 Connect to an existing server by its explicit socket path. This is the full
 [snapshot example](examples/snapshot.lua), which prints pane and window IDs:
 
+<!-- lua: run -->
 ```lua
 local adapter = require("libtmux.runtime.luv")
 
@@ -135,6 +136,7 @@ SH
 After capturing `snapshot` in the example above, filter its panes with
 structured criteria or an ordinary Lua function:
 
+<!-- lua: fragment -->
 ```lua
 local editors = snapshot.panes:where({
     current_command = { one_of = { "nvim", "vim" } },
@@ -166,6 +168,7 @@ $ lua examples/native_query.lua
 Before closing `server` in that runtime body, create a session and split a
 window. These calls use the same `must` helper:
 
+<!-- lua: fragment -->
 ```lua
 local work = must(server:new_session({ name = "work" }):await())
 local editor = must(work.session:new_window({ name = "editor" }):await())
@@ -193,6 +196,7 @@ $ nvim --cmd 'set runtimepath+=.'
 With `TMUX_SOCKET` set to an existing server's absolute socket path, run this
 Lua code. `start` uses the editor's loop and reports the result in a callback:
 
+<!-- lua: compile-only: Neovim runtime, absent from the plain Lua gate -->
 ```lua
 local adapter = require("libtmux.runtime.nvim")
 
