@@ -10,8 +10,14 @@ end
 must(adapter.run(function(runtime)
     local server = must(runtime
         :connect({
-            binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable"),
-            socket_path = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to an explicit socket"),
+            binary = assert(
+                os.getenv("TMUX_BIN"),
+                "set TMUX_BIN to an absolute tmux executable"
+            ),
+            socket_path = assert(
+                os.getenv("TMUX_SOCKET"),
+                "set TMUX_SOCKET to an explicit socket"
+            ),
         })
         :await())
     local snapshot = must(server:snapshot({ strict = true }):await())

@@ -7,11 +7,14 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+local binary =
+    assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
+local socket =
+    assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
+    local server =
+        must(runtime:connect({ binary = binary, socket_path = socket }):await())
     must(server
         :new_session({
             name = "demo",
@@ -29,7 +32,11 @@ must(adapter.run(function(runtime)
     end
     table.sort(sessions)
     table.sort(windows)
-    assert(#snapshot.sessions == 2 and #snapshot.windows == 2 and #snapshot.panes == 2)
+    assert(
+        #snapshot.sessions == 2
+            and #snapshot.windows == 2
+            and #snapshot.panes == 2
+    )
     print("sessions: " .. table.concat(sessions, ", "))
     print("windows: " .. table.concat(windows, ", "))
     print("panes: " .. #snapshot.panes)

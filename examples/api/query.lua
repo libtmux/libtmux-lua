@@ -7,11 +7,14 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+local binary =
+    assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
+local socket =
+    assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
+    local server =
+        must(runtime:connect({ binary = binary, socket_path = socket }):await())
     must(server
         :new_session({
             name = "demo",
@@ -28,7 +31,10 @@ must(adapter.run(function(runtime)
         })
         :await())
     assert(result.complete, "query observed a topology change")
-    assert(#result.rows == 1 and result.rows[1].name == "demo", "query selected the wrong session")
+    assert(
+        #result.rows == 1 and result.rows[1].name == "demo",
+        "query selected the wrong session"
+    )
     print("matched: " .. result.rows[1].name)
 
     must(server:close():await())
