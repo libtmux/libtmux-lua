@@ -106,8 +106,8 @@ Run a focused inner suite:
 $ mise exec -- python scripts/check.py unit query
 ```
 
-Run unit suites, Lua51 formatting, lint, generated-field drift, links and
-whitespace checks:
+Run unit suites, Lua51 formatting, lint, generated-field drift, links,
+whitespace and example-width checks:
 
 ```console
 $ mise exec -- python scripts/check.py mid
@@ -184,6 +184,14 @@ generation and drift checks are offline:
 
 ```console
 $ mise exec -- python scripts/generate_options.py
+```
+
+Examples stay within 80 columns. The width check reads
+[example-width.toml](example-width.toml), proves it can fail, then scans the
+files it names. The width gate runs both steps, and the mid gate runs it:
+
+```console
+$ mise exec -- python scripts/check.py width
 ```
 
 Check whitespace in unstaged changes:

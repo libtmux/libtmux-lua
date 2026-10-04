@@ -95,7 +95,7 @@ def docs():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("gate", choices=("unit", "mid", "format", "lint", "generated", "docs", "fences", "integration", "package", "types", "outer"))
+    parser.add_argument("gate", choices=("unit", "mid", "format", "lint", "generated", "docs", "width", "fences", "integration", "package", "types", "outer"))
     parser.add_argument("suites", nargs="*", help="unit suite names")
     parser.add_argument("--lua", default="lua", help="interpreter executable")
     parser.add_argument("--nvim", help="Neovim executable for embedded integration tests")
@@ -127,6 +127,9 @@ def main():
             run([executable, "lua", "packages", "tests", "examples"], env=lint_env, timeout=10)
         elif gate == "docs":
             docs()
+        elif gate == "width":
+            run([sys.executable, "scripts/check_example_width.py", "--self-test"], timeout=5)
+            run([sys.executable, "scripts/check_example_width.py"], timeout=5)
         elif gate == "fences":
             run([sys.executable, "scripts/check_doc_fences.py", "--lua", lua], env=env, timeout=60)
         elif gate == "generated":
@@ -147,7 +150,7 @@ def main():
         elif gate == "mid":
             run([sys.executable, "-m", "unittest", "discover", "-s", "tests/tooling", "-v"], timeout=5)
             run([tool("actionlint")], timeout=5)
-            for item in ("unit", "format", "lint", "generated", "docs"):
+            for item in ("unit", "format", "lint", "generated", "docs", "width"):
                 execute(item)
         elif gate == "outer":
             for item in ("mid", "fences", "integration", "package", "types"):
