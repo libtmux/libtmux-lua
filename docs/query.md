@@ -71,6 +71,7 @@ ordinary JSON `decode` function cannot preserve evidence of duplicate keys.
 Core imports and ordinary queries require only Lua. Codec functions are
 trusted synchronous code; the library does not load a codec automatically.
 
+<!-- lua: fragment -->
 ```lua
 local query = require("libtmux.query")
 local json = require("lunajson")

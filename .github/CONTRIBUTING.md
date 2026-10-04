@@ -120,6 +120,15 @@ artifact builds/imports, LuaLS diagnostics and actual editor completion:
 $ mise exec -- python scripts/check.py outer
 ```
 
+The outer gate also runs `scripts/check_doc_fences.py`: every `lua` fence in
+the README and `docs/` runs or parses according to its `<!-- lua: ... -->`
+directive, against a private owned tmux server selected by `TMUX_BIN`. Run it
+alone with:
+
+```console
+$ mise exec -- python scripts/check.py fences
+```
+
 Integration includes real luv and Neovim loop ownership, process cancellation,
 post-exit pipe draining and metadata byte round-trips. These use the selected
 Lua interpreter and its own luv ABI; Neovim uses its embedded runtime.

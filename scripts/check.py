@@ -95,7 +95,7 @@ def docs():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("gate", choices=("unit", "mid", "format", "lint", "generated", "docs", "integration", "package", "types", "outer"))
+    parser.add_argument("gate", choices=("unit", "mid", "format", "lint", "generated", "docs", "fences", "integration", "package", "types", "outer"))
     parser.add_argument("suites", nargs="*", help="unit suite names")
     parser.add_argument("--lua", default="lua", help="interpreter executable")
     parser.add_argument("--nvim", help="Neovim executable for embedded integration tests")
@@ -127,6 +127,8 @@ def main():
             run([executable, "lua", "packages", "tests", "examples"], env=lint_env, timeout=10)
         elif gate == "docs":
             docs()
+        elif gate == "fences":
+            run([sys.executable, "scripts/check_doc_fences.py", "--lua", lua], env=env, timeout=60)
         elif gate == "generated":
             run([sys.executable, "scripts/generate_fields.py", "--check"], env=env, timeout=5)
             run([sys.executable, "scripts/generate_options.py", "--check"], env=env, timeout=5)
@@ -148,7 +150,7 @@ def main():
             for item in ("unit", "format", "lint", "generated", "docs"):
                 execute(item)
         elif gate == "outer":
-            for item in ("mid", "integration", "package", "types"):
+            for item in ("mid", "fences", "integration", "package", "types"):
                 execute(item)
 
     execute(args.gate)
