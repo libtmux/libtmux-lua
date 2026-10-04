@@ -24,8 +24,10 @@ requested work. Prefer `rg`, `ag`, and `fd` for discovery.
 
 - Setup, validation, tmux isolation, and pull requests:
   [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
-- Documentation, user-facing text, comments, and commit messages:
-  [.github/WRITING.md](.github/WRITING.md).
+- Documentation, user-facing text, comments, commit messages, and any code
+  example (example programs, Markdown code blocks):
+  [.github/WRITING.md](.github/WRITING.md), and its
+  [Examples](.github/WRITING.md#examples) section for code a reader sees.
 
 Each guide is the single home for its subject. `CLAUDE.md` is a relative
 symlink to this file so both entry points use the same instructions.
