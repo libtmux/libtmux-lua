@@ -15,13 +15,12 @@ local socket =
 must(adapter.run(function(runtime)
     local server =
         must(runtime:connect({ binary = binary, socket_path = socket }):await())
-    local created = must(server
-        :new_session({
-            name = "demo",
-            window_name = "main",
-            argv = { "/bin/cat" },
-        })
-        :await())
+    local session_options = {
+        name = "demo",
+        window_name = "main",
+        argv = { "/bin/cat" },
+    }
+    local created = must(server:new_session(session_options):await())
     local logs = must(
         created.session
             :new_window({ name = "logs", argv = { "/bin/cat" } })
