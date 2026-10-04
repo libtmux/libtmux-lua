@@ -15,21 +15,19 @@ local socket =
 must(adapter.run(function(runtime)
     local server =
         must(runtime:connect({ binary = binary, socket_path = socket }):await())
-    must(server
-        :new_session({
-            name = "demo",
-            window_name = "main",
-            argv = { "/bin/cat" },
-        })
-        :await())
+    local session_options = {
+        name = "demo",
+        window_name = "main",
+        argv = { "/bin/cat" },
+    }
+    must(server:new_session(session_options):await())
     must(server:new_session({ name = "worker", argv = { "/bin/cat" } }):await())
-    local result = must(server
-        :query({
-            kind = "session",
-            where = { name = "demo" },
-            snapshot = { strict = true },
-        })
-        :await())
+    local query_options = {
+        kind = "session",
+        where = { name = "demo" },
+        snapshot = { strict = true },
+    }
+    local result = must(server:query(query_options):await())
     assert(result.complete, "query observed a topology change")
     assert(
         #result.rows == 1 and result.rows[1].name == "demo",
