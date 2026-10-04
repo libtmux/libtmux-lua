@@ -17,13 +17,12 @@ local result = must(adapter.run(function(runtime)
         must(runtime:connect({ binary = binary, socket_path = socket }):await())
 
     -- docs:begin main
-    local created = must(server
-        :new_session({
-            name = "quickstart",
-            window_name = "main",
-            argv = { "/bin/sh" },
-        })
-        :await())
+    local session_options = {
+        name = "quickstart",
+        window_name = "main",
+        argv = { "/bin/sh" },
+    }
+    local created = must(server:new_session(session_options):await())
     local logs = must(
         created.session
             :new_window({ name = "logs", argv = { "/bin/cat" } })
