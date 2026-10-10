@@ -97,6 +97,7 @@ function M.new(driver, options)
         _bytes = 0,
         _resource_bytes = 0,
         _tasks = 0,
+        _deferred = 0,
         _callbacks = 0,
         _resources = {},
         _resources_closing = 0,
@@ -183,7 +184,7 @@ function Runtime:_owner()
         return nil
     end
     scope = scope or self._root_scope
-    if self._closing or not scope or scope.finished or scope.error then
+    if not scope or (self._closing and not scope.cleanup) or scope.finished or scope.error then
         return nil
     end
     return scope
@@ -522,11 +523,17 @@ function Runtime:_start_request(req)
 end
 
 function Runtime:_admit()
-    if self._closing then
-        return
-    end
     while self._active < self._limits.max_active and #self._pending > 0 do
-        local req = table.remove(self._pending, 1)
+        local index = 1
+        if self._closing then
+            while self._pending[index] and not self._pending[index]._owner.cleanup do
+                index = index + 1
+            end
+            if not self._pending[index] then
+                return
+            end
+        end
+        local req = table.remove(self._pending, index)
         if not req._retired then
             req._queued, req._admitted = false, true
             self._active = self._active + 1
@@ -634,6 +641,33 @@ function Runtime:_join(scope)
     then
         return
     end
+    if scope.deferred and #scope.deferred > 0 then
+        local fn = table.remove(scope.deferred)
+        self._deferred = self._deferred - 1
+        scope.joining = true
+        local cleanup = self:_task(fn, scope, nil, true, true)
+        cleanup:_on_retire(function()
+            local _, err = cleanup:result()
+            if err then
+                scope.cleanup_errors = scope.cleanup_errors or {}
+                scope.cleanup_errors[#scope.cleanup_errors + 1] = err
+                self:_record(cleanup_error(err))
+            end
+        end)
+        scope.joining = false
+        if cleanup:is_retired() then
+            self:_join(scope)
+        end
+        return
+    end
+    if scope.cleanup_errors and not scope.cleanup_reported then
+        scope.cleanup_reported = true
+        scope.value, scope.error =
+            nil, errors.new("cleanup_failed", "deferred cleanup failed", {
+                cause = scope.error,
+                errors = scope.cleanup_errors,
+            })
+    end
     if scope == self._root_scope then
         self._closing = true
         if #self._resources > 0 then
@@ -682,7 +716,10 @@ function Runtime:_abort(scope, err)
         remove(scope.waiting._waiters, scope)
         scope.waiting = nil
     end
-    scope.request:_settle(nil, err)
+    -- Deferred teardown can still fail; publish its combined result after it retires.
+    if not scope.deferred then
+        scope.request:_settle(nil, err)
+    end
     local owned = {}
     for i, req in ipairs(scope.owned) do
         owned[i] = req
@@ -737,7 +774,7 @@ function Runtime:_resume(scope, ...)
     end
 end
 
-function Runtime:_task(fn, owner, context, boundary)
+function Runtime:_task(fn, owner, context, boundary, cleanup)
     if type(fn) ~= "function" then
         return self:_rejected_request("invalid_task", "task body must be a function")
     end
@@ -746,12 +783,15 @@ function Runtime:_task(fn, owner, context, boundary)
     end
     local req = request(self, owner)
     req._context, req._effect = context, context and context.effect
+    cleanup = cleanup or (owner and owner.cleanup)
+    req._cleanup = cleanup
     local scope = {
         runtime = self,
         request = req,
         owned = {},
         callbacks = 0,
         boundary = boundary,
+        cleanup = cleanup,
     }
     scope.co = coroutine.create(function()
         return fn(self, req)
@@ -779,6 +819,25 @@ function Runtime:start(fn)
         self._closing = true
     end
     return req
+end
+
+--- Register an asynchronous cleanup in the current task, in reverse registration order.
+function Runtime:defer(fn)
+    local co = coroutine.running()
+    local scope = co and managed[co]
+    if not scope or scope.runtime ~= self or scope.body_done or scope.error then
+        return nil, errors.new("invalid_scope", "defer needs a live managed task")
+    end
+    if type(fn) ~= "function" then
+        return nil, errors.new("invalid_callback", "defer needs a cleanup function")
+    end
+    if self._deferred >= self._limits.max_resources then
+        return nil, errors.new("queue_full", "deferred cleanup limit reached")
+    end
+    scope.deferred = scope.deferred or {}
+    scope.deferred[#scope.deferred + 1] = fn
+    self._deferred = self._deferred + 1
+    return true
 end
 
 function Runtime:spawn(fn)
@@ -986,6 +1045,7 @@ function Runtime:stats()
         bytes = self._bytes,
         resource_bytes = self._resource_bytes,
         tasks = self._tasks,
+        deferred = self._deferred,
         callbacks = self._callbacks,
         resources = #self._resources,
         resources_closing = self._resources_closing,
@@ -1007,6 +1067,22 @@ function Runtime:connect(options)
     return require("libtmux._internal.server").connect(self, options)
 end
 
+function Runtime:owned_server(options)
+    return require("libtmux._internal.servers").start(self, options, false)
+end
+
+function Runtime:find_or_create_server(options)
+    return require("libtmux._internal.servers").start(self, options, true)
+end
+
+function Runtime:discover_servers(options)
+    return require("libtmux._internal.servers").discover(self, options)
+end
+
+function Runtime:with_server(options, body)
+    return require("libtmux._internal.servers").scope(self, options, body)
+end
+
 function Runtime:errors()
     local result = {}
     for i, err in ipairs(self._errors) do
@@ -1022,6 +1098,8 @@ end
 ---@field effect? "not_sent"|"unknown"|"completed"
 ---@field cause? unknown
 ---@field partial? unknown
+---@field errors? libtmux.Error[] Deferred teardown errors.
+---@field runtime_errors? libtmux.Error[] Additional runtime cleanup diagnostics.
 
 ---@class libtmux.Request<T>
 ---@field await fun(self:libtmux.Request<T>):T?, libtmux.Error?
@@ -1043,8 +1121,18 @@ end
 ---@field dispatch_budget? integer
 
 ---@class libtmux.Runtime
+---@field owned_server fun(self:libtmux.Runtime,options?:libtmux.ConnectOptions):
+--- libtmux.Request<libtmux.Owned<libtmux.Server>>
+---@field find_or_create_server fun(self:libtmux.Runtime,options?:libtmux.ConnectOptions):
+--- libtmux.Request<libtmux.FoundOrCreated<libtmux.Server>>
+---@field discover_servers fun(self:libtmux.Runtime,options?:libtmux.DiscoveryOptions):
+--- libtmux.Request<libtmux.DiscoveryResult>
+---@field with_server fun(self:libtmux.Runtime,options:libtmux.ConnectOptions?,
+--- body:fun(server:libtmux.Server,owner:libtmux.Owned<libtmux.Server>):any):libtmux.Request<any>
 ---@field connect fun(self:libtmux.Runtime,
---- options:libtmux.ConnectOptions):libtmux.Request<libtmux.Server>
+--- options?:libtmux.ConnectOptions):libtmux.Request<libtmux.Server>
+---@field defer fun(self:libtmux.Runtime,
+--- cleanup:fun(runtime:libtmux.Runtime)):boolean?, libtmux.Error?
 ---@field spawn fun<T>(self:libtmux.Runtime,
 --- body:fun(runtime:libtmux.Runtime):T?, libtmux.Error?):libtmux.Request<T>
 ---@field close fun(self:libtmux.Runtime, reason?:string):libtmux.Request<unknown>

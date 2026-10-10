@@ -131,6 +131,18 @@ assert handlers == {s: signal.getsignal(s) for s in handlers}
                     self.assertTrue(client.stderr.closed)
                     self.assertEqual(borrowed.run("has-session", "-t", "fixture").returncode, 0)
 
+    def test_exit_observer_failure_retains_root_for_retry(self):
+        owned = TmuxFixture().__enter__()
+        self.addCleanup(owned.close)
+        with patch.object(owned, "_wait_exits", side_effect=RuntimeError("exit unproved")):
+            with self.assertRaisesRegex(RuntimeError, "exit unproved"):
+                owned.close()
+        self.assertTrue(owned.path.exists(), "unproved exit must retain the owned root")
+        self.assertFalse(owned._closed)
+        self.assertTrue(any(watch.fd is not None for watch in owned._exits.values()))
+        owned.close()
+        self.assertFalse(owned.path.exists())
+
     def test_reaped_client_pipes_close(self):
         with TmuxFixture() as owned:
             client = owned.spawn("display-message", "-p", "ready")

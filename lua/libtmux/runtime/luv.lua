@@ -100,8 +100,16 @@ end
 function M._result(root, rt)
     local value, err = root:result()
     local cleanup = rt:errors()
-    if not err and #cleanup > 0 then
-        return nil, errors.new("cleanup_failed", "runtime cleanup failed", { errors = cleanup })
+    if #cleanup > 0 then
+        if err and err.code == "cleanup_failed" then
+            err.runtime_errors = cleanup
+            return nil, err
+        end
+        return nil,
+            errors.new("cleanup_failed", "runtime cleanup failed", {
+                cause = err,
+                errors = cleanup,
+            })
     end
     return value, err
 end

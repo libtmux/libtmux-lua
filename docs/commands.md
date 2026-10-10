@@ -54,3 +54,11 @@ reported with byte counts and truncation metadata; it is not silently kept.
 The raw API is an escape hatch. Named domain operations, owned command
 completion and observation APIs are still under development. A successful
 `send-keys` process does not report the exit of a pane application.
+
+## Client environment
+
+Commands inherit the connection's captured client environment. A command's
+`env` option supplies a complete replacement sequence of `NAME=value` strings
+for that client. The library copies the sequence and removes `TMUX` and
+`TMUX_PANE`; the pinned socket still selects the accepted daemon. These
+values do not edit the host process or tmux's persistent environment store.

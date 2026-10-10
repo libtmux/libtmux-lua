@@ -62,6 +62,28 @@ tmux or an event loop. CI runs unit tests on Lua 5.1–5.5 and LuaJIT, plus live
 tests across tmux 3.2a–3.7c. See the [compatibility matrix](docs/compatibility.md)
 for exact versions and remaining platform coverage.
 
+## Ordinary defaults
+
+With tmux already running, the [ordinary example](examples/ordinary.lua)
+connects without socket arguments, creates a session, reads it, and removes
+that session when the runtime body finishes or fails:
+
+```console
+$ lua examples/ordinary.lua
+```
+
+`runtime:connect()` selects `LIBTMUX_SOCKET_PATH`, `LIBTMUX_SOCKET_NAME`, the
+current `TMUX` context, or tmux's default named socket, in that order. Explicit
+API selectors take precedence. The library captures the endpoint and client
+environment at the call. See [connection defaults](docs/snapshots.md) for
+validation, named roots and per-client overrides. Connect requires an existing
+daemon. [Owned scopes, server startup and discovery](docs/lifecycle.md) add
+explicit lifecycle operations without changing borrowed connections.
+
+The [external test harness](tests/integration/test_lifecycle.py) runs the exact
+example file at owned private endpoints and checks cleanup after injected
+failure. Private socket setup belongs to that harness.
+
 ## Read a server
 
 Connect to an existing server by its explicit socket path. This is the full
@@ -218,6 +240,7 @@ server running. See [runtime ownership and cancellation](docs/runtime.md).
 ## Guides
 
 - **Clients:** [switch sessions and detach terminals](docs/clients.md).
+- **Ownership:** [owned scopes, discovery and find-or-create](docs/lifecycle.md).
 - **Read and watch:** [snapshots](docs/snapshots.md),
   [session notifications and pane streams](docs/control.md).
 - **Run and arrange:** [commands and batches](docs/commands.md),

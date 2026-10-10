@@ -67,7 +67,7 @@ local function fixture()
         return pipe
     end
     function uv.spawn(program, spec, on_exit)
-        uv.spawned[#uv.spawned + 1] = { program = program, args = spec.args }
+        uv.spawned[#uv.spawned + 1] = { program = program, args = spec.args, env = spec.env }
         local metadata = spec.args[#spec.args]:find("#{q:pid}", 1, true)
         local function finish()
             if not metadata or not uv.dead_listener then
@@ -514,6 +514,73 @@ function M.test_returned_endpoint_preserves_state_without_rooting_its_result_cyc
     collectgarbage("collect")
     collectgarbage("collect")
     t.assertNil(next(watched))
+end
+
+function M.test_captured_environment_reaches_evidence_commands_and_observers()
+    local f = fixture()
+    local env = { "KEEP=before", "TMUX=must-be-removed", "TMUX_PANE=%4" }
+    f:start(function(rt)
+        local request =
+            endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock", env = env })
+        env[1] = "KEEP=after"
+        local bound = assert(request:await())
+        assert(bound:execute({ "display-message", "-p", "done" }):await())
+        assert(bound
+            :execute({ "display-message", "-p", "done" }, {
+                env = { "CHILD=override", "TMUX=ignored", "TMUX_PANE=%5" },
+            })
+            :await())
+        local connection = assert(bound
+            :_client(function(_, endpoint)
+                t.assertEquals(endpoint.env, { "KEEP=before" })
+                return true
+            end, function(done)
+                done()
+            end)
+            :await())
+        t.assertTrue(connection)
+        assert(bound:close():await())
+    end)
+    for index, launch in ipairs(f.uv.spawned) do
+        t.assertEquals(launch.env, index == 5 and { "CHILD=override" } or { "KEEP=before" })
+    end
+end
+
+function M.test_named_uid_directory_rejects_foreign_owner_or_symlink()
+    for _, stat in ipairs({
+        { type = "directory", uid = 999, mode = 448 },
+        { type = "link", uid = 1000, mode = 448 },
+        { type = "directory", uid = 1000, mode = 449 },
+    }) do
+        local f = fixture()
+        f.uv.fs_stat = function(_, callback)
+            f.driver.defer(function()
+                callback(nil, { type = "directory" })
+            end)
+            return true
+        end
+        f.uv.fs_mkdir = function(_, mode, callback)
+            t.assertEquals(mode, 448)
+            f.driver.defer(function()
+                callback("EEXIST")
+            end)
+            return true
+        end
+        f.uv.files["/owned/tmux-1000"] = stat
+        f:start(function(rt)
+            local value, err = endpoints
+                .bind(rt, {
+                    binary = "/tmux",
+                    socket = "/owned/tmux.sock",
+                    root = "/owned",
+                    uid = 1000,
+                })
+                :await()
+            t.assertNil(value)
+            t.assertEquals(err.code, "invalid_endpoint")
+        end)
+        t.assertEquals(f.uv.spawned, {})
+    end
 end
 
 return M

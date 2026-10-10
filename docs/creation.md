@@ -10,6 +10,9 @@ made from tmux's returned IDs. Its `created` sequence names the objects this
 operation created: all four for a session, window/pane/link for a window, and
 only the pane for a split. Other handles describe the containing context.
 Creating a pane proves neither application readiness nor command success.
+Use [deferred cleanup](runtime.md#deferred-cleanup) for a session that should
+end with its task. The [ordinary example](../examples/ordinary.lua) includes
+imports, default connection and cleanup.
 
 ## Commands and literal values
 
@@ -60,3 +63,7 @@ state. Closing the Server connection leaves created sessions running.
 The [public creation fixture](../tests/integration/domain.lua) exercises the
 same API through luv and Neovim with literal arguments, environment and
 directory values, returned IDs, explicit shell text and missing directories.
+
+## Owned creation
+
+Use [owned lifecycle operations](lifecycle.md) to destroy created sessions, windows or panes at task exit, or to accept destruction responsibility for an existing handle. The borrowed creation methods above keep their existing lifetime semantics.

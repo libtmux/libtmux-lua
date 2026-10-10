@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import unittest
@@ -15,6 +16,9 @@ class EnvironmentTests(unittest.TestCase):
     def run_case(self, mode):
         for host in ("luv", "nvim"):
             fixture = TmuxFixture()
+            # The decoder rejects nonportable names; this test adds its own malformed name below.
+            fixture.env = {key: value for key, value in fixture.env.items()
+                           if re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", key)}
             fixture.env.update(LC_ALL="C", LANG="C")
             with self.subTest(host=host), fixture:
                 env = dict(fixture.env, TMUX_BIN=shutil.which(fixture.binary),

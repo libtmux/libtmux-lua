@@ -318,6 +318,86 @@ function Entity:split(options)
     return domain.create(stored.server, stored.identity, "pane", options, M.from_reference)
 end
 
+function Entity:adopt()
+    local stored = handles[self]
+    return require("libtmux._internal.lifecycle").adopt(
+        stored.server,
+        stored.identity,
+        self,
+        M.from_reference
+    )
+end
+
+function Entity:owned_window(options)
+    local stored = handles[self]
+    return require("libtmux._internal.lifecycle").create(
+        stored.server,
+        stored.identity,
+        "window",
+        options,
+        M.from_reference
+    )
+end
+
+function Entity:owned_pane(options)
+    local stored = handles[self]
+    return require("libtmux._internal.lifecycle").create(
+        stored.server,
+        stored.identity,
+        "pane",
+        options,
+        M.from_reference
+    )
+end
+
+function Entity:with_window(options, body)
+    local stored = handles[self]
+    return require("libtmux._internal.lifecycle").scoped_create(
+        stored.server,
+        stored.identity,
+        "window",
+        options,
+        M.from_reference,
+        body
+    )
+end
+
+function Entity:with_pane(options, body)
+    local stored = handles[self]
+    return require("libtmux._internal.lifecycle").scoped_create(
+        stored.server,
+        stored.identity,
+        "pane",
+        options,
+        M.from_reference,
+        body
+    )
+end
+
+function Entity:find_or_create_window(name, options)
+    local stored = handles[self]
+    return require("libtmux._internal.lifecycle").find(
+        stored.server,
+        stored.identity,
+        "window",
+        name,
+        options,
+        M.from_reference
+    )
+end
+
+function Entity:find_or_create_pane(pane_key, options)
+    local stored = handles[self]
+    return require("libtmux._internal.lifecycle").find(
+        stored.server,
+        stored.identity,
+        "pane",
+        pane_key,
+        options,
+        M.from_reference
+    )
+end
+
 function Entity:snapshot(options)
     local stored = handles[self]
     return stored.server.runtime:_operation(function(_, operation)
@@ -414,6 +494,13 @@ end
 
 --- A tmux session.
 ---@class libtmux.Session: libtmux.Configurable<libtmux.SnapshotSession>
+---@field adopt fun(self:libtmux.Session):libtmux.Request<libtmux.Owned<libtmux.Session>>
+---@field owned_window fun(self:libtmux.Session,options?:libtmux.NewWindowOptions):
+--- libtmux.Request<libtmux.Owned<libtmux.Window>>
+---@field with_window fun(self:libtmux.Session,options:libtmux.NewWindowOptions?,
+--- body:fun(value:libtmux.Window,owner:libtmux.Owned<libtmux.Window>):any):libtmux.Request<any>
+---@field find_or_create_window fun(self:libtmux.Session,key:string,
+--- options?:libtmux.NewWindowOptions):libtmux.Request<libtmux.FoundOrCreated<libtmux.Window>>
 ---@field new_window fun(self:libtmux.Session,options?:libtmux.NewWindowOptions):
 --- libtmux.Request<libtmux.Creation> Creates a window in this session.
 ---@field rename fun(self:libtmux.Session,name:string,options?:libtmux.TopologyOptions):
@@ -443,6 +530,9 @@ end
 
 --- A tmux window. Placement in a session belongs to its window links.
 ---@class libtmux.Window: libtmux.Configurable<libtmux.SnapshotWindow>
+---@field adopt fun(self:libtmux.Window):libtmux.Request<libtmux.Owned<libtmux.Window>>
+---@field find_or_create_pane fun(self:libtmux.Window,key:string,
+--- options?:libtmux.SplitOptions):libtmux.Request<libtmux.FoundOrCreated<libtmux.Pane>>
 ---@field rename fun(self:libtmux.Window,name:string,options?:libtmux.TopologyOptions):
 --- libtmux.Request<boolean> Renames this window.
 ---@field kill fun(self:libtmux.Window,options?:libtmux.TopologyOptions):
@@ -469,6 +559,13 @@ end
 
 --- A tmux pane.
 ---@class libtmux.Pane: libtmux.Configurable<libtmux.SnapshotPane>
+---@field adopt fun(self:libtmux.Pane):libtmux.Request<libtmux.Owned<libtmux.Pane>>
+---@field owned_pane fun(self:libtmux.Pane,options?:libtmux.SplitOptions):
+--- libtmux.Request<libtmux.Owned<libtmux.Pane>>
+---@field with_pane fun(self:libtmux.Pane,options:libtmux.SplitOptions?,
+--- body:fun(value:libtmux.Pane,owner:libtmux.Owned<libtmux.Pane>):any):libtmux.Request<any>
+---@field find_or_create_pane fun(self:libtmux.Pane,key:string,
+--- options?:libtmux.SplitOptions):libtmux.Request<libtmux.FoundOrCreated<libtmux.Pane>>
 ---@field send_keys fun(self:libtmux.Pane,keys:string[],options?:libtmux.KeyOptions):
 --- libtmux.Request<boolean> Sends key names, as tmux's send-keys reads them.
 ---@field send_text fun(self:libtmux.Pane,text:string,options?:libtmux.PaneOptions):
