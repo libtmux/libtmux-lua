@@ -1,5 +1,9 @@
 # Persistent environment
 
+Connection `client_env` and command `env` configure the launched tmux client;
+see [connection defaults](snapshots.md). Those copied values leave the host
+environment unchanged. There is no `LIBTMUX_SOCKET_ENV` variable.
+
 Server methods address tmux's global environment store. Session methods address
 that session's local store. Each method returns a Request; reads never evaluate
 shell text. Window and Pane handles reject these operations with `invalid_scope`.

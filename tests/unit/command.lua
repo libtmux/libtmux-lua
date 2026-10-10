@@ -101,6 +101,8 @@ function M.test_invalid_group_member_rejects_whole_submission_without_effects()
         {},
         { socket = "nul\000" },
         { socket = "valid", extra = true },
+        { socket = "valid", env = false },
+        { socket = "valid", env = { "KEY=nul\000" } },
     }) do
         local encoded, err = command.prepare(invalid, { { "valid" } })
         t.assertNil(encoded)

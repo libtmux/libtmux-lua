@@ -35,17 +35,36 @@ local function options_copy(options)
     end
     local copied = {}
     for key, value in next, options do
-        if key ~= "binary" and key ~= "socket" and key ~= "config" then
+        if key == "env" then
+            local prepared, err = command.process_options({}, { env = value })
+            if not prepared then
+                return nil, err
+            end
+            copied.env = prepared.env
+        elseif key == "uid" or key == "context" then
+            copied[key] = value
+        elseif
+            key == "binary"
+            or key == "socket"
+            or key == "config"
+            or key == "root"
+            or key == "pin_parent"
+        then
+            if not absolute(value) then
+                return nil,
+                    failure("invalid_endpoint", "endpoint paths must be absolute and NUL-free")
+            end
+            copied[key] = value
+        else
             return nil, failure("invalid_endpoint", "unknown endpoint option")
         end
-        if not absolute(value) then
-            return nil, failure("invalid_endpoint", "endpoint paths must be absolute and NUL-free")
-        end
-        copied[key] = value
     end
     if not copied.binary or not copied.socket or copied.socket:sub(-1) == "/" then
         return nil,
             failure("invalid_endpoint", "endpoint needs explicit executable and socket paths")
+    end
+    if copied.root and (type(copied.uid) ~= "number" or copied.uid < 0 or copied.uid % 1 ~= 0) then
+        return nil, failure("invalid_endpoint", "named endpoint requires a nonnegative UID")
     end
     return copied
 end
@@ -245,15 +264,41 @@ end
 
 function Bound:close()
     local state = assert(bindings[self], "invalid endpoint")
+    if (state.owners or 0) > 0 then
+        state.close_requested = true
+        return state.runtime:_operation(function()
+            return true
+        end, { operation = "endpoint.close" })
+    end
     invalidate(state, "endpoint closed")
     return state.lease:close()
 end
 
-local function execute(state, commands, options, raw_result)
+-- Remote owners keep the accepted pin alive after their borrowed client closes.
+function Bound:_hold()
+    local state = assert(bindings[self], "invalid endpoint")
+    state.owners = (state.owners or 0) + 1
+    local held = true
+    return function()
+        if not held then
+            return
+        end
+        held, state.owners = false, state.owners - 1
+        if state.owners == 0 and state.close_requested then
+            return self:close()
+        end
+    end
+end
+
+local function execute(state, commands, options, raw_result, capture)
     local prepared, preparation_error = command.prepare(state.endpoint, commands)
     local plan
     if not preparation_error then
-        plan, preparation_error = process.prepare(prepared, options)
+        local copied
+        copied, preparation_error = command.process_options(state.endpoint, options)
+        if copied then
+            plan, preparation_error = process.prepare(prepared, copied)
+        end
     end
     state.active = state.active + 1
     local request = state.runtime:_operation(function(rt, operation)
@@ -267,7 +312,15 @@ local function execute(state, commands, options, raw_result)
         end
         operation:_set_effect("unknown")
         local result
-        result, err = process.execute(rt, plan.argv, plan.options):await()
+        local child = process.execute(rt, plan.argv, plan.options)
+        if capture then
+            -- A cancelled waiter must not discard a complete creation receipt.
+            child:_on_retire(function()
+                local value, cause = child:result()
+                capture(value or (cause and cause.partial), cause)
+            end)
+        end
+        result, err = child:await()
         result, err = process.retain_output(operation, result, err, "endpoint")
         if raw_result and err and err.code == "exit_failed" and err.effect == "completed" then
             return err.partial
@@ -294,6 +347,11 @@ end
 -- A group yields one client result; tmux does not attribute it to each member.
 function Bound:group(commands, options)
     return execute(assert(bindings[self], "invalid endpoint"), commands, options, true)
+end
+
+-- Lifecycle captures transport output before asynchronous delivery can be cancelled.
+function Bound:_receipt(commands, options, capture)
+    return execute(assert(bindings[self], "invalid endpoint"), commands, options, true, capture)
 end
 
 -- Only the private observation transport receives the pinned endpoint and lease.
@@ -378,6 +436,38 @@ function M.bind(runtime, options)
         end
         state.lease = lease
         local stat
+        if copied.root then
+            stat, err = fs(state, "fs_stat", { copied.root }):await()
+            if not stat or stat.type ~= "directory" then
+                return nil,
+                    failure(
+                        "invalid_endpoint",
+                        "named socket root is not an accessible directory",
+                        err
+                    )
+            end
+            local directory = copied.root .. "/tmux-" .. string.format("%.0f", copied.uid)
+            local made
+            made, err = fs(state, "fs_mkdir", { directory, 448 }):await()
+            if not made and not tostring(err.cause):match("^EEXIST") then
+                return nil, err
+            end
+            stat, err = fs(state, "fs_lstat", { directory }):await()
+            if
+                not stat
+                or stat.type ~= "directory"
+                or stat.uid ~= copied.uid
+                or type(stat.mode) ~= "number"
+                or stat.mode % 8 ~= 0
+            then
+                return nil,
+                    failure(
+                        "invalid_endpoint",
+                        "named socket directory needs current UID and no other-user permissions",
+                        err
+                    )
+            end
+        end
         stat, err = fs(state, "fs_lstat", { copied.socket }):await()
         if not stat or stat.type ~= "socket" then
             return nil,
@@ -388,7 +478,9 @@ function M.bind(runtime, options)
                 failure("uncertain_generation", "socket identity is not represented precisely")
         end
         state.stat = { dev = stat.dev, ino = stat.ino }
-        local parent = copied.socket:match("^(.*)/[^/]+$")
+        -- Startup keeps its pin beside the private directory so daemon
+        -- retirement can remove that directory before the owner drops its pin.
+        local parent = copied.pin_parent or copied.socket:match("^(.*)/[^/]+$")
         local directory
         directory, err = fs(
             state,
@@ -422,6 +514,7 @@ function M.bind(runtime, options)
             socket = state.alias,
             config = copied.config,
             no_start = true,
+            env = copied.env,
         }
         state.evidence, err = read_evidence(state, operation)
         if not state.evidence then

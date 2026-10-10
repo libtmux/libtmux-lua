@@ -58,8 +58,9 @@ class TmuxFixture:
     this context can close before that runner exits.
     """
 
-    def __init__(self, binary=None):
+    def __init__(self, binary=None, *, socket_name=None):
         self.binary = binary or os.environ.get("TMUX_BIN", "tmux")
+        self.socket_name = socket_name
         self.env = {key: value for key, value in os.environ.items()
                     if key not in ("TMUX", "TMUX_PANE")}
         self.path = None
@@ -77,6 +78,12 @@ class TmuxFixture:
         self.path = Path(tempfile.mkdtemp(prefix="libtmux-lua-", dir="/tmp"))
         self.socket = self.path / "tmux.sock"
         try:
+            if self.socket_name is not None:
+                if not self.socket_name or self.socket_name in (".", "..") or "/" in self.socket_name:
+                    raise ValueError("fixture socket_name must be a nonempty leaf")
+                directory = self.path / f"tmux-{os.getuid()}"
+                directory.mkdir(mode=0o700)
+                self.socket = directory / self.socket_name
             result = self.run(
                 "new-session", "-d", "-s", "fixture", "-P", "-F",
                 "#{pid} #{pane_pid}", "exec /bin/cat",
@@ -151,11 +158,16 @@ class TmuxFixture:
                     attempt(f"terminate process {watch.pid}", watch.terminate)
         for client in self._clients:
             attempt(f"close client {client.pid}", lambda: self._finish_client(client))
+        before_wait = len(errors)
         attempt("wait for owned process exit", self._wait_exits)
-        for watch in self._exits.values():
-            attempt(f"close process observer {watch.pid}", watch.close)
-        attempt("remove fixture directory", lambda: shutil.rmtree(self.path))
-        self._closed = True
+        exits_proved = len(errors) == before_wait
+        if exits_proved:
+            for watch in self._exits.values():
+                attempt(f"close process observer {watch.pid}", watch.close)
+        if exits_proved:
+            attempt("remove fixture directory", lambda: shutil.rmtree(self.path))
+        # A failed exit observation must retain the exact root for investigation.
+        self._closed = not self.path.exists()
         for _, error in errors:
             if not isinstance(error, Exception):
                 raise error

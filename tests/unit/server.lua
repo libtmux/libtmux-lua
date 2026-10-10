@@ -6,8 +6,25 @@ local identity = require("libtmux._internal.identity")
 local fields = require("libtmux._internal.fields")
 local M = {}
 
-local function fixture(body)
+local function fixture(body, client_environment)
     local driver = drivers.new()
+    client_environment = client_environment or {}
+    driver.uv = {
+        os_environ = function()
+            return client_environment
+        end,
+        getuid = function()
+            return 1000
+        end,
+        fs_stat = function(path)
+            if path == "/usr/bin/tmux" then
+                return { type = "file" }
+            end
+        end,
+        fs_access = function(path)
+            return path == "/usr/bin/tmux"
+        end,
+    }
     local rt = runtimes.new(driver, { max_active = 1 })
     local state = { calls = {}, binds = 0 }
     local generation = assert(identity.generation({
@@ -127,6 +144,52 @@ end
 local function connect(rt)
     t.assertEquals(type(rt.connect), "function", "public connection is missing")
     return assert(rt:connect({ binary = "/bin/tmux", socket_path = "/owned/socket" }):await())
+end
+
+function M.test_ordinary_connect_selects_and_captures_environment_path()
+    local environment = {
+        PATH = "/usr/local/bin:/usr/bin:/bin",
+        LIBTMUX_SOCKET_PATH = "/owned/selected.sock",
+        LIBTMUX_SOCKET_NAME = "../ignored",
+        TMUX = "malformed-but-ignored",
+        TMUX_PANE = "%9",
+        KEEP = "before",
+    }
+    fixture(function(rt, state)
+        local request = rt:connect()
+        environment.LIBTMUX_SOCKET_PATH = "/owned/changed.sock"
+        environment.KEEP = "after"
+        local server, err = request:await()
+        t.assertNil(err)
+        t.assertNotNil(server)
+        t.assertEquals(state.options.socket, "/owned/selected.sock")
+        t.assertEquals(state.options.binary, "/usr/bin/tmux")
+        t.assertNotNil(table.concat(state.options.env, "\n"):find("KEEP=before", 1, true))
+        for _, entry in ipairs(state.options.env) do
+            t.assertFalse(entry:match("^TMUX=") or entry:match("^TMUX_PANE=") or false)
+        end
+        t.assertEquals(environment.TMUX, "malformed-but-ignored")
+        t.assertEquals(environment.TMUX_PANE, "%9")
+        assert(server:close():await())
+    end, environment)
+end
+
+function M.test_explicit_path_ignores_invalid_environment_selectors()
+    fixture(function(rt, state)
+        local server, err = rt:connect({
+            binary = "/bin/tmux",
+            socket_path = "/owned/explicit.sock",
+        }):await()
+        t.assertNil(err)
+        t.assertNotNil(server)
+        t.assertEquals(state.options.socket, "/owned/explicit.sock")
+        assert(server:close():await())
+    end, {
+        LIBTMUX_SOCKET_PATH = "relative",
+        LIBTMUX_SOCKET_NAME = "../invalid",
+        TMUX = "invalid",
+        TMUX_TMPDIR = "relative",
+    })
 end
 
 function M.test_connection_copies_options_and_invalid_snapshot_dispatches_nothing()
