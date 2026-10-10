@@ -61,7 +61,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --no-install-recommends -y build-essential cmake pkg-config autoconf automake libtool bison libevent-dev libncurses-dev libreadline-dev
-      - uses: jdx/mise-action@c2a87611a18de5b3828c5652fe268e992400cb5c # v4.3.0
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           version: 2026.9.9
       - name: Select Lua and install test dependencies
@@ -87,6 +87,8 @@ jobs:
           echo "TMUX_BIN=$PWD/.cache/toolchains/tmux-$CI_TMUX/bin/tmux" >> "$GITHUB_ENV"
       - name: Install outer-gate prerequisites
         if: matrix.gate == 'outer'
+        env:
+          MISE_GITHUB_TOKEN: ${{ github.token }}
         run: |
           mise install stylua@2.4.0
           mise where stylua@2.4.0 >> "$GITHUB_PATH"
