@@ -219,7 +219,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: libtmux/docs
-          ref: f9ed37e8cc4c1ef9f86a446e1443f21da644ce1e
+          ref: 133013c4817fb8c654ca1e049d7ce2591e640c05
           path: docs
           persist-credentials: false
 
@@ -301,7 +301,7 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    uses: libtmux/docs/.github/workflows/reusable-deploy.yml@f9ed37e8cc4c1ef9f86a446e1443f21da644ce1e
+    uses: libtmux/docs/.github/workflows/reusable-deploy.yml@133013c4817fb8c654ca1e049d7ce2591e640c05
     with:
       path-prefix: lua/${{ matrix.version }}
       artifact: docs-lua-${{ matrix.version }}
