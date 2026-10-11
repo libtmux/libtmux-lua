@@ -13,7 +13,8 @@ local rows = {
     { id = "%3", active = false, current_command = "vim" },
 }
 local panes = query.select(rows, schema)
-local editors = panes:where({ current_command = { one_of = { "nvim", "vim" } } })
+local editors =
+    panes:where({ current_command = { one_of = { "nvim", "vim" } } })
 assert(#editors == 2 and editors[1] == rows[1] and editors[2] == rows[3])
 
 local inactive = panes:filter(function(pane)

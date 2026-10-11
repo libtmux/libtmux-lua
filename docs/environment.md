@@ -4,6 +4,7 @@ Server methods address tmux's global environment store. Session methods address
 that session's local store. Each method returns a Request; reads never evaluate
 shell text. Window and Pane handles reject these operations with `invalid_scope`.
 
+<!-- lua: compile-only: hard-codes /usr/bin/tmux and a socket path -->
 ```lua
 local adapter = require("libtmux.runtime.luv")
 local result, err = adapter.run(function(runtime)
@@ -18,7 +19,9 @@ local result, err = adapter.run(function(runtime)
     assert(session:set_environment("APP_MODE", "local"):await())
     local local_value = assert(session:get_environment("APP_MODE"):await())
     assert(session:unset_environment("APP_MODE"):await())
-    local inherited = assert(session:get_environment("APP_MODE", { inherit = true }):await())
+    local inherit = { inherit = true }
+    local request = session:get_environment("APP_MODE", inherit)
+    local inherited = assert(request:await())
     return { local_value = local_value, inherited = inherited }
 end)
 assert(result, tostring(err))

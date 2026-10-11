@@ -7,19 +7,25 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+local binary =
+    assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
+local socket =
+    assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
-    local created = must(server
-        :new_session({
-            name = "demo",
-            window_name = "main",
-            argv = { "/bin/cat" },
-        })
-        :await())
-    local logs = must(created.session:new_window({ name = "logs", argv = { "/bin/cat" } }):await())
+    local server =
+        must(runtime:connect({ binary = binary, socket_path = socket }):await())
+    local session_options = {
+        name = "demo",
+        window_name = "main",
+        argv = { "/bin/cat" },
+    }
+    local created = must(server:new_session(session_options):await())
+    local logs = must(
+        created.session
+            :new_window({ name = "logs", argv = { "/bin/cat" } })
+            :await()
+    )
     local snapshot = must(logs.window:snapshot():await())
     assert(snapshot.name == "logs", "created window has the wrong name")
     print("window: " .. snapshot.name)

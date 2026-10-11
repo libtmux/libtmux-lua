@@ -67,6 +67,7 @@ for exact versions and remaining platform coverage.
 Connect to an existing server by its explicit socket path. This is the full
 [snapshot example](examples/snapshot.lua), which prints pane and window IDs:
 
+<!-- lua: run -->
 ```lua
 local adapter = require("libtmux.runtime.luv")
 
@@ -77,13 +78,14 @@ local function must(value, err)
     return value
 end
 
+local binary =
+    assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
+local socket =
+    assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to an explicit socket")
+
 must(adapter.run(function(runtime)
-    local server = must(runtime
-        :connect({
-            binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable"),
-            socket_path = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to an explicit socket"),
-        })
-        :await())
+    local server =
+        must(runtime:connect({ binary = binary, socket_path = socket }):await())
     local snapshot = must(server:snapshot({ strict = true }):await())
     for _, pane in ipairs(snapshot.panes) do
         io.stdout:write(pane.id, "\t", pane.window_id, "\n")
@@ -134,6 +136,7 @@ SH
 After capturing `snapshot` in the example above, filter its panes with
 structured criteria or an ordinary Lua function:
 
+<!-- lua: fragment -->
 ```lua
 local editors = snapshot.panes:where({
     current_command = { one_of = { "nvim", "vim" } },
@@ -165,10 +168,12 @@ $ lua examples/native_query.lua
 Before closing `server` in that runtime body, create a session and split a
 window. These calls use the same `must` helper:
 
+<!-- lua: fragment -->
 ```lua
 local work = must(server:new_session({ name = "work" }):await())
 local editor = must(work.session:new_window({ name = "editor" }):await())
-local split = must(editor.pane:split({ direction = "right", percent = 40 }):await())
+local right = { direction = "right", percent = 40 }
+local split = must(editor.pane:split(right):await())
 
 must(split.pane:send_text("printf '%s\\n' hello"):await())
 must(split.pane:send_keys({ "Enter" }):await())
@@ -191,6 +196,7 @@ $ nvim --cmd 'set runtimepath+=.'
 With `TMUX_SOCKET` set to an existing server's absolute socket path, run this
 Lua code. `start` uses the editor's loop and reports the result in a callback:
 
+<!-- lua: compile-only: Neovim runtime, absent from the plain Lua gate -->
 ```lua
 local adapter = require("libtmux.runtime.nvim")
 

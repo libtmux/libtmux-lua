@@ -25,6 +25,7 @@ trap 'exit 1' HUP INT TERM
 
 unset TMUX TMUX_PANE
 export TMUX_BIN="$binary" TMUX_SOCKET="$socket" ENV=/dev/null BASH_ENV=/dev/null
-"$binary" -S "$socket" -f /dev/null new-session -d -s bootstrap -n bootstrap /bin/cat
+"$binary" -S "$socket" -f /dev/null \
+    new-session -d -s bootstrap -n bootstrap /bin/cat
 "${LUA_BIN:-lua}" "$program"
 "$binary" -S "$socket" has-session -t '=bootstrap'
