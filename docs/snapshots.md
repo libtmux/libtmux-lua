@@ -93,7 +93,9 @@ Cancellation retires owned clients; it does not kill the daemon.
 Run the example against an explicitly selected existing server:
 
 ```console
-$ TMUX_BIN=/usr/bin/tmux TMUX_SOCKET=/tmp/example-tmux.sock lua examples/snapshot.lua
+$ TMUX_BIN=/usr/bin/tmux \
+    TMUX_SOCKET=/tmp/example-tmux.sock \
+    lua examples/snapshot.lua
 ```
 
 The package gate runs this file from installed core and luv outside the

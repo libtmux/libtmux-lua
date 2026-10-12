@@ -4,6 +4,7 @@ Buffers hold bytes in the tmux daemon. Use an explicit name for every read,
 write, deletion and paste; these methods never infer the most recent buffer.
 Each live operation returns a Request through the PROCESS endpoint.
 
+<!-- lua: fragment -->
 ```lua
 assert(server:set_buffer("build-output", "one\000two\n"):await())
 local content = assert(server:show_buffer("build-output"):await())
