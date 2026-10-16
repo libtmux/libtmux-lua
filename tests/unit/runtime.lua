@@ -1649,4 +1649,134 @@ function tests.test_host_dispatch_failure_still_releases_resource_budget_and_log
     lu.assertEquals(rt:stats().resources, 0)
 end
 
+function tests.test_deferred_cleanup_awaits_before_resources_close()
+    local rt, driver = fixture()
+    local order = {}
+    local root = rt:start(function()
+        assert(rt:_resource(function(done)
+            order[#order + 1] = "transport"
+            done()
+        end))
+        assert(rt:defer(function()
+            assert(rt:_operation(function()
+                order[#order + 1] = "first"
+                return true
+            end):await())
+        end))
+        assert(rt:defer(function()
+            order[#order + 1] = "second"
+        end))
+        return "body"
+    end)
+    driver:drain()
+    lu.assertEquals(root:result(), "body")
+    lu.assertEquals(order, { "second", "first", "transport" })
+    lu.assertTrue(root:is_retired())
+end
+
+function tests.test_deferred_cleanup_preserves_body_and_teardown_errors()
+    local rt, driver = fixture()
+    local body = { code = "body_failed" }
+    local teardown = { code = "teardown_failed" }
+    local root = rt:start(function()
+        assert(rt:defer(function()
+            error(teardown, 0)
+        end))
+        error(body, 0)
+    end)
+    driver:drain()
+    local value, err = root:result()
+    lu.assertNil(value)
+    lu.assertEquals(err.code, "cleanup_failed")
+    lu.assertIs(err.cause, body)
+    lu.assertIs(err.errors[1], teardown)
+    lu.assertTrue(root:is_retired())
+end
+
+function tests.test_deferred_cleanup_runs_after_runtime_cancellation()
+    local rt, driver = fixture({ max_active = 1 })
+    local waiting, cleaned
+    local root = rt:start(function()
+        assert(rt:defer(function()
+            cleaned = assert(rt:_request({
+                start = function(settle, retire)
+                    driver.defer(function()
+                        settle(true)
+                        retire()
+                    end)
+                end,
+            }):await())
+        end))
+        waiting = rt:_request({
+            start = function(_, retire)
+                return function()
+                    retire()
+                end
+            end,
+        })
+        waiting:await()
+    end)
+    driver:drain()
+    rt:close("stop body")
+    lu.assertFalse(root:is_settled())
+    driver:drain()
+    lu.assertTrue(cleaned)
+    local _, err = root:result()
+    lu.assertEquals(err.code, "cancelled")
+    lu.assertTrue(root:is_retired())
+    lu.assertEquals(rt:stats().resources, 0)
+end
+
+function tests.test_repeated_close_keeps_async_cleanup_running_once()
+    local rt, driver = fixture()
+    ---@type any
+    local cleanup
+    local calls = 0
+    local root = rt:start(function()
+        assert(rt:defer(function()
+            calls = calls + 1
+            cleanup = operation(rt)
+            assert(cleanup.request:await())
+        end))
+        return "body"
+    end)
+    driver:drain()
+    rt:close("cancel during cleanup")
+    rt:close("repeat")
+    lu.assertEquals(calls, 1)
+    lu.assertEquals(cleanup.stopped, 0)
+    cleanup.settle(true)
+    cleanup.retire()
+    driver:drain()
+    local _, err = root:result()
+    lu.assertEquals(err.code, "cancelled")
+    lu.assertTrue(root:is_retired())
+    lu.assertEquals(rt:stats().deferred, 0)
+end
+
+function tests.test_deferred_failures_keep_later_cleanup_and_transport_errors()
+    local rt, driver = fixture()
+    local remaining
+    local root = rt:start(function()
+        assert(rt:_resource(function(done)
+            done({ code = "transport_cleanup" })
+        end))
+        assert(rt:defer(function()
+            remaining = true
+        end))
+        assert(rt:defer(function()
+            return nil, { code = "deferred_cleanup" }
+        end))
+        error({ code = "body_failure" }, 0)
+    end)
+    driver:drain()
+    local _, err = require("libtmux.runtime.luv")._result(root, rt)
+    lu.assertTrue(remaining)
+    lu.assertEquals(err.code, "cleanup_failed")
+    lu.assertEquals(err.cause.code, "body_failure")
+    lu.assertEquals(err.errors[1].code, "deferred_cleanup")
+    lu.assertEquals(err.runtime_errors[2].cause.code, "transport_cleanup")
+    lu.assertEquals(rt:stats().deferred, 0)
+end
+
 return tests

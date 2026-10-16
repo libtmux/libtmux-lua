@@ -17,6 +17,36 @@ function returns the runtime and root Request immediately. It borrows the
 host loop and schedules callbacks outside fast events. `on_done(value, err)`
 runs after owned cleanup; unrelated host handles remain open.
 
+## Deferred cleanup
+
+Register `runtime:defer(function(runtime) ... end)` inside a managed task to
+run cleanup at that task's exit. The function can await requests. The runtime
+joins body work, runs deferred functions in reverse registration order, then
+closes client resources. A body exception or cancellation still runs those
+functions with a path for asynchronous work. Repeated `close` calls do not
+repeat cleanup; deferred functions run once.
+
+The [ordinary example](../examples/ordinary.lua) registers a session kill
+before creating the session, then captures the returned handle for cleanup.
+It connects to an existing daemon and destroys only the session it created.
+The handle retains the daemon generation and session ID. Keep the connection
+open until deferred operations finish. Closing the client connection itself
+leaves remote objects intact.
+
+If teardown fails, the result has code `cleanup_failed`, the body error in
+`cause`, and teardown errors in `errors`. Additional transport diagnostics
+appear in `runtime_errors`. The adapter waits for teardown before returning
+or calling `on_done`. Cleanup still depends on a functioning host dispatcher
+and transport; host failure reports incomplete cleanup. Client cancellation
+cannot recover an object ID from an ambiguous creation result, so deferred
+cleanup is not a transaction or an adoption/find-or-create API. Use the
+[owned lifecycle operations](lifecycle.md) for those contracts and creation receipts.
+
+Deferred registrations share `max_resources` as a separate count limit. A
+registration failure returns `nil, err` before adding a callback. A cleanup
+function runs in a managed coroutine, including on Lua 5.1; it does not yield
+through `pcall` or `xpcall`.
+
 ## Tasks and results
 
 The body receives its runtime. `runtime:spawn(body)` creates a child task and
@@ -48,8 +78,8 @@ can settle before retirement, so these states differ.
 The task that creates an operation owns its cancellation. Canceling another
 task that waits on that operation detaches its wait; it does not cancel the
 producer. `request:cancel(reason)` cancels the requested operation explicitly.
-`runtime:close(reason)` rejects new work, cancels owned work and returns the
-root Request; repeated close calls are safe.
+`runtime:close(reason)` rejects new body work, cancels owned work and returns
+the root Request; repeated close calls are safe.
 
 Transport errors preserve `effect`: `not_sent`, `unknown`, or `completed`.
 Canceling a tmux client cannot prove that accepted daemon work stopped.

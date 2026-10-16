@@ -3,6 +3,7 @@ local environment = require("libtmux._internal.environment")
 local buffer = require("libtmux._internal.buffer")
 local client = require("libtmux._internal.client")
 local endpoints = require("libtmux._internal.endpoint")
+local defaults = require("libtmux._internal.defaults")
 local errors = require("libtmux._internal.error")
 local fields = require("libtmux._internal.fields")
 local graph = require("libtmux._internal.graph")
@@ -37,21 +38,6 @@ end
 
 local function integer(value, maximum)
     return type(value) == "number" and value >= 1 and value <= maximum and value % 1 == 0
-end
-
-local function connection_options(options)
-    if not plain(options) then
-        return nil, failure("invalid_options", "connection options must be a plain record")
-    end
-    local copied, mapping =
-        {}, { binary = "binary", socket_path = "socket", config_path = "config" }
-    for key, value in next, options do
-        if not mapping[key] then
-            return nil, failure("invalid_options", "unknown connection option")
-        end
-        copied[mapping[key]] = value
-    end
-    return copied
 end
 
 local function capture_options(state, options)
@@ -460,6 +446,48 @@ function Server:new_session(options)
     return domain.create(servers[self], nil, "session", options, entities.from_reference)
 end
 
+--- Accept destruction responsibility for this daemon in the current managed task.
+function Server:adopt()
+    return require("libtmux._internal.lifecycle").adopt(
+        servers[self],
+        nil,
+        self,
+        entities.from_reference
+    )
+end
+
+function Server:owned_session(options)
+    return require("libtmux._internal.lifecycle").create(
+        servers[self],
+        nil,
+        "session",
+        options,
+        entities.from_reference
+    )
+end
+
+function Server:with_session(options, body)
+    return require("libtmux._internal.lifecycle").scoped_create(
+        servers[self],
+        nil,
+        "session",
+        options,
+        entities.from_reference,
+        body
+    )
+end
+
+function Server:find_or_create_session(name, options)
+    return require("libtmux._internal.lifecycle").find(
+        servers[self],
+        nil,
+        "session",
+        name,
+        options,
+        entities.from_reference
+    )
+end
+
 function Server:observe(session, options)
     return observation.open(servers[self], session, options)
 end
@@ -513,8 +541,13 @@ function Server:close()
     return state.bound:close()
 end
 
-function M.connect(runtime, options)
-    local copied, validation_error = connection_options(options)
+function M.connect(runtime, options, resolved)
+    local copied, validation_error
+    if resolved then
+        copied = options
+    else
+        copied, validation_error = defaults.resolve(runtime._driver.uv, options)
+    end
     local binding
     local request = runtime:_operation(function(rt)
         if not copied then
@@ -531,7 +564,13 @@ function M.connect(runtime, options)
             bound:close():await()
             return nil, err
         end
-        local state = { runtime = rt, bound = bound, version = evidence.version, methods = Server }
+        local state = {
+            runtime = rt,
+            bound = bound,
+            version = evidence.version,
+            methods = Server,
+            endpoint = copied,
+        }
         local server = setmetatable({}, {
             __index = function(_, key)
                 return state.methods[key]
@@ -562,10 +601,20 @@ function M.connect(runtime, options)
     return request
 end
 
+-- Startup and discovery already captured defaults before scheduling work.
+function M.resolved(runtime, endpoint)
+    return M.connect(runtime, endpoint, true)
+end
+
 ---@class libtmux.ConnectOptions
----@field binary string Absolute tmux executable path.
----@field socket_path string Absolute existing daemon socket path.
+---@field binary? string Absolute executable; omitted resolves tmux through captured PATH.
+---@field socket_path? string Absolute existing daemon socket path; excludes socket_name.
+---@field socket_name? string Named socket leaf; excludes socket_path.
 ---@field config_path? string Absolute configuration path.
+--- Defaults to /dev/null.
+---@field env? string[] Explicit process environment entries.
+--- Complete child environment, including an empty sequence; excludes client_env.
+---@field client_env? table<string, string|false> Copied client overrides; false removes a variable.
 
 ---@class libtmux.SnapshotOptions
 ---@field strict? boolean Perform one additional topology verification pass.
@@ -577,7 +626,7 @@ end
 ---@class libtmux.CommandOptions
 ---@field stdin? string
 ---@field cwd? string
----@field env? string[] Explicit process environment entries.
+---@field env? string[] Per-command client environment; TMUX and TMUX_PANE are removed.
 ---@field timeout? number
 ---@field deadline? number
 ---@field max_output_bytes? integer
@@ -601,6 +650,14 @@ end
 ---@field error? libtmux.Error
 
 ---@class libtmux.Server
+---@field adopt fun(self:libtmux.Server):libtmux.Request<libtmux.Owned<libtmux.Server>>
+---@field owned_session fun(self:libtmux.Server,options?:libtmux.NewSessionOptions):
+--- libtmux.Request<libtmux.Owned<libtmux.Session>>
+---@field with_session fun(self:libtmux.Server,options:libtmux.NewSessionOptions?,
+--- body:fun(session:libtmux.Session,owner:libtmux.Owned<libtmux.Session>):any):
+--- libtmux.Request<any>
+---@field find_or_create_session fun(self:libtmux.Server,name:string,
+--- options?:libtmux.NewSessionOptions):libtmux.Request<libtmux.FoundOrCreated<libtmux.Session>>
 ---@field get_option fun(self:libtmux.Server,name:string,options?:libtmux.SettingGetOptions):
 --- libtmux.Request<libtmux.OptionRecord>
 ---@field list_options fun(self:libtmux.Server,options?:libtmux.SettingListOptions):

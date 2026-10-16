@@ -44,6 +44,7 @@ local function fixture()
         binary = "/actual/tmux",
         socket = "/owned/pin/socket",
         config = "/dev/null",
+        env = { "KEEP=captured" },
     }, { session_id = "$0" }, function(data)
         f.data[#f.data + 1] = data
     end, function(err)
@@ -61,6 +62,7 @@ end
 function M.test_literal_control_spawn_keeps_reader_alive_until_exit_and_both_eofs()
     local f = fixture()
     t.assertEquals(f.uv.program, "/actual/tmux")
+    t.assertEquals(f.uv.options.env, { "KEEP=captured" })
     t.assertEquals(f.uv.options.args, {
         "-N",
         "-S",

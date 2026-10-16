@@ -242,7 +242,7 @@ function M.start(runtime, endpoint, options, on_data, on_end)
     local ok, handle, cause = pcall(
         uv.spawn,
         endpoint.binary,
-        { args = args, stdio = pipes },
+        { args = args, stdio = pipes, env = endpoint.env },
         function(status, term_signal)
             exited, code, signal = true, status, term_signal
             close(child)

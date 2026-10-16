@@ -115,7 +115,13 @@ function M.prepare(endpoint, commands)
         return invalid("invalid_endpoint", "tmux endpoint must be a plain table")
     end
     for key in next, endpoint do
-        if key ~= "binary" and key ~= "socket" and key ~= "config" and key ~= "no_start" then
+        if
+            key ~= "binary"
+            and key ~= "socket"
+            and key ~= "config"
+            and key ~= "no_start"
+            and key ~= "env"
+        then
             return invalid("invalid_endpoint", "unknown tmux endpoint field")
         end
     end
@@ -125,11 +131,13 @@ function M.prepare(endpoint, commands)
     end
     local socket, config = rawget(endpoint, "socket"), rawget(endpoint, "config")
     local no_start = rawget(endpoint, "no_start")
+    local env = rawget(endpoint, "env")
     if
         not string_value(binary, true)
         or not string_value(socket, true)
         or (config ~= nil and not string_value(config, true))
         or (no_start ~= nil and type(no_start) ~= "boolean")
+        or (env ~= nil and not process.prepare({ "tmux" }, { env = env }))
     then
         return invalid(
             "invalid_endpoint",
@@ -172,9 +180,30 @@ function M.prepare(endpoint, commands)
     return result
 end
 
+function M.process_options(endpoint, options)
+    local prepared, err = process.prepare({ endpoint.binary or "tmux" }, options)
+    if not prepared then
+        return nil, err
+    end
+    local copied = prepared.options
+    local selected = copied.env or endpoint.env
+    if selected then
+        copied.env = {}
+        for _, entry in ipairs(selected) do
+            if not entry:match("^TMUX=") and not entry:match("^TMUX_PANE=") then
+                copied.env[#copied.env + 1] = entry
+            end
+        end
+    end
+    return copied
+end
+
 function M.group(runtime, endpoint, commands, options)
     local argv, err = M.prepare(endpoint, commands)
-    if not argv then
+    if argv then
+        options, err = M.process_options(endpoint, options)
+    end
+    if err then
         return runtime:_request({
             bytes = 0,
             start = function(settle, retire)

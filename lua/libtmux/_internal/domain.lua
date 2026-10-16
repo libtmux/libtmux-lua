@@ -385,6 +385,9 @@ local function receipt(state, generation, kind, parent, result, wrap)
     return created
 end
 
+-- Owned creation reuses validation and argv semantics, with its own identity receipt.
+M.prepare = prepare
+
 function M.create(state, parent, kind, options, wrap)
     local generation, ref = current(state, parent)
     local plan, validation_error
