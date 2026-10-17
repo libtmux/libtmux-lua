@@ -13,6 +13,9 @@ local dialects = {
     ["3.7a"] = "raw",
     ["3.7b"] = "raw",
     ["3.7c"] = "raw",
+    ["3.7d"] = "raw",
+    ["3.8"] = "raw",
+    ["next-3.9"] = "raw",
 }
 local controls = { a = "\a", b = "\b", f = "\f", r = "\r", v = "\v" }
 

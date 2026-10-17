@@ -75,6 +75,9 @@ function M.test_native_printer_vectors_preserve_every_non_nul_byte_and_visibilit
         "3.7a",
         "3.7b",
         "3.7c",
+        "3.7d",
+        "3.8",
+        "next-3.9",
     }) do
         local wire = (version == "3.4" or version == "3.5" or version == "3.5a") and vis or raw
         local rows, err = decode(wire .. 'EMPTY=""; export EMPTY;\nunset REMOVED;\n', version, true)
@@ -159,7 +162,7 @@ end
 
 function M.test_version_and_view_validation_do_not_run_caller_metamethods()
     t.assertTrue(available, "environment printer decoder is missing")
-    local unknown = { "3.2", "3.5b", "3.7d", "3.8", "4.0", "next-3.7", "3.7c\n", false }
+    local unknown = { "3.2", "3.5b", "3.9", "4.0", "next-3.7", "3.8-rc2", "3.7c\n", false }
     for _, version in ipairs(unknown) do
         local rows, err = codec.decode("", version, { hidden = false })
         t.assertNil(rows)

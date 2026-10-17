@@ -237,7 +237,7 @@ local function prepare(state, ref, kind, data, options, inspect)
         end
         if value then
             if minimum_minor then
-                local major, minor = state.version:match("^(%d+)%.(%d+)")
+                local major, minor = state.version:gsub("^next%-", ""):match("^(%d+)%.(%d+)")
                 if tonumber(major) == 3 and tonumber(minor) < minimum_minor then
                     invalid(name .. " is unavailable on this tmux version", "unsupported")
                 end

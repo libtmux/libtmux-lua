@@ -18,6 +18,9 @@ local versions = {
     ["3.7a"] = 7,
     ["3.7b"] = 7,
     ["3.7c"] = 7,
+    ["3.7d"] = 7,
+    ["3.8"] = 8,
+    ["next-3.9"] = 9,
 }
 local allowed = {
     rename = {},
@@ -526,10 +529,15 @@ local function prepare(state, ref, kind, input, options, inspect)
             flag("--", options.named)
         elseif options.layout ~= nil then
             local layout = bytes(options.layout, 65536)
-            -- Older native parsers read past short headers; 3.3/3.3a also
-            -- leave the error cause unset when the checksum header is absent.
-            if not layout:match("^%x%x%x%x,.") then
-                invalid("custom layout requires a four-digit checksum and body", "invalid_layout")
+            -- Older native parsers read past short headers; 3.3a also
+            -- leaves the error cause unset when the checksum header is absent.
+            -- From 3.8 a non-control client exports layouts as a JSON object.
+            local json = version >= 8 and layout:match("^{.") ~= nil
+            if not json and not layout:match("^%x%x%x%x,.") then
+                invalid(
+                    "custom layout requires a four-digit checksum and body, or JSON from 3.8",
+                    "invalid_layout"
+                )
             end
             flag("--", layout)
         else
