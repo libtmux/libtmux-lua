@@ -59,34 +59,59 @@ function tests.test_every_cataloged_field_is_available_from_the_floor()
     test.assertNotNil(query.compile(pane, { dead_signal = { is_null = true } }))
 end
 
-function tests.test_release_admission_orders_patch_letters_and_refuses_development_builds()
+function tests.test_release_admission_orders_patch_letters_and_development_builds()
     local catalog = fields()
-    for _, version in ipairs({ "3.3a", "3.3b", "3.4", "3.7c", "3.7d", "3.8", "3.10", "4.0" }) do
+    -- A development build ranks just below the release it names.
+    for _, version in ipairs({
+        "3.3a",
+        "3.3b",
+        "3.4",
+        "3.7c",
+        "3.7d",
+        "3.8",
+        "3.10",
+        "4.0",
+        "next-3.9",
+        "next-3.4",
+        "3.8-rc2",
+        "3.4-master",
+        "3.4-dev",
+    }) do
         test.assertNotNil(catalog.schema("session", version), version)
     end
-    for _, version in ipairs({ "3.2a", "3.3", "3.2", "3.0", "2.9a", "3.1c" }) do
-        local value, err = catalog.schema("session", version)
-        test.assertNil(value, version)
-        test.assertEquals(err and err.code, "unsupported_version", version)
-        test.assertStrContains(err.message, "3.3a or newer")
-    end
-    -- A development build ranks below its release, so none is admitted.
     for _, version in ipairs({
-        "next-3.9",
+        "3.2a",
+        "3.3",
+        "3.2",
+        "3.0",
+        "2.9a",
+        "3.1c",
         "next-3.3a",
-        "next-3.4",
-        "3.8-rc",
-        "3.8-rc2",
         "3.3a-rc1",
-        "master",
-        "3.3a ",
-        "3.3A",
-        "",
+        "next-3.3",
     }) do
         local value, err = catalog.schema("session", version)
         test.assertNil(value, version)
         test.assertEquals(err and err.code, "unsupported_version", version)
-        test.assertStrContains(err.message, "prerelease builds are not admitted")
+        test.assertStrContains(assert(err).message, "3.3a or newer")
+    end
+    -- Reports that name no release cannot be placed at all.
+    for _, version in ipairs({
+        "master",
+        "openbsd-7.6",
+        "next-master",
+        "3.8-beta",
+        "3.8-rc",
+        "next-",
+        "3.3a ",
+        "3.3A",
+        "",
+        "tmux 3.7c",
+    }) do
+        local value, err = catalog.schema("session", version)
+        test.assertNil(value, version)
+        test.assertEquals(err and err.code, "unsupported_version", version)
+        test.assertStrContains(assert(err).message, "tmux release or development build")
     end
 end
 
@@ -132,7 +157,7 @@ function tests.test_invalid_entities_and_unverified_version_syntax_are_rejected(
     local value, err = catalog.schema("unknown", "3.7c")
     test.assertNil(value)
     test.assertEquals(err and err.code, "invalid_entity")
-    for _, version in ipairs({ "", "tmux 3.7c", "next-3.8", "3.7-rc", "3.2", "2.9a" }) do
+    for _, version in ipairs({ "", "tmux 3.7c", "3.7-rc", "3.2", "2.9a" }) do
         value, err = catalog.schema("pane", version)
         test.assertNil(value)
         test.assertEquals(err and err.code, "unsupported_version")

@@ -209,9 +209,9 @@ function M.test_only_the_exact_probe_report_is_daemon_evidence()
 end
 
 function M.test_daemon_release_is_admitted_from_the_probe_not_the_client()
-    local admitted = { "3.3a", "3.4", "3.7c", "3.10" }
-    local refused = { "3.2a", "3.3", "3.2", "next-3.9", "3.8-rc2", "master" }
-    for _, version in ipairs(admitted) do
+    local supported = { "3.3a", "3.4", "3.7c", "3.10", "next-3.9", "3.8-rc2" }
+    local refused = { "3.2a", "3.3", "3.2", "next-3.3a", "3.3a-rc1", "master", "openbsd-7.6" }
+    for _, version in ipairs(supported) do
         local f = fixture()
         f.uv.daemon_version = version
         f:start(function(rt)

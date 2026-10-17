@@ -16,8 +16,20 @@ HOOKS = (("after-display-message", "@after-display"), ("command-error", "@comman
 
 
 def release(version):
-    match = re.fullmatch(r"(\d+)\.(\d+)([a-z]?)", version)
-    return (int(match[1]), int(match[2]), match[3]) if match else None
+    """Rank a report like the library: a development build sits below its release."""
+    development = version.startswith("next-")
+    match = re.fullmatch(r"(\d+)\.(\d+)([a-z]?)(?:-(master|dev|rc\d+))?", version.removeprefix("next-"))
+    if not match:
+        return None
+    return (int(match[1]), int(match[2]), match[3]), development or match[4] is not None
+
+
+def supported(version):
+    parsed = release(version)
+    if parsed is None:
+        return False
+    rank, development = parsed
+    return rank > FLOOR or (rank == FLOOR and not development)
 
 
 class VersionCheckTests(unittest.TestCase):
@@ -65,13 +77,11 @@ class VersionCheckTests(unittest.TestCase):
         for host in ("luv", "nvim"):
             with self.subTest(host=host), TmuxFixture() as fixture:
                 version = fixture.run("display-message", "-p", "#{version}").stdout.strip()
-                parsed = release(version)
-                self.assertIsNotNone(parsed, version)
-                mode = "admit" if parsed >= FLOOR else "refuse"
+                mode = "admit" if admitted(version) else "refuse"
                 armed = self.arm_hooks(fixture)
                 self.exercise(fixture, armed)
                 self.run_lua(fixture, mode, host)
-                if parsed >= (3, 7, ""):
+                if mode == "supported" and release(version)[0] >= (3, 7, ""):
                     # The control attachment verifies its daemon with the same probe.
                     self.run_lua(fixture, "observe", host)
                 self.assertFalse(self.fired(fixture, "@after-display"))

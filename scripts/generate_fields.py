@@ -85,11 +85,22 @@ local function version(value)
     if type(value) ~= "string" or #value > 32 then
         return nil
     end
-    local major, minor, suffix = value:match("^(%d+)%.(%d+)(%l*)$")
+    -- A development build ranks just below the release it names.
+    local development = false
+    if value:sub(1, 5) == "next-" then
+        development, value = true, value:sub(6)
+    end
+    local major, minor, suffix, tail = value:match("^(%d+)%.(%d+)(%l*)(.*)$")
     if not major then
         return nil
     end
-    return { tonumber(major), tonumber(minor), suffix }
+    if tail ~= "" then
+        if not tail:match("^%-master$") and not tail:match("^%-dev$") and not tail:match("^%-rc%d+$") then
+            return nil
+        end
+        development = true
+    end
+    return { tonumber(major), tonumber(minor), suffix, development }
 end
 
 local function at_least(actual, required)
@@ -98,7 +109,7 @@ local function at_least(actual, required)
             return actual[index] > required[index]
         end
     end
-    return true
+    return not actual[4]
 end
 
 function M.kinds()
@@ -130,8 +141,8 @@ function M.schema(kind, tmux_version)
         return nil,
             errors.new(
                 "unsupported_version",
-                "schema needs a tmux release (MAJOR.MINOR and an optional patch letter); "
-                    .. "development and prerelease builds are not admitted"
+                "schema needs a tmux release or development build (MAJOR.MINOR with an optional "
+                    .. "patch letter, next- prefix or -rcN suffix)"
             )
     end
     if not at_least(actual, version(M.support_floor)) then
