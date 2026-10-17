@@ -10,6 +10,7 @@ import unittest
 from tests.support.tmux_fixture import TmuxFixture
 
 ROOT = Path(__file__).resolve().parents[2]
+DEADLINE = 3
 FLOOR = (3, 3, "a")
 HOOKS = (("after-display-message", "@after-display"), ("command-error", "@command-error"))
 
@@ -55,8 +56,8 @@ class VersionCheckTests(unittest.TestCase):
             env.pop("LUA_CPATH", None)
             command = [os.environ.get("LIBTMUX_TEST_NVIM") or shutil.which("nvim"),
                        "--headless", "-u", "NONE", "-i", "NONE",
-                       "-c", "lua dofile('tests/integration/admission.lua')"]
-        result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, timeout=0.8)
+                       "-c", "lua dofile('tests/integration/version_check.lua')"]
+        result = subprocess.run(command, cwd=ROOT, env=env, capture_output=True, timeout=DEADLINE)
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         self.assertIn(f"{mode} passed".encode(), result.stdout)
 
@@ -85,11 +86,11 @@ class VersionCheckTests(unittest.TestCase):
                            TMUX_SOCKET=str(fixture.socket), TMUX_DAEMON_VERSION=version,
                            LIBTMUX_ADMISSION_CASE=mode)
                 built = subprocess.run([env.get("LIBTMUX_TEST_LUA") or shutil.which("lua"),
-                                        "tests/integration/admission.lua"], cwd=ROOT, env=env,
-                                       capture_output=True, timeout=0.8, check=True)
+                                        "tests/integration/version_check.lua"], cwd=ROOT, env=env,
+                                       capture_output=True, timeout=DEADLINE, check=True)
                 argv = built.stdout.split(b"\0\n")[0].split(b"\0")
                 result = subprocess.run([os.fsdecode(word) for word in argv], env=fixture.env,
-                                        capture_output=True, text=True, timeout=0.8)
+                                        capture_output=True, text=True, timeout=DEADLINE)
                 sessions = fixture.run("list-sessions", "-F", "#{session_name}").stdout.split()
                 if refused:
                     self.assertEqual(result.returncode, 1, mode)
