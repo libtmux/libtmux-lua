@@ -2,20 +2,39 @@ local command = require("libtmux._internal.command")
 local errors = require("libtmux._internal.error")
 local fields = require("libtmux._internal.fields")
 local identity = require("libtmux._internal.identity")
-local metadata = require("libtmux._internal.metadata")
 local process = require("libtmux._internal.process")
 local unpack_values = rawget(table, "unpack") or unpack
 local M, Bound = {}, {}
 local bindings = setmetatable({}, { __mode = "kv" })
-local projection = assert(metadata.projection("server", "3.2a", {
-    "pid",
-    "start_time",
-    "version",
-    "socket_path",
-}))
+local MAX_INTEGER = 9007199254740991
+-- tmux fires no hook for run-shell -C: its expanded text fails in the parser.
+-- The doubled q: survives that parser's one level of unquoting.
+local PROBE = "#{pid}_#{start_time}_#{version}_#{q:#{q:socket_path}}."
+local sequence = 0
 
 local function failure(code, message, cause)
     return errors.new(code, message, { operation = "endpoint", effect = "not_sent", cause = cause })
+end
+
+-- A marker names no tmux command, so tmux refuses it and reports the word.
+local function marker(uv)
+    sequence = sequence + 1
+    local random
+    if uv and type(uv.random) == "function" then
+        local ok, bytes = pcall(uv.random, 8)
+        if ok and type(bytes) == "string" and #bytes == 8 then
+            random = bytes:gsub(".", function(byte)
+                return string.format("%02x", byte:byte())
+            end)
+        end
+    end
+    random = random
+        or string.format(
+            "%08x%08x",
+            (os.time() * 65537 + sequence) % 4294967296,
+            math.floor(os.clock() * 1000000) % 4294967296
+        )
+    return string.format("libtmux-version-%s%04x-", random, sequence % 65536)
 end
 
 local function plain(value)
@@ -174,36 +193,63 @@ local function verify(state)
     return true
 end
 
+local function parse_probe(prefix, err)
+    local partial = type(err) == "table" and rawget(err, "partial") or nil
+    if
+        type(partial) ~= "table"
+        or partial.exit_code ~= 1
+        or partial.stdout ~= ""
+        or type(partial.stderr) ~= "string"
+    then
+        return nil
+    end
+    local head = "unknown command: " .. prefix
+    local stderr = partial.stderr
+    if stderr:sub(1, #head) ~= head or stderr:sub(-1) ~= "\n" then
+        return nil
+    end
+    local report = stderr:sub(#head + 1, -2)
+    local pid, started, version, socket = report:match("^(%d+)_(%d+)_([^_]+)_(.+)%.$")
+    local pid_number, start_number = tonumber(pid), tonumber(started)
+    if
+        not pid
+        or socket:find("\n", 1, true)
+        or pid_number <= 0
+        or pid_number > MAX_INTEGER
+        or start_number > MAX_INTEGER
+    then
+        return nil
+    end
+    return {
+        pid = string.format("%.0f", pid_number),
+        started = string.format("%.0f", start_number),
+        version = version,
+        socket = socket,
+    }
+end
+
 local function read_evidence(state, operation)
+    local prefix = marker(state.uv)
     local result, err = command
-        .execute(state.runtime, state.endpoint, {
-            "display-message",
-            "-p",
-            assert(metadata.format(projection)),
-        }, { timeout = 750, max_output_bytes = 16384 })
+        .execute(
+            state.runtime,
+            state.endpoint,
+            { "run-shell", "-C", prefix .. PROBE },
+            { timeout = 750, max_output_bytes = 16384 }
+        )
         :await()
-    if not result then
-        local _, retained_error = process.retain_output(operation, nil, err, "endpoint")
+    local observed = not result and parse_probe(prefix, err) or nil
+    if not observed then
+        local _, retained_error = process.retain_output(operation, result, err, "endpoint")
         return nil,
             failure("uncertain_generation", "cannot read pinned daemon evidence", retained_error)
     end
-    local rows
-    rows, err = metadata.decode(result.stdout, projection, { max_rows = 1, max_bytes = 16384 })
-    if not rows or #rows ~= 1 or rows[1].pid <= 0 or rows[1].start_time < 0 then
-        return nil, failure("uncertain_generation", "pinned daemon evidence is malformed", err)
-    end
-    local row = rows[1]
     local schema
-    schema, err = fields.schema("server", row.version)
+    schema, err = fields.schema("server", observed.version)
     if not schema then
         return nil, failure("unsupported_version", "pinned daemon version is unsupported", err)
     end
-    return {
-        pid = string.format("%.0f", row.pid),
-        started = string.format("%.0f", row.start_time),
-        version = row.version,
-        socket = row.socket_path,
-    }
+    return observed
 end
 
 local function preflight(state, operation)

@@ -68,20 +68,31 @@ local function fixture()
     end
     function uv.spawn(program, spec, on_exit)
         uv.spawned[#uv.spawned + 1] = { program = program, args = spec.args }
-        local metadata = spec.args[#spec.args]:find("#{q:pid}", 1, true)
+        local last = spec.args[#spec.args]
+        local metadata = last:match("^libtmux%-version%-[0-9a-f]+%-") ~= nil
         local function finish()
-            if not metadata or not uv.dead_listener then
-                spec.stdio[2].read(
+            if not metadata then
+                spec.stdio[2].read(nil, "done\n")
+            elseif uv.probe_reply then
+                local prefix = last:match("^(libtmux%-version%-[0-9a-f]+%-)")
+                spec.stdio[2].read(nil, uv.probe_stdout or "")
+                spec.stdio[3].read(nil, uv.probe_reply(prefix))
+            elseif not uv.dead_listener then
+                local prefix = last:match("^(libtmux%-version%-[0-9a-f]+%-)")
+                spec.stdio[3].read(
                     nil,
-                    metadata and "LQ1\r$a;123;100;3.7c;/owned/tmux.sock;.\n" or "done\n"
+                    "unknown command: "
+                        .. prefix
+                        .. "123_100_"
+                        .. (uv.daemon_version or "3.7c")
+                        .. "_/owned/tmux.sock.\n"
                 )
-            end
-            if metadata and uv.evidence_stderr then
+            elseif uv.evidence_stderr then
                 spec.stdio[3].read(nil, uv.evidence_stderr)
             end
             spec.stdio[2].read(nil, nil)
             spec.stdio[3].read(nil, nil)
-            on_exit(metadata and uv.dead_listener and 1 or not metadata and uv.exit_code or 0, 0)
+            on_exit(metadata and (uv.probe_exit or 1) or uv.exit_code or 0, 0)
         end
         local child = uv.new_pipe()
         function child.kill()
@@ -134,6 +145,81 @@ function M.test_rejects_untyped_or_relative_options_before_filesystem_effects()
     t.assertFalse(touched)
     t.assertEquals(f.uv.calls, {})
     t.assertTrue(f.root:is_retired())
+end
+
+function M.test_only_the_exact_probe_report_is_daemon_evidence()
+    local replies = {
+        ["silent failure"] = function()
+            return ""
+        end,
+        ["absent server"] = function()
+            return "no server running on /owned/tmux.sock\n"
+        end,
+        ["other marker"] = function()
+            return "unknown command: libtmux-version-0000000000000000-123_100_3.7c_/s.\n"
+        end,
+        ["prefix only"] = function(prefix)
+            return "unknown command: " .. prefix .. "\n"
+        end,
+        ["unterminated record"] = function(prefix)
+            return "unknown command: " .. prefix .. "123_100_3.7c_/owned/tmux.sock\n"
+        end,
+        ["newline in socket path"] = function(prefix)
+            return "unknown command: " .. prefix .. "123_100_3.7c_/owned/a\nb.\n"
+        end,
+        ["extra stderr line"] = function(prefix)
+            return "unknown command: " .. prefix .. "123_100_3.7c_/s.\nnoise\n"
+        end,
+        ["zero pid"] = function(prefix)
+            return "unknown command: " .. prefix .. "0_100_3.7c_/s.\n"
+        end,
+    }
+    for name, reply in pairs(replies) do
+        local f = fixture()
+        f.uv.probe_reply = reply
+        f:start(function(rt)
+            local bound, err =
+                endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await()
+            t.assertNil(bound, name)
+            t.assertEquals(assert(err).code, "uncertain_generation", name)
+            t.assertEquals(err.effect, "not_sent", name)
+        end)
+        t.assertNil(f.uv.files[f.uv.alias], name)
+    end
+    local f = fixture()
+    f.uv.probe_reply, f.uv.probe_exit, f.uv.probe_stdout =
+        function(prefix)
+            return "unknown command: " .. prefix .. "123_100_3.7c_/s.\n"
+        end, 0, "ran\n"
+    f:start(function(rt)
+        local bound, err =
+            endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await()
+        t.assertNil(bound)
+        t.assertEquals(assert(err).code, "uncertain_generation")
+    end)
+end
+
+function M.test_probe_names_a_fresh_marker_and_never_runs_display_message()
+    local f = fixture()
+    f:start(function(rt)
+        local bound =
+            assert(endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await())
+        assert(bound:execute({ "display-message", "-p", "done" }):await())
+        local markers = {}
+        for _, spawn in ipairs(f.uv.spawned) do
+            local last = spawn.args[#spawn.args]
+            local marker = last:match("^(libtmux%-version%-%x+%-)#")
+            if marker then
+                t.assertEquals(spawn.args[#spawn.args - 2], "run-shell")
+                t.assertEquals(spawn.args[#spawn.args - 1], "-C")
+                t.assertNil(markers[marker])
+                markers[marker] = true
+            else
+                t.assertEquals(spawn.args[#spawn.args - 2], "display-message")
+            end
+        end
+        t.assertEquals(next(markers) ~= nil, true)
+    end)
 end
 
 function M.test_copies_binding_and_invalidates_replaced_path_without_dispatch()
@@ -426,7 +512,7 @@ function M.test_dead_listener_invalidates_generation_before_mutation_dispatch()
         t.assertEquals(err.effect, "not_sent")
         t.assertNil(bound:generation())
         t.assertEquals(#f.uv.spawned, 2)
-        t.assertNotNil(f.uv.spawned[2].args[#f.uv.spawned[2].args]:find("#{q:pid}", 1, true))
+        t.assertNotNil(f.uv.spawned[2].args[#f.uv.spawned[2].args]:find("#{pid}", 1, true))
     end)
     t.assertNil(f.uv.files[f.uv.alias])
 end
