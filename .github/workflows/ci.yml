@@ -29,10 +29,12 @@ jobs:
           - {name: 'Unit Lua 5.4', gate: unit, lua: '5.4.9'}
           - {name: 'Unit Lua 5.5', gate: unit, lua: '5.5.1'}
           - {name: 'Unit LuaJIT', gate: unit, lua: luajit}
-          - {name: 'Outer floor', gate: outer, lua: '5.1.5', tmux: '3.2a', nvim: '0.10.0'}
+          - {name: 'Outer floor', gate: outer, lua: '5.1.5', tmux: '3.3a', nvim: '0.10.0'}
           - {name: 'Outer current', gate: outer, lua: '5.5.1', tmux: '3.7c', nvim: '0.12.5'}
-          - {name: 'tmux 3.2a', gate: integration, lua: '5.5.1', tmux: '3.2a', nvim: '0.12.5'}
-          - {name: 'tmux 3.3', gate: integration, lua: '5.5.1', tmux: '3.3', nvim: '0.12.5'}
+          - {name: 'tmux 3.0a refused', gate: refusal, lua: '5.5.1', tmux: '3.0a', nvim: '0.12.5'}
+          - {name: 'tmux 3.1c refused', gate: refusal, lua: '5.5.1', tmux: '3.1c', nvim: '0.12.5'}
+          - {name: 'tmux 3.2a refused', gate: refusal, lua: '5.5.1', tmux: '3.2a', nvim: '0.12.5'}
+          - {name: 'tmux 3.3 refused', gate: refusal, lua: '5.5.1', tmux: '3.3', nvim: '0.12.5'}
           - {name: 'tmux 3.3a', gate: integration, lua: '5.5.1', tmux: '3.3a', nvim: '0.12.5'}
           - {name: 'tmux 3.4', gate: integration, lua: '5.5.1', tmux: '3.4', nvim: '0.12.5'}
           - {name: 'tmux 3.5', gate: integration, lua: '5.5.1', tmux: '3.5', nvim: '0.12.5'}

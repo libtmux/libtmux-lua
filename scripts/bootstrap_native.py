@@ -13,6 +13,14 @@ import urllib.request
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / ".cache"
 YAML_REVISION = "2c891fc7a770e8ba2fec34fc6b545c672beb37e6"
+# Releases below the supported floor. Their lanes prove the library refuses
+# the daemon, so they build from a pinned tag without a catalog entry.
+REFUSED = {
+    "3.0a": "25ae02869544b84b639b25b0aa69baa6ea2d3a6a",
+    "3.1c": "25cae5d86f01d0deb050243842ed5d967b3dc411",
+    "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
+    "3.3": "87fe00e8b44901240fc22d7120c1b31e4331f6f5",
+}
 LUALS = {
     ("Linux", "x86_64"): ("linux-x64", "e9235d2d72ef55bc41cf8c99cda2ed64777682024b4bb81f5dea425060c5cbb8"),
     ("Darwin", "arm64"): ("darwin-arm64", "0bc077f4447f076b4c92c14e9fd303f5b569eda2ec74b4dca2b55f75fae2e90c"),
@@ -21,9 +29,11 @@ LUALS = {
 
 def tmux(version):
     releases = json.loads((ROOT / "data/tmux-options.json").read_text())["releases"]
-    if version not in releases:
+    revisions = {name: release["revision"] for name, release in releases.items()}
+    revisions.update(REFUSED)
+    if version not in revisions:
         raise SystemExit("Select a tmux release from docs/compatibility.md")
-    revision = releases[version]["revision"]
+    revision = revisions[version]
     source = CACHE / "source" / f"tmux-{version}"
     prefix = CACHE / "toolchains" / f"tmux-{version}"
     if not source.exists():
@@ -31,7 +41,7 @@ def tmux(version):
                         "https://github.com/tmux/tmux.git", str(source)], check=True)
     actual = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
     if actual != revision:
-        raise SystemExit("Cached tmux source differs from the option catalog revision")
+        raise SystemExit("Cached tmux source differs from its pinned revision")
     if subprocess.check_output(["git", "-C", str(source), "status", "--porcelain", "--untracked-files=no"]):
         raise SystemExit("Cached tmux tracked source has local edits")
     with (CACHE / "source" / f"tmux-{version}-build.log").open("w") as output:
@@ -85,7 +95,7 @@ def luals():
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("components", nargs="+", choices=("yaml", "luals", "tmux"))
-    parser.add_argument("--tmux-version", help="exact released tmux version from the option catalog")
+    parser.add_argument("--tmux-version", help="exact released tmux version from the option catalog or the refused releases")
     args = parser.parse_args()
     if ("tmux" in args.components) != (args.tmux_version is not None):
         parser.error("tmux requires --tmux-version, which applies only to tmux")
