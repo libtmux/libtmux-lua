@@ -3412,6 +3412,933 @@
       ],
       "separator": null,
       "style": false
+    },
+    "d0235": {
+      "array": false,
+      "flags_bits": 0,
+      "hook": false,
+      "name": "clear-on-attach",
+      "native_type": "flag",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0236": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "cursor-colour",
+      "native_type": "colour",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0237": {
+      "array": false,
+      "choices": [
+        "detect",
+        "terminal",
+        "light",
+        "dark"
+      ],
+      "flags_bits": 0,
+      "hook": false,
+      "name": "theme",
+      "native_type": "choice",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0238": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "dark-theme-black",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0239": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "dark-theme-white",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0240": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "dark-theme-light-grey",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0241": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "dark-theme-dark-grey",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0242": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "dark-theme-green",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0243": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "dark-theme-yellow",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0244": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "dark-theme-red",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0245": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "dark-theme-blue",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0246": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "dark-theme-cyan",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0247": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "dark-theme-magenta",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0248": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "light-theme-black",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0249": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "light-theme-white",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0250": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "light-theme-light-grey",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0251": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "light-theme-dark-grey",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0252": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "light-theme-green",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0253": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "light-theme-yellow",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0254": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "light-theme-red",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0255": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "light-theme-blue",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0256": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "light-theme-cyan",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0257": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "light-theme-magenta",
+      "native_type": "colour",
+      "scope_bits": 1,
+      "scopes": [
+        "server"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0258": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "prompt-cursor-colour",
+      "native_type": "colour",
+      "scope_bits": 2,
+      "scopes": [
+        "session"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0259": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "prompt-command-cursor-colour",
+      "native_type": "colour",
+      "scope_bits": 2,
+      "scopes": [
+        "session"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0260": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "clock-mode-colour",
+      "native_type": "colour",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0261": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "display-panes-active-colour",
+      "native_type": "colour",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0262": {
+      "array": false,
+      "flags_bits": 4,
+      "hook": false,
+      "name": "display-panes-border-style",
+      "native_type": "string",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": ",",
+      "style": true
+    },
+    "d0263": {
+      "array": false,
+      "flags_bits": 8,
+      "hook": false,
+      "name": "display-panes-colour",
+      "native_type": "colour",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0264": {
+      "array": false,
+      "flags_bits": 0,
+      "hook": false,
+      "name": "display-panes-format",
+      "native_type": "string",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0265": {
+      "array": false,
+      "flags_bits": 0,
+      "hook": false,
+      "maximum": 2147483647,
+      "maximum_expression": "INT_MAX",
+      "minimum": 1,
+      "minimum_expression": "1",
+      "name": "display-panes-time",
+      "native_type": "number",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": null,
+      "style": false,
+      "unit": "milliseconds"
+    },
+    "d0266": {
+      "array": false,
+      "flags_bits": 4,
+      "hook": false,
+      "name": "copy-mode-current-line-style",
+      "native_type": "string",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": ",",
+      "style": true
+    },
+    "d0267": {
+      "array": false,
+      "choices": [
+        "single",
+        "double",
+        "heavy",
+        "simple",
+        "number",
+        "spaces",
+        "none"
+      ],
+      "flags_bits": 0,
+      "hook": false,
+      "name": "pane-border-lines",
+      "native_type": "choice",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0268": {
+      "array": false,
+      "choices": [
+        "off",
+        "top",
+        "bottom",
+        "top-floating",
+        "bottom-floating"
+      ],
+      "flags_bits": 0,
+      "hook": false,
+      "name": "pane-border-status",
+      "native_type": "choice",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0269": {
+      "array": false,
+      "choices": [
+        "off",
+        "modal",
+        "on",
+        "auto-hide"
+      ],
+      "flags_bits": 0,
+      "hook": false,
+      "name": "pane-scrollbars",
+      "native_type": "choice",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0270": {
+      "array": false,
+      "flags_bits": 0,
+      "hook": false,
+      "maximum": 2147483647,
+      "maximum_expression": "INT_MAX",
+      "minimum": 0,
+      "minimum_expression": "0",
+      "name": "pane-scrollbars-timeout",
+      "native_type": "number",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": null,
+      "style": false,
+      "unit": "milliseconds"
+    },
+    "d0271": {
+      "array": false,
+      "choices": [
+        "off",
+        "on",
+        "failed",
+        "key",
+        "failed-key"
+      ],
+      "flags_bits": 0,
+      "hook": false,
+      "name": "remain-on-exit",
+      "native_type": "choice",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0272": {
+      "array": false,
+      "flags_bits": 4,
+      "hook": false,
+      "name": "switch-mode-match-style",
+      "native_type": "string",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": ",",
+      "style": true
+    },
+    "d0273": {
+      "array": false,
+      "flags_bits": 4,
+      "hook": false,
+      "name": "tree-mode-border-style",
+      "native_type": "string",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": ",",
+      "style": true
+    },
+    "d0274": {
+      "array": false,
+      "flags_bits": 4,
+      "hook": false,
+      "name": "tree-mode-selection-style",
+      "native_type": "string",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": ",",
+      "style": true
+    },
+    "d0275": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "after-swap-window",
+      "native_type": "command",
+      "scope_bits": 2,
+      "scopes": [
+        "session"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0276": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "client-created",
+      "native_type": "command",
+      "scope_bits": 2,
+      "scopes": [
+        "session"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0277": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "client-closed",
+      "native_type": "command",
+      "scope_bits": 2,
+      "scopes": [
+        "session"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0278": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "marked-pane-changed",
+      "native_type": "command",
+      "scope_bits": 2,
+      "scopes": [
+        "session"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0279": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "pane-activity",
+      "native_type": "command",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0280": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "pane-bell",
+      "native_type": "command",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0281": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "pane-command-finished",
+      "native_type": "command",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0282": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "pane-command-started",
+      "native_type": "command",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0283": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "pane-created",
+      "native_type": "command",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0284": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "pane-mode-entered",
+      "native_type": "command",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0285": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "pane-mode-exited",
+      "native_type": "command",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0286": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "pane-moved",
+      "native_type": "command",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0287": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "pane-prompt-closed",
+      "native_type": "command",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0288": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "pane-prompt-opened",
+      "native_type": "command",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0289": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "pane-resized",
+      "native_type": "command",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0290": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "pane-shell-prompt",
+      "native_type": "command",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0291": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "session-added-to-group",
+      "native_type": "command",
+      "scope_bits": 2,
+      "scopes": [
+        "session"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0292": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "session-removed-from-group",
+      "native_type": "command",
+      "scope_bits": 2,
+      "scopes": [
+        "session"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0293": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "window-created",
+      "native_type": "command",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0294": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "window-closed",
+      "native_type": "command",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0295": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "window-unzoomed",
+      "native_type": "command",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0296": {
+      "array": true,
+      "array_separator": "",
+      "flags_bits": 3,
+      "hook": true,
+      "name": "window-zoomed",
+      "native_type": "command",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": "",
+      "style": false
+    },
+    "d0297": {
+      "array": false,
+      "choices": [
+        "single",
+        "double",
+        "heavy",
+        "simple",
+        "number",
+        "spaces",
+        "none",
+        "rounded"
+      ],
+      "flags_bits": 0,
+      "hook": false,
+      "name": "pane-border-lines",
+      "native_type": "choice",
+      "scope_bits": 12,
+      "scopes": [
+        "window",
+        "pane"
+      ],
+      "separator": null,
+      "style": false
+    },
+    "d0298": {
+      "array": false,
+      "flags_bits": 0,
+      "hook": false,
+      "name": "window-default-command",
+      "native_type": "string",
+      "scope_bits": 4,
+      "scopes": [
+        "window"
+      ],
+      "separator": null,
+      "style": false
     }
   },
   "range_abi": "16-bit short, 32-bit int (supported Linux/macOS ABI interpretation)",
@@ -12666,6 +13593,3115 @@
         "tmux.h": {
           "sha256": "96e16054dce383f91f00f3bc86e45c3e367f9eb57081eb029fdd95fa8e3da374",
           "url": "https://github.com/tmux/tmux/blob/e476c1230b958df0cb12977517d24b3dc931375b/tmux.h"
+        }
+      }
+    },
+    "3.7d": {
+      "entries": {
+        "activity-action": {
+          "definition": "d0001",
+          "line": 559
+        },
+        "after-bind-key": {
+          "definition": "d0002",
+          "line": 1643
+        },
+        "after-capture-pane": {
+          "definition": "d0003",
+          "line": 1644
+        },
+        "after-copy-mode": {
+          "definition": "d0004",
+          "line": 1645
+        },
+        "after-display-message": {
+          "definition": "d0005",
+          "line": 1646
+        },
+        "after-display-panes": {
+          "definition": "d0006",
+          "line": 1647
+        },
+        "after-kill-pane": {
+          "definition": "d0007",
+          "line": 1648
+        },
+        "after-list-buffers": {
+          "definition": "d0008",
+          "line": 1649
+        },
+        "after-list-clients": {
+          "definition": "d0009",
+          "line": 1650
+        },
+        "after-list-keys": {
+          "definition": "d0010",
+          "line": 1651
+        },
+        "after-list-panes": {
+          "definition": "d0011",
+          "line": 1652
+        },
+        "after-list-sessions": {
+          "definition": "d0012",
+          "line": 1653
+        },
+        "after-list-windows": {
+          "definition": "d0013",
+          "line": 1654
+        },
+        "after-load-buffer": {
+          "definition": "d0014",
+          "line": 1655
+        },
+        "after-lock-server": {
+          "definition": "d0015",
+          "line": 1656
+        },
+        "after-new-session": {
+          "definition": "d0016",
+          "line": 1657
+        },
+        "after-new-window": {
+          "definition": "d0017",
+          "line": 1658
+        },
+        "after-paste-buffer": {
+          "definition": "d0018",
+          "line": 1659
+        },
+        "after-pipe-pane": {
+          "definition": "d0019",
+          "line": 1660
+        },
+        "after-queue": {
+          "definition": "d0020",
+          "line": 1661
+        },
+        "after-refresh-client": {
+          "definition": "d0021",
+          "line": 1662
+        },
+        "after-rename-session": {
+          "definition": "d0022",
+          "line": 1663
+        },
+        "after-rename-window": {
+          "definition": "d0023",
+          "line": 1664
+        },
+        "after-resize-pane": {
+          "definition": "d0024",
+          "line": 1665
+        },
+        "after-resize-window": {
+          "definition": "d0025",
+          "line": 1666
+        },
+        "after-save-buffer": {
+          "definition": "d0026",
+          "line": 1667
+        },
+        "after-select-layout": {
+          "definition": "d0027",
+          "line": 1668
+        },
+        "after-select-pane": {
+          "definition": "d0028",
+          "line": 1669
+        },
+        "after-select-window": {
+          "definition": "d0029",
+          "line": 1670
+        },
+        "after-send-keys": {
+          "definition": "d0030",
+          "line": 1671
+        },
+        "after-set-buffer": {
+          "definition": "d0031",
+          "line": 1672
+        },
+        "after-set-environment": {
+          "definition": "d0032",
+          "line": 1673
+        },
+        "after-set-hook": {
+          "definition": "d0033",
+          "line": 1674
+        },
+        "after-set-option": {
+          "definition": "d0034",
+          "line": 1675
+        },
+        "after-show-environment": {
+          "definition": "d0035",
+          "line": 1676
+        },
+        "after-show-messages": {
+          "definition": "d0036",
+          "line": 1677
+        },
+        "after-show-options": {
+          "definition": "d0037",
+          "line": 1678
+        },
+        "after-split-window": {
+          "definition": "d0038",
+          "line": 1679
+        },
+        "after-unbind-key": {
+          "definition": "d0039",
+          "line": 1680
+        },
+        "aggressive-resize": {
+          "definition": "d0040",
+          "line": 1076
+        },
+        "alert-activity": {
+          "definition": "d0041",
+          "line": 1681
+        },
+        "alert-bell": {
+          "definition": "d0042",
+          "line": 1682
+        },
+        "alert-silence": {
+          "definition": "d0043",
+          "line": 1683
+        },
+        "allow-passthrough": {
+          "definition": "d0186",
+          "line": 1086
+        },
+        "allow-rename": {
+          "definition": "d0044",
+          "line": 1097
+        },
+        "allow-set-title": {
+          "definition": "d0194",
+          "line": 1105
+        },
+        "alternate-screen": {
+          "definition": "d0045",
+          "line": 1113
+        },
+        "assume-paste-time": {
+          "definition": "d0046",
+          "line": 567
+        },
+        "automatic-rename": {
+          "definition": "d0047",
+          "line": 1121
+        },
+        "automatic-rename-format": {
+          "definition": "d0048",
+          "line": 1128
+        },
+        "backspace": {
+          "definition": "d0049",
+          "line": 280
+        },
+        "base-index": {
+          "definition": "d0050",
+          "line": 578
+        },
+        "bell-action": {
+          "definition": "d0051",
+          "line": 587
+        },
+        "buffer-limit": {
+          "definition": "d0052",
+          "line": 287
+        },
+        "client-active": {
+          "definition": "d0167",
+          "line": 1684
+        },
+        "client-attached": {
+          "definition": "d0053",
+          "line": 1685
+        },
+        "client-dark-theme": {
+          "definition": "d0198",
+          "line": 1692
+        },
+        "client-detached": {
+          "definition": "d0054",
+          "line": 1686
+        },
+        "client-focus-in": {
+          "definition": "d0168",
+          "line": 1687
+        },
+        "client-focus-out": {
+          "definition": "d0169",
+          "line": 1688
+        },
+        "client-light-theme": {
+          "definition": "d0199",
+          "line": 1691
+        },
+        "client-resized": {
+          "definition": "d0055",
+          "line": 1689
+        },
+        "client-session-changed": {
+          "definition": "d0056",
+          "line": 1690
+        },
+        "clock-mode-colour": {
+          "definition": "d0057",
+          "line": 1136
+        },
+        "clock-mode-style": {
+          "definition": "d0200",
+          "line": 1143
+        },
+        "codepoint-widths": {
+          "definition": "d0201",
+          "line": 312
+        },
+        "command-alias": {
+          "definition": "d0059",
+          "line": 297
+        },
+        "command-error": {
+          "definition": "d0195",
+          "line": 1693
+        },
+        "copy-command": {
+          "definition": "d0060",
+          "line": 321
+        },
+        "copy-mode-current-line-number-style": {
+          "definition": "d0221",
+          "line": 1208
+        },
+        "copy-mode-current-match-style": {
+          "definition": "d0061",
+          "line": 1160
+        },
+        "copy-mode-line-number-style": {
+          "definition": "d0222",
+          "line": 1217
+        },
+        "copy-mode-line-numbers": {
+          "definition": "d0223",
+          "line": 1226
+        },
+        "copy-mode-mark-style": {
+          "definition": "d0062",
+          "line": 1169
+        },
+        "copy-mode-match-style": {
+          "definition": "d0063",
+          "line": 1151
+        },
+        "copy-mode-position-format": {
+          "definition": "d0202",
+          "line": 1178
+        },
+        "copy-mode-position-style": {
+          "definition": "d0203",
+          "line": 1190
+        },
+        "copy-mode-selection-style": {
+          "definition": "d0204",
+          "line": 1199
+        },
+        "cursor-colour": {
+          "definition": "d0170",
+          "line": 329
+        },
+        "cursor-style": {
+          "definition": "d0171",
+          "line": 336
+        },
+        "default-client-command": {
+          "definition": "d0205",
+          "line": 344
+        },
+        "default-command": {
+          "definition": "d0064",
+          "line": 595
+        },
+        "default-shell": {
+          "definition": "d0065",
+          "line": 603
+        },
+        "default-size": {
+          "definition": "d0066",
+          "line": 610
+        },
+        "default-terminal": {
+          "definition": "d0067",
+          "line": 351
+        },
+        "destroy-unattached": {
+          "definition": "d0187",
+          "line": 618
+        },
+        "detach-on-destroy": {
+          "definition": "d0188",
+          "line": 627
+        },
+        "display-panes-active-colour": {
+          "definition": "d0070",
+          "line": 636
+        },
+        "display-panes-colour": {
+          "definition": "d0071",
+          "line": 643
+        },
+        "display-panes-time": {
+          "definition": "d0072",
+          "line": 650
+        },
+        "display-time": {
+          "definition": "d0073",
+          "line": 660
+        },
+        "editor": {
+          "definition": "d0074",
+          "line": 358
+        },
+        "escape-time": {
+          "definition": "d0172",
+          "line": 365
+        },
+        "exit-empty": {
+          "definition": "d0076",
+          "line": 375
+        },
+        "exit-unattached": {
+          "definition": "d0077",
+          "line": 382
+        },
+        "extended-keys": {
+          "definition": "d0078",
+          "line": 390
+        },
+        "extended-keys-format": {
+          "definition": "d0196",
+          "line": 399
+        },
+        "fill-character": {
+          "definition": "d0173",
+          "line": 1234
+        },
+        "focus-events": {
+          "definition": "d0079",
+          "line": 407
+        },
+        "focus-follows-mouse": {
+          "definition": "d0224",
+          "line": 670
+        },
+        "get-clipboard": {
+          "definition": "d0225",
+          "line": 414
+        },
+        "history-file": {
+          "definition": "d0080",
+          "line": 426
+        },
+        "history-limit": {
+          "definition": "d0081",
+          "line": 677
+        },
+        "initial-repeat-time": {
+          "definition": "d0206",
+          "line": 689
+        },
+        "input-buffer-size": {
+          "definition": "d0207",
+          "line": 434
+        },
+        "key-table": {
+          "definition": "d0082",
+          "line": 701
+        },
+        "lock-after-time": {
+          "definition": "d0083",
+          "line": 709
+        },
+        "lock-command": {
+          "definition": "d0084",
+          "line": 719
+        },
+        "main-pane-height": {
+          "definition": "d0085",
+          "line": 1241
+        },
+        "main-pane-width": {
+          "definition": "d0086",
+          "line": 1249
+        },
+        "menu-border-lines": {
+          "definition": "d0189",
+          "line": 470
+        },
+        "menu-border-style": {
+          "definition": "d0190",
+          "line": 461
+        },
+        "menu-selected-style": {
+          "definition": "d0191",
+          "line": 452
+        },
+        "menu-style": {
+          "definition": "d0192",
+          "line": 443
+        },
+        "message-command-style": {
+          "definition": "d0087",
+          "line": 726
+        },
+        "message-format": {
+          "definition": "d0226",
+          "line": 736
+        },
+        "message-limit": {
+          "definition": "d0088",
+          "line": 479
+        },
+        "message-line": {
+          "definition": "d0193",
+          "line": 747
+        },
+        "message-style": {
+          "definition": "d0089",
+          "line": 755
+        },
+        "mode-keys": {
+          "definition": "d0090",
+          "line": 1257
+        },
+        "mode-style": {
+          "definition": "d0091",
+          "line": 1265
+        },
+        "monitor-activity": {
+          "definition": "d0092",
+          "line": 1274
+        },
+        "monitor-bell": {
+          "definition": "d0093",
+          "line": 1281
+        },
+        "monitor-silence": {
+          "definition": "d0094",
+          "line": 1288
+        },
+        "mouse": {
+          "definition": "d0095",
+          "line": 767
+        },
+        "other-pane-height": {
+          "definition": "d0096",
+          "line": 1299
+        },
+        "other-pane-width": {
+          "definition": "d0097",
+          "line": 1307
+        },
+        "pane-active-border-style": {
+          "definition": "d0227",
+          "line": 1315
+        },
+        "pane-base-index": {
+          "definition": "d0099",
+          "line": 1324
+        },
+        "pane-border-format": {
+          "definition": "d0174",
+          "line": 1333
+        },
+        "pane-border-indicators": {
+          "definition": "d0175",
+          "line": 1348
+        },
+        "pane-border-lines": {
+          "definition": "d0208",
+          "line": 1357
+        },
+        "pane-border-status": {
+          "definition": "d0102",
+          "line": 1366
+        },
+        "pane-border-style": {
+          "definition": "d0228",
+          "line": 1374
+        },
+        "pane-colours": {
+          "definition": "d0176",
+          "line": 1383
+        },
+        "pane-died": {
+          "definition": "d0104",
+          "line": 1694
+        },
+        "pane-exited": {
+          "definition": "d0105",
+          "line": 1695
+        },
+        "pane-focus-in": {
+          "definition": "d0106",
+          "line": 1696
+        },
+        "pane-focus-out": {
+          "definition": "d0107",
+          "line": 1697
+        },
+        "pane-mode-changed": {
+          "definition": "d0108",
+          "line": 1698
+        },
+        "pane-scrollbars": {
+          "definition": "d0209",
+          "line": 1391
+        },
+        "pane-scrollbars-position": {
+          "definition": "d0210",
+          "line": 1408
+        },
+        "pane-scrollbars-style": {
+          "definition": "d0211",
+          "line": 1399
+        },
+        "pane-set-clipboard": {
+          "definition": "d0109",
+          "line": 1699
+        },
+        "pane-status-current-style": {
+          "definition": "d0212",
+          "line": 963
+        },
+        "pane-status-style": {
+          "definition": "d0213",
+          "line": 972
+        },
+        "pane-title-changed": {
+          "definition": "d0110",
+          "line": 1700
+        },
+        "popup-border-lines": {
+          "definition": "d0177",
+          "line": 1434
+        },
+        "popup-border-style": {
+          "definition": "d0178",
+          "line": 1425
+        },
+        "popup-style": {
+          "definition": "d0179",
+          "line": 1416
+        },
+        "prefix": {
+          "definition": "d0111",
+          "line": 776
+        },
+        "prefix-timeout": {
+          "definition": "d0197",
+          "line": 488
+        },
+        "prefix2": {
+          "definition": "d0112",
+          "line": 783
+        },
+        "prompt-command-cursor-style": {
+          "definition": "d0229",
+          "line": 997
+        },
+        "prompt-cursor-colour": {
+          "definition": "d0214",
+          "line": 982
+        },
+        "prompt-cursor-style": {
+          "definition": "d0215",
+          "line": 989
+        },
+        "prompt-history-limit": {
+          "definition": "d0180",
+          "line": 499
+        },
+        "remain-on-exit": {
+          "definition": "d0230",
+          "line": 1443
+        },
+        "remain-on-exit-format": {
+          "definition": "d0181",
+          "line": 1453
+        },
+        "renumber-windows": {
+          "definition": "d0114",
+          "line": 790
+        },
+        "repeat-time": {
+          "definition": "d0216",
+          "line": 798
+        },
+        "scroll-on-clear": {
+          "definition": "d0182",
+          "line": 1466
+        },
+        "session-closed": {
+          "definition": "d0116",
+          "line": 1701
+        },
+        "session-created": {
+          "definition": "d0117",
+          "line": 1702
+        },
+        "session-renamed": {
+          "definition": "d0118",
+          "line": 1703
+        },
+        "session-status-current-style": {
+          "definition": "d0217",
+          "line": 1006
+        },
+        "session-status-style": {
+          "definition": "d0218",
+          "line": 1015
+        },
+        "session-window-changed": {
+          "definition": "d0119",
+          "line": 1704
+        },
+        "set-clipboard": {
+          "definition": "d0120",
+          "line": 508
+        },
+        "set-titles": {
+          "definition": "d0121",
+          "line": 809
+        },
+        "set-titles-string": {
+          "definition": "d0122",
+          "line": 816
+        },
+        "silence-action": {
+          "definition": "d0123",
+          "line": 823
+        },
+        "status": {
+          "definition": "d0124",
+          "line": 831
+        },
+        "status-bg": {
+          "definition": "d0125",
+          "line": 839
+        },
+        "status-fg": {
+          "definition": "d0126",
+          "line": 847
+        },
+        "status-format": {
+          "definition": "d0127",
+          "line": 855
+        },
+        "status-interval": {
+          "definition": "d0128",
+          "line": 867
+        },
+        "status-justify": {
+          "definition": "d0129",
+          "line": 877
+        },
+        "status-keys": {
+          "definition": "d0130",
+          "line": 885
+        },
+        "status-left": {
+          "definition": "d0131",
+          "line": 893
+        },
+        "status-left-length": {
+          "definition": "d0132",
+          "line": 900
+        },
+        "status-left-style": {
+          "definition": "d0133",
+          "line": 909
+        },
+        "status-position": {
+          "definition": "d0134",
+          "line": 918
+        },
+        "status-right": {
+          "definition": "d0135",
+          "line": 926
+        },
+        "status-right-length": {
+          "definition": "d0136",
+          "line": 936
+        },
+        "status-right-style": {
+          "definition": "d0137",
+          "line": 945
+        },
+        "status-style": {
+          "definition": "d0138",
+          "line": 954
+        },
+        "synchronize-panes": {
+          "definition": "d0139",
+          "line": 1474
+        },
+        "terminal-features": {
+          "definition": "d0140",
+          "line": 527
+        },
+        "terminal-overrides": {
+          "definition": "d0141",
+          "line": 518
+        },
+        "tiled-layout-max-columns": {
+          "definition": "d0219",
+          "line": 1481
+        },
+        "tree-mode-preview-format": {
+          "definition": "d0231",
+          "line": 1491
+        },
+        "tree-mode-preview-style": {
+          "definition": "d0232",
+          "line": 1500
+        },
+        "update-environment": {
+          "definition": "d0142",
+          "line": 1025
+        },
+        "user-keys": {
+          "definition": "d0143",
+          "line": 539
+        },
+        "variation-selector-always-wide": {
+          "definition": "d0220",
+          "line": 550
+        },
+        "visual-activity": {
+          "definition": "d0144",
+          "line": 1037
+        },
+        "visual-bell": {
+          "definition": "d0145",
+          "line": 1046
+        },
+        "visual-silence": {
+          "definition": "d0146",
+          "line": 1055
+        },
+        "window-active-style": {
+          "definition": "d0147",
+          "line": 1513
+        },
+        "window-layout-changed": {
+          "definition": "d0148",
+          "line": 1705
+        },
+        "window-linked": {
+          "definition": "d0183",
+          "line": 1706
+        },
+        "window-pane-changed": {
+          "definition": "d0150",
+          "line": 1707
+        },
+        "window-pane-current-status-format": {
+          "definition": "d0233",
+          "line": 1522
+        },
+        "window-pane-status-format": {
+          "definition": "d0234",
+          "line": 1529
+        },
+        "window-renamed": {
+          "definition": "d0151",
+          "line": 1708
+        },
+        "window-resized": {
+          "definition": "d0184",
+          "line": 1709
+        },
+        "window-size": {
+          "definition": "d0152",
+          "line": 1537
+        },
+        "window-status-activity-style": {
+          "definition": "d0153",
+          "line": 1558
+        },
+        "window-status-bell-style": {
+          "definition": "d0154",
+          "line": 1567
+        },
+        "window-status-current-format": {
+          "definition": "d0155",
+          "line": 1576
+        },
+        "window-status-current-style": {
+          "definition": "d0156",
+          "line": 1583
+        },
+        "window-status-format": {
+          "definition": "d0157",
+          "line": 1592
+        },
+        "window-status-last-style": {
+          "definition": "d0158",
+          "line": 1600
+        },
+        "window-status-separator": {
+          "definition": "d0159",
+          "line": 1609
+        },
+        "window-status-style": {
+          "definition": "d0160",
+          "line": 1616
+        },
+        "window-style": {
+          "definition": "d0161",
+          "line": 1549
+        },
+        "window-unlinked": {
+          "definition": "d0185",
+          "line": 1710
+        },
+        "word-separators": {
+          "definition": "d0163",
+          "line": 1064
+        },
+        "wrap-search": {
+          "definition": "d0164",
+          "line": 1626
+        },
+        "xterm-keys": {
+          "definition": "d0165",
+          "line": 1634
+        }
+      },
+      "revision": "0d7b9e87f45d51e96c4f6f26450bcbb2411f11c8",
+      "sources": {
+        "options-table.c": {
+          "sha256": "c1245a284d540f4c5160617c2f762718b9bc264236c5cf1524b34f51621b56c2",
+          "url": "https://github.com/tmux/tmux/blob/0d7b9e87f45d51e96c4f6f26450bcbb2411f11c8/options-table.c"
+        },
+        "options.c": {
+          "sha256": "03ceec5a876bdbd6533272b1cb12374a264049fe11583dc308e18b3770fc833c",
+          "url": "https://github.com/tmux/tmux/blob/0d7b9e87f45d51e96c4f6f26450bcbb2411f11c8/options.c"
+        },
+        "tmux.h": {
+          "sha256": "96e16054dce383f91f00f3bc86e45c3e367f9eb57081eb029fdd95fa8e3da374",
+          "url": "https://github.com/tmux/tmux/blob/0d7b9e87f45d51e96c4f6f26450bcbb2411f11c8/tmux.h"
+        }
+      }
+    },
+    "3.8": {
+      "entries": {
+        "activity-action": {
+          "definition": "d0001",
+          "line": 754
+        },
+        "after-bind-key": {
+          "definition": "d0002",
+          "line": 1927
+        },
+        "after-capture-pane": {
+          "definition": "d0003",
+          "line": 1928
+        },
+        "after-copy-mode": {
+          "definition": "d0004",
+          "line": 1929
+        },
+        "after-display-message": {
+          "definition": "d0005",
+          "line": 1930
+        },
+        "after-display-panes": {
+          "definition": "d0006",
+          "line": 1931
+        },
+        "after-kill-pane": {
+          "definition": "d0007",
+          "line": 1932
+        },
+        "after-list-buffers": {
+          "definition": "d0008",
+          "line": 1933
+        },
+        "after-list-clients": {
+          "definition": "d0009",
+          "line": 1934
+        },
+        "after-list-keys": {
+          "definition": "d0010",
+          "line": 1935
+        },
+        "after-list-panes": {
+          "definition": "d0011",
+          "line": 1936
+        },
+        "after-list-sessions": {
+          "definition": "d0012",
+          "line": 1937
+        },
+        "after-list-windows": {
+          "definition": "d0013",
+          "line": 1938
+        },
+        "after-load-buffer": {
+          "definition": "d0014",
+          "line": 1939
+        },
+        "after-lock-server": {
+          "definition": "d0015",
+          "line": 1940
+        },
+        "after-new-session": {
+          "definition": "d0016",
+          "line": 1941
+        },
+        "after-new-window": {
+          "definition": "d0017",
+          "line": 1942
+        },
+        "after-paste-buffer": {
+          "definition": "d0018",
+          "line": 1943
+        },
+        "after-pipe-pane": {
+          "definition": "d0019",
+          "line": 1944
+        },
+        "after-refresh-client": {
+          "definition": "d0021",
+          "line": 1945
+        },
+        "after-rename-session": {
+          "definition": "d0022",
+          "line": 1946
+        },
+        "after-rename-window": {
+          "definition": "d0023",
+          "line": 1947
+        },
+        "after-resize-pane": {
+          "definition": "d0024",
+          "line": 1948
+        },
+        "after-resize-window": {
+          "definition": "d0025",
+          "line": 1949
+        },
+        "after-save-buffer": {
+          "definition": "d0026",
+          "line": 1950
+        },
+        "after-select-layout": {
+          "definition": "d0027",
+          "line": 1951
+        },
+        "after-select-pane": {
+          "definition": "d0028",
+          "line": 1952
+        },
+        "after-select-window": {
+          "definition": "d0029",
+          "line": 1953
+        },
+        "after-send-keys": {
+          "definition": "d0030",
+          "line": 1954
+        },
+        "after-set-buffer": {
+          "definition": "d0031",
+          "line": 1955
+        },
+        "after-set-environment": {
+          "definition": "d0032",
+          "line": 1956
+        },
+        "after-set-hook": {
+          "definition": "d0033",
+          "line": 1957
+        },
+        "after-set-option": {
+          "definition": "d0034",
+          "line": 1958
+        },
+        "after-show-environment": {
+          "definition": "d0035",
+          "line": 1959
+        },
+        "after-show-messages": {
+          "definition": "d0036",
+          "line": 1960
+        },
+        "after-show-options": {
+          "definition": "d0037",
+          "line": 1961
+        },
+        "after-split-window": {
+          "definition": "d0038",
+          "line": 1962
+        },
+        "after-swap-window": {
+          "definition": "d0275",
+          "line": 1963
+        },
+        "after-unbind-key": {
+          "definition": "d0039",
+          "line": 1964
+        },
+        "aggressive-resize": {
+          "definition": "d0040",
+          "line": 1262
+        },
+        "alert-activity": {
+          "definition": "d0041",
+          "line": 1965
+        },
+        "alert-bell": {
+          "definition": "d0042",
+          "line": 1967
+        },
+        "alert-silence": {
+          "definition": "d0043",
+          "line": 1969
+        },
+        "allow-passthrough": {
+          "definition": "d0186",
+          "line": 1272
+        },
+        "allow-rename": {
+          "definition": "d0044",
+          "line": 1283
+        },
+        "allow-set-title": {
+          "definition": "d0194",
+          "line": 1291
+        },
+        "alternate-screen": {
+          "definition": "d0045",
+          "line": 1299
+        },
+        "assume-paste-time": {
+          "definition": "d0046",
+          "line": 762
+        },
+        "automatic-rename": {
+          "definition": "d0047",
+          "line": 1307
+        },
+        "automatic-rename-format": {
+          "definition": "d0048",
+          "line": 1314
+        },
+        "backspace": {
+          "definition": "d0049",
+          "line": 295
+        },
+        "base-index": {
+          "definition": "d0050",
+          "line": 773
+        },
+        "bell-action": {
+          "definition": "d0051",
+          "line": 782
+        },
+        "buffer-limit": {
+          "definition": "d0052",
+          "line": 302
+        },
+        "clear-on-attach": {
+          "definition": "d0235",
+          "line": 312
+        },
+        "client-active": {
+          "definition": "d0167",
+          "line": 1971
+        },
+        "client-attached": {
+          "definition": "d0053",
+          "line": 1974
+        },
+        "client-closed": {
+          "definition": "d0277",
+          "line": 1978
+        },
+        "client-created": {
+          "definition": "d0276",
+          "line": 1976
+        },
+        "client-dark-theme": {
+          "definition": "d0198",
+          "line": 1992
+        },
+        "client-detached": {
+          "definition": "d0054",
+          "line": 1980
+        },
+        "client-focus-in": {
+          "definition": "d0168",
+          "line": 1982
+        },
+        "client-focus-out": {
+          "definition": "d0169",
+          "line": 1984
+        },
+        "client-light-theme": {
+          "definition": "d0199",
+          "line": 1990
+        },
+        "client-resized": {
+          "definition": "d0055",
+          "line": 1986
+        },
+        "client-session-changed": {
+          "definition": "d0056",
+          "line": 1988
+        },
+        "clock-mode-colour": {
+          "definition": "d0260",
+          "line": 1322
+        },
+        "clock-mode-style": {
+          "definition": "d0200",
+          "line": 1330
+        },
+        "codepoint-widths": {
+          "definition": "d0201",
+          "line": 337
+        },
+        "command-alias": {
+          "definition": "d0059",
+          "line": 322
+        },
+        "command-error": {
+          "definition": "d0195",
+          "line": 1994
+        },
+        "copy-command": {
+          "definition": "d0060",
+          "line": 346
+        },
+        "copy-mode-current-line-number-style": {
+          "definition": "d0221",
+          "line": 1439
+        },
+        "copy-mode-current-line-style": {
+          "definition": "d0266",
+          "line": 1448
+        },
+        "copy-mode-current-match-style": {
+          "definition": "d0061",
+          "line": 1391
+        },
+        "copy-mode-line-number-style": {
+          "definition": "d0222",
+          "line": 1457
+        },
+        "copy-mode-line-numbers": {
+          "definition": "d0223",
+          "line": 1466
+        },
+        "copy-mode-mark-style": {
+          "definition": "d0062",
+          "line": 1400
+        },
+        "copy-mode-match-style": {
+          "definition": "d0063",
+          "line": 1382
+        },
+        "copy-mode-position-format": {
+          "definition": "d0202",
+          "line": 1409
+        },
+        "copy-mode-position-style": {
+          "definition": "d0203",
+          "line": 1421
+        },
+        "copy-mode-selection-style": {
+          "definition": "d0204",
+          "line": 1430
+        },
+        "cursor-colour": {
+          "definition": "d0236",
+          "line": 354
+        },
+        "cursor-style": {
+          "definition": "d0171",
+          "line": 362
+        },
+        "dark-theme-black": {
+          "definition": "d0238",
+          "line": 574
+        },
+        "dark-theme-blue": {
+          "definition": "d0245",
+          "line": 630
+        },
+        "dark-theme-cyan": {
+          "definition": "d0246",
+          "line": 638
+        },
+        "dark-theme-dark-grey": {
+          "definition": "d0241",
+          "line": 598
+        },
+        "dark-theme-green": {
+          "definition": "d0242",
+          "line": 606
+        },
+        "dark-theme-light-grey": {
+          "definition": "d0240",
+          "line": 590
+        },
+        "dark-theme-magenta": {
+          "definition": "d0247",
+          "line": 646
+        },
+        "dark-theme-red": {
+          "definition": "d0244",
+          "line": 622
+        },
+        "dark-theme-white": {
+          "definition": "d0239",
+          "line": 582
+        },
+        "dark-theme-yellow": {
+          "definition": "d0243",
+          "line": 614
+        },
+        "default-client-command": {
+          "definition": "d0205",
+          "line": 370
+        },
+        "default-command": {
+          "definition": "d0064",
+          "line": 790
+        },
+        "default-shell": {
+          "definition": "d0065",
+          "line": 798
+        },
+        "default-size": {
+          "definition": "d0066",
+          "line": 805
+        },
+        "default-terminal": {
+          "definition": "d0067",
+          "line": 377
+        },
+        "destroy-unattached": {
+          "definition": "d0187",
+          "line": 813
+        },
+        "detach-on-destroy": {
+          "definition": "d0188",
+          "line": 822
+        },
+        "display-panes-active-colour": {
+          "definition": "d0261",
+          "line": 1338
+        },
+        "display-panes-border-style": {
+          "definition": "d0262",
+          "line": 1346
+        },
+        "display-panes-colour": {
+          "definition": "d0263",
+          "line": 1355
+        },
+        "display-panes-format": {
+          "definition": "d0264",
+          "line": 1363
+        },
+        "display-panes-time": {
+          "definition": "d0265",
+          "line": 1372
+        },
+        "display-time": {
+          "definition": "d0073",
+          "line": 831
+        },
+        "editor": {
+          "definition": "d0074",
+          "line": 384
+        },
+        "escape-time": {
+          "definition": "d0172",
+          "line": 391
+        },
+        "exit-empty": {
+          "definition": "d0076",
+          "line": 401
+        },
+        "exit-unattached": {
+          "definition": "d0077",
+          "line": 408
+        },
+        "extended-keys": {
+          "definition": "d0078",
+          "line": 416
+        },
+        "extended-keys-format": {
+          "definition": "d0196",
+          "line": 425
+        },
+        "fill-character": {
+          "definition": "d0173",
+          "line": 1474
+        },
+        "focus-events": {
+          "definition": "d0079",
+          "line": 433
+        },
+        "focus-follows-mouse": {
+          "definition": "d0224",
+          "line": 841
+        },
+        "get-clipboard": {
+          "definition": "d0225",
+          "line": 440
+        },
+        "history-file": {
+          "definition": "d0080",
+          "line": 452
+        },
+        "history-limit": {
+          "definition": "d0081",
+          "line": 848
+        },
+        "initial-repeat-time": {
+          "definition": "d0206",
+          "line": 860
+        },
+        "input-buffer-size": {
+          "definition": "d0207",
+          "line": 460
+        },
+        "key-table": {
+          "definition": "d0082",
+          "line": 872
+        },
+        "light-theme-black": {
+          "definition": "d0248",
+          "line": 654
+        },
+        "light-theme-blue": {
+          "definition": "d0255",
+          "line": 710
+        },
+        "light-theme-cyan": {
+          "definition": "d0256",
+          "line": 718
+        },
+        "light-theme-dark-grey": {
+          "definition": "d0251",
+          "line": 678
+        },
+        "light-theme-green": {
+          "definition": "d0252",
+          "line": 686
+        },
+        "light-theme-light-grey": {
+          "definition": "d0250",
+          "line": 670
+        },
+        "light-theme-magenta": {
+          "definition": "d0257",
+          "line": 726
+        },
+        "light-theme-red": {
+          "definition": "d0254",
+          "line": 702
+        },
+        "light-theme-white": {
+          "definition": "d0249",
+          "line": 662
+        },
+        "light-theme-yellow": {
+          "definition": "d0253",
+          "line": 694
+        },
+        "lock-after-time": {
+          "definition": "d0083",
+          "line": 880
+        },
+        "lock-command": {
+          "definition": "d0084",
+          "line": 890
+        },
+        "main-pane-height": {
+          "definition": "d0085",
+          "line": 1481
+        },
+        "main-pane-width": {
+          "definition": "d0086",
+          "line": 1489
+        },
+        "marked-pane-changed": {
+          "definition": "d0278",
+          "line": 1996
+        },
+        "menu-border-lines": {
+          "definition": "d0189",
+          "line": 496
+        },
+        "menu-border-style": {
+          "definition": "d0190",
+          "line": 487
+        },
+        "menu-selected-style": {
+          "definition": "d0191",
+          "line": 478
+        },
+        "menu-style": {
+          "definition": "d0192",
+          "line": 469
+        },
+        "message-command-style": {
+          "definition": "d0087",
+          "line": 897
+        },
+        "message-format": {
+          "definition": "d0226",
+          "line": 909
+        },
+        "message-limit": {
+          "definition": "d0088",
+          "line": 505
+        },
+        "message-line": {
+          "definition": "d0193",
+          "line": 920
+        },
+        "message-style": {
+          "definition": "d0089",
+          "line": 928
+        },
+        "mode-keys": {
+          "definition": "d0090",
+          "line": 1497
+        },
+        "mode-style": {
+          "definition": "d0091",
+          "line": 1505
+        },
+        "monitor-activity": {
+          "definition": "d0092",
+          "line": 1514
+        },
+        "monitor-bell": {
+          "definition": "d0093",
+          "line": 1521
+        },
+        "monitor-silence": {
+          "definition": "d0094",
+          "line": 1528
+        },
+        "mouse": {
+          "definition": "d0095",
+          "line": 942
+        },
+        "other-pane-height": {
+          "definition": "d0096",
+          "line": 1539
+        },
+        "other-pane-width": {
+          "definition": "d0097",
+          "line": 1547
+        },
+        "pane-active-border-style": {
+          "definition": "d0227",
+          "line": 1555
+        },
+        "pane-activity": {
+          "definition": "d0279",
+          "line": 1998
+        },
+        "pane-base-index": {
+          "definition": "d0099",
+          "line": 1567
+        },
+        "pane-bell": {
+          "definition": "d0280",
+          "line": 2000
+        },
+        "pane-border-format": {
+          "definition": "d0174",
+          "line": 1576
+        },
+        "pane-border-indicators": {
+          "definition": "d0175",
+          "line": 1594
+        },
+        "pane-border-lines": {
+          "definition": "d0267",
+          "line": 1603
+        },
+        "pane-border-status": {
+          "definition": "d0268",
+          "line": 1612
+        },
+        "pane-border-style": {
+          "definition": "d0228",
+          "line": 1620
+        },
+        "pane-colours": {
+          "definition": "d0176",
+          "line": 1629
+        },
+        "pane-command-finished": {
+          "definition": "d0281",
+          "line": 2002
+        },
+        "pane-command-started": {
+          "definition": "d0282",
+          "line": 2004
+        },
+        "pane-created": {
+          "definition": "d0283",
+          "line": 2006
+        },
+        "pane-died": {
+          "definition": "d0104",
+          "line": 2008
+        },
+        "pane-exited": {
+          "definition": "d0105",
+          "line": 2011
+        },
+        "pane-focus-in": {
+          "definition": "d0106",
+          "line": 2013
+        },
+        "pane-focus-out": {
+          "definition": "d0107",
+          "line": 2016
+        },
+        "pane-mode-changed": {
+          "definition": "d0108",
+          "line": 2019
+        },
+        "pane-mode-entered": {
+          "definition": "d0284",
+          "line": 2021
+        },
+        "pane-mode-exited": {
+          "definition": "d0285",
+          "line": 2023
+        },
+        "pane-moved": {
+          "definition": "d0286",
+          "line": 2025
+        },
+        "pane-prompt-closed": {
+          "definition": "d0287",
+          "line": 2027
+        },
+        "pane-prompt-opened": {
+          "definition": "d0288",
+          "line": 2029
+        },
+        "pane-resized": {
+          "definition": "d0289",
+          "line": 2031
+        },
+        "pane-scrollbars": {
+          "definition": "d0269",
+          "line": 1637
+        },
+        "pane-scrollbars-position": {
+          "definition": "d0210",
+          "line": 1664
+        },
+        "pane-scrollbars-style": {
+          "definition": "d0211",
+          "line": 1655
+        },
+        "pane-scrollbars-timeout": {
+          "definition": "d0270",
+          "line": 1645
+        },
+        "pane-set-clipboard": {
+          "definition": "d0109",
+          "line": 2033
+        },
+        "pane-shell-prompt": {
+          "definition": "d0290",
+          "line": 2036
+        },
+        "pane-status-current-style": {
+          "definition": "d0212",
+          "line": 1138
+        },
+        "pane-status-style": {
+          "definition": "d0213",
+          "line": 1147
+        },
+        "pane-title-changed": {
+          "definition": "d0110",
+          "line": 2038
+        },
+        "popup-border-lines": {
+          "definition": "d0177",
+          "line": 1690
+        },
+        "popup-border-style": {
+          "definition": "d0178",
+          "line": 1681
+        },
+        "popup-style": {
+          "definition": "d0179",
+          "line": 1672
+        },
+        "prefix": {
+          "definition": "d0111",
+          "line": 951
+        },
+        "prefix-timeout": {
+          "definition": "d0197",
+          "line": 514
+        },
+        "prefix2": {
+          "definition": "d0112",
+          "line": 958
+        },
+        "prompt-command-cursor-colour": {
+          "definition": "d0259",
+          "line": 1165
+        },
+        "prompt-command-cursor-style": {
+          "definition": "d0229",
+          "line": 1182
+        },
+        "prompt-cursor-colour": {
+          "definition": "d0258",
+          "line": 1157
+        },
+        "prompt-cursor-style": {
+          "definition": "d0215",
+          "line": 1174
+        },
+        "prompt-history-limit": {
+          "definition": "d0180",
+          "line": 525
+        },
+        "remain-on-exit": {
+          "definition": "d0271",
+          "line": 1699
+        },
+        "remain-on-exit-format": {
+          "definition": "d0181",
+          "line": 1710
+        },
+        "renumber-windows": {
+          "definition": "d0114",
+          "line": 965
+        },
+        "repeat-time": {
+          "definition": "d0216",
+          "line": 973
+        },
+        "scroll-on-clear": {
+          "definition": "d0182",
+          "line": 1723
+        },
+        "session-added-to-group": {
+          "definition": "d0291",
+          "line": 2044
+        },
+        "session-closed": {
+          "definition": "d0116",
+          "line": 2040
+        },
+        "session-created": {
+          "definition": "d0117",
+          "line": 2042
+        },
+        "session-removed-from-group": {
+          "definition": "d0292",
+          "line": 2048
+        },
+        "session-renamed": {
+          "definition": "d0118",
+          "line": 2046
+        },
+        "session-status-current-style": {
+          "definition": "d0217",
+          "line": 1191
+        },
+        "session-status-style": {
+          "definition": "d0218",
+          "line": 1200
+        },
+        "session-window-changed": {
+          "definition": "d0119",
+          "line": 2050
+        },
+        "set-clipboard": {
+          "definition": "d0120",
+          "line": 534
+        },
+        "set-titles": {
+          "definition": "d0121",
+          "line": 984
+        },
+        "set-titles-string": {
+          "definition": "d0122",
+          "line": 991
+        },
+        "silence-action": {
+          "definition": "d0123",
+          "line": 998
+        },
+        "status": {
+          "definition": "d0124",
+          "line": 1006
+        },
+        "status-bg": {
+          "definition": "d0125",
+          "line": 1014
+        },
+        "status-fg": {
+          "definition": "d0126",
+          "line": 1022
+        },
+        "status-format": {
+          "definition": "d0127",
+          "line": 1030
+        },
+        "status-interval": {
+          "definition": "d0128",
+          "line": 1042
+        },
+        "status-justify": {
+          "definition": "d0129",
+          "line": 1052
+        },
+        "status-keys": {
+          "definition": "d0130",
+          "line": 1060
+        },
+        "status-left": {
+          "definition": "d0131",
+          "line": 1068
+        },
+        "status-left-length": {
+          "definition": "d0132",
+          "line": 1075
+        },
+        "status-left-style": {
+          "definition": "d0133",
+          "line": 1084
+        },
+        "status-position": {
+          "definition": "d0134",
+          "line": 1093
+        },
+        "status-right": {
+          "definition": "d0135",
+          "line": 1101
+        },
+        "status-right-length": {
+          "definition": "d0136",
+          "line": 1111
+        },
+        "status-right-style": {
+          "definition": "d0137",
+          "line": 1120
+        },
+        "status-style": {
+          "definition": "d0138",
+          "line": 1129
+        },
+        "switch-mode-match-style": {
+          "definition": "d0272",
+          "line": 1731
+        },
+        "synchronize-panes": {
+          "definition": "d0139",
+          "line": 1740
+        },
+        "terminal-features": {
+          "definition": "d0140",
+          "line": 553
+        },
+        "terminal-overrides": {
+          "definition": "d0141",
+          "line": 544
+        },
+        "theme": {
+          "definition": "d0237",
+          "line": 565
+        },
+        "tiled-layout-max-columns": {
+          "definition": "d0219",
+          "line": 1747
+        },
+        "tree-mode-border-style": {
+          "definition": "d0273",
+          "line": 1757
+        },
+        "tree-mode-preview-format": {
+          "definition": "d0231",
+          "line": 1766
+        },
+        "tree-mode-preview-style": {
+          "definition": "d0232",
+          "line": 1775
+        },
+        "tree-mode-selection-style": {
+          "definition": "d0274",
+          "line": 1788
+        },
+        "update-environment": {
+          "definition": "d0142",
+          "line": 1210
+        },
+        "user-keys": {
+          "definition": "d0143",
+          "line": 734
+        },
+        "variation-selector-always-wide": {
+          "definition": "d0220",
+          "line": 745
+        },
+        "visual-activity": {
+          "definition": "d0144",
+          "line": 1222
+        },
+        "visual-bell": {
+          "definition": "d0145",
+          "line": 1231
+        },
+        "visual-silence": {
+          "definition": "d0146",
+          "line": 1240
+        },
+        "window-active-style": {
+          "definition": "d0147",
+          "line": 1797
+        },
+        "window-closed": {
+          "definition": "d0294",
+          "line": 2054
+        },
+        "window-created": {
+          "definition": "d0293",
+          "line": 2052
+        },
+        "window-layout-changed": {
+          "definition": "d0148",
+          "line": 2056
+        },
+        "window-linked": {
+          "definition": "d0183",
+          "line": 2058
+        },
+        "window-pane-changed": {
+          "definition": "d0150",
+          "line": 2060
+        },
+        "window-pane-current-status-format": {
+          "definition": "d0233",
+          "line": 1806
+        },
+        "window-pane-status-format": {
+          "definition": "d0234",
+          "line": 1813
+        },
+        "window-renamed": {
+          "definition": "d0151",
+          "line": 2062
+        },
+        "window-resized": {
+          "definition": "d0184",
+          "line": 2064
+        },
+        "window-size": {
+          "definition": "d0152",
+          "line": 1821
+        },
+        "window-status-activity-style": {
+          "definition": "d0153",
+          "line": 1842
+        },
+        "window-status-bell-style": {
+          "definition": "d0154",
+          "line": 1851
+        },
+        "window-status-current-format": {
+          "definition": "d0155",
+          "line": 1860
+        },
+        "window-status-current-style": {
+          "definition": "d0156",
+          "line": 1867
+        },
+        "window-status-format": {
+          "definition": "d0157",
+          "line": 1876
+        },
+        "window-status-last-style": {
+          "definition": "d0158",
+          "line": 1884
+        },
+        "window-status-separator": {
+          "definition": "d0159",
+          "line": 1893
+        },
+        "window-status-style": {
+          "definition": "d0160",
+          "line": 1900
+        },
+        "window-style": {
+          "definition": "d0161",
+          "line": 1833
+        },
+        "window-unlinked": {
+          "definition": "d0185",
+          "line": 2071
+        },
+        "window-unzoomed": {
+          "definition": "d0295",
+          "line": 2067
+        },
+        "window-zoomed": {
+          "definition": "d0296",
+          "line": 2069
+        },
+        "word-separators": {
+          "definition": "d0163",
+          "line": 1249
+        },
+        "wrap-search": {
+          "definition": "d0164",
+          "line": 1910
+        },
+        "xterm-keys": {
+          "definition": "d0165",
+          "line": 1918
+        }
+      },
+      "revision": "7f2a35ad3321f9ba57a1062ca73b1f3ff26aca53",
+      "sources": {
+        "options-table.c": {
+          "sha256": "cbf3b034785b30aeee3d67032f99e9d9b173a321e11b19be1a11c9e9914fc866",
+          "url": "https://github.com/tmux/tmux/blob/7f2a35ad3321f9ba57a1062ca73b1f3ff26aca53/options-table.c"
+        },
+        "options.c": {
+          "sha256": "2f95052074b111a540cdc01d1adac05df6155ae7e5d2b2b18b8029f7bb4c1026",
+          "url": "https://github.com/tmux/tmux/blob/7f2a35ad3321f9ba57a1062ca73b1f3ff26aca53/options.c"
+        },
+        "tmux.h": {
+          "sha256": "88f17595490be65d26c060ba4e39548d6fdd552847ef95889c9b7fa8767c1e7a",
+          "url": "https://github.com/tmux/tmux/blob/7f2a35ad3321f9ba57a1062ca73b1f3ff26aca53/tmux.h"
+        }
+      }
+    },
+    "next-3.9": {
+      "entries": {
+        "activity-action": {
+          "definition": "d0001",
+          "line": 765
+        },
+        "after-bind-key": {
+          "definition": "d0002",
+          "line": 1923
+        },
+        "after-capture-pane": {
+          "definition": "d0003",
+          "line": 1924
+        },
+        "after-copy-mode": {
+          "definition": "d0004",
+          "line": 1925
+        },
+        "after-display-message": {
+          "definition": "d0005",
+          "line": 1926
+        },
+        "after-display-panes": {
+          "definition": "d0006",
+          "line": 1927
+        },
+        "after-kill-pane": {
+          "definition": "d0007",
+          "line": 1928
+        },
+        "after-list-buffers": {
+          "definition": "d0008",
+          "line": 1929
+        },
+        "after-list-clients": {
+          "definition": "d0009",
+          "line": 1930
+        },
+        "after-list-keys": {
+          "definition": "d0010",
+          "line": 1931
+        },
+        "after-list-panes": {
+          "definition": "d0011",
+          "line": 1932
+        },
+        "after-list-sessions": {
+          "definition": "d0012",
+          "line": 1933
+        },
+        "after-list-windows": {
+          "definition": "d0013",
+          "line": 1934
+        },
+        "after-load-buffer": {
+          "definition": "d0014",
+          "line": 1935
+        },
+        "after-lock-server": {
+          "definition": "d0015",
+          "line": 1936
+        },
+        "after-new-session": {
+          "definition": "d0016",
+          "line": 1937
+        },
+        "after-new-window": {
+          "definition": "d0017",
+          "line": 1938
+        },
+        "after-paste-buffer": {
+          "definition": "d0018",
+          "line": 1939
+        },
+        "after-pipe-pane": {
+          "definition": "d0019",
+          "line": 1940
+        },
+        "after-refresh-client": {
+          "definition": "d0021",
+          "line": 1941
+        },
+        "after-rename-session": {
+          "definition": "d0022",
+          "line": 1942
+        },
+        "after-rename-window": {
+          "definition": "d0023",
+          "line": 1943
+        },
+        "after-resize-pane": {
+          "definition": "d0024",
+          "line": 1944
+        },
+        "after-resize-window": {
+          "definition": "d0025",
+          "line": 1945
+        },
+        "after-save-buffer": {
+          "definition": "d0026",
+          "line": 1946
+        },
+        "after-select-layout": {
+          "definition": "d0027",
+          "line": 1947
+        },
+        "after-select-pane": {
+          "definition": "d0028",
+          "line": 1948
+        },
+        "after-select-window": {
+          "definition": "d0029",
+          "line": 1949
+        },
+        "after-send-keys": {
+          "definition": "d0030",
+          "line": 1950
+        },
+        "after-set-buffer": {
+          "definition": "d0031",
+          "line": 1951
+        },
+        "after-set-environment": {
+          "definition": "d0032",
+          "line": 1952
+        },
+        "after-set-hook": {
+          "definition": "d0033",
+          "line": 1953
+        },
+        "after-set-option": {
+          "definition": "d0034",
+          "line": 1954
+        },
+        "after-show-environment": {
+          "definition": "d0035",
+          "line": 1955
+        },
+        "after-show-messages": {
+          "definition": "d0036",
+          "line": 1956
+        },
+        "after-show-options": {
+          "definition": "d0037",
+          "line": 1957
+        },
+        "after-split-window": {
+          "definition": "d0038",
+          "line": 1958
+        },
+        "after-swap-window": {
+          "definition": "d0275",
+          "line": 1959
+        },
+        "after-unbind-key": {
+          "definition": "d0039",
+          "line": 1960
+        },
+        "aggressive-resize": {
+          "definition": "d0040",
+          "line": 1273
+        },
+        "alert-activity": {
+          "definition": "d0041",
+          "line": 1961
+        },
+        "alert-bell": {
+          "definition": "d0042",
+          "line": 1963
+        },
+        "alert-silence": {
+          "definition": "d0043",
+          "line": 1965
+        },
+        "allow-passthrough": {
+          "definition": "d0186",
+          "line": 1283
+        },
+        "allow-rename": {
+          "definition": "d0044",
+          "line": 1294
+        },
+        "allow-set-title": {
+          "definition": "d0194",
+          "line": 1302
+        },
+        "alternate-screen": {
+          "definition": "d0045",
+          "line": 1310
+        },
+        "assume-paste-time": {
+          "definition": "d0046",
+          "line": 773
+        },
+        "automatic-rename": {
+          "definition": "d0047",
+          "line": 1318
+        },
+        "automatic-rename-format": {
+          "definition": "d0048",
+          "line": 1325
+        },
+        "backspace": {
+          "definition": "d0049",
+          "line": 296
+        },
+        "base-index": {
+          "definition": "d0050",
+          "line": 784
+        },
+        "bell-action": {
+          "definition": "d0051",
+          "line": 793
+        },
+        "buffer-limit": {
+          "definition": "d0052",
+          "line": 303
+        },
+        "clear-on-attach": {
+          "definition": "d0235",
+          "line": 313
+        },
+        "client-active": {
+          "definition": "d0167",
+          "line": 1967
+        },
+        "client-attached": {
+          "definition": "d0053",
+          "line": 1970
+        },
+        "client-closed": {
+          "definition": "d0277",
+          "line": 1974
+        },
+        "client-created": {
+          "definition": "d0276",
+          "line": 1972
+        },
+        "client-dark-theme": {
+          "definition": "d0198",
+          "line": 1988
+        },
+        "client-detached": {
+          "definition": "d0054",
+          "line": 1976
+        },
+        "client-focus-in": {
+          "definition": "d0168",
+          "line": 1978
+        },
+        "client-focus-out": {
+          "definition": "d0169",
+          "line": 1980
+        },
+        "client-light-theme": {
+          "definition": "d0199",
+          "line": 1986
+        },
+        "client-resized": {
+          "definition": "d0055",
+          "line": 1982
+        },
+        "client-session-changed": {
+          "definition": "d0056",
+          "line": 1984
+        },
+        "clock-mode-colour": {
+          "definition": "d0260",
+          "line": 1333
+        },
+        "clock-mode-style": {
+          "definition": "d0200",
+          "line": 1341
+        },
+        "codepoint-widths": {
+          "definition": "d0201",
+          "line": 339
+        },
+        "command-alias": {
+          "definition": "d0059",
+          "line": 323
+        },
+        "command-error": {
+          "definition": "d0195",
+          "line": 1990
+        },
+        "copy-command": {
+          "definition": "d0060",
+          "line": 348
+        },
+        "copy-mode-current-line-number-style": {
+          "definition": "d0221",
+          "line": 1454
+        },
+        "copy-mode-current-line-style": {
+          "definition": "d0266",
+          "line": 1463
+        },
+        "copy-mode-current-match-style": {
+          "definition": "d0061",
+          "line": 1402
+        },
+        "copy-mode-line-number-style": {
+          "definition": "d0222",
+          "line": 1472
+        },
+        "copy-mode-line-numbers": {
+          "definition": "d0223",
+          "line": 1481
+        },
+        "copy-mode-mark-style": {
+          "definition": "d0062",
+          "line": 1411
+        },
+        "copy-mode-match-style": {
+          "definition": "d0063",
+          "line": 1393
+        },
+        "copy-mode-position-format": {
+          "definition": "d0202",
+          "line": 1420
+        },
+        "copy-mode-position-style": {
+          "definition": "d0203",
+          "line": 1436
+        },
+        "copy-mode-selection-style": {
+          "definition": "d0204",
+          "line": 1445
+        },
+        "cursor-colour": {
+          "definition": "d0236",
+          "line": 356
+        },
+        "cursor-style": {
+          "definition": "d0171",
+          "line": 364
+        },
+        "dark-theme-black": {
+          "definition": "d0238",
+          "line": 576
+        },
+        "dark-theme-blue": {
+          "definition": "d0245",
+          "line": 632
+        },
+        "dark-theme-cyan": {
+          "definition": "d0246",
+          "line": 640
+        },
+        "dark-theme-dark-grey": {
+          "definition": "d0241",
+          "line": 600
+        },
+        "dark-theme-green": {
+          "definition": "d0242",
+          "line": 608
+        },
+        "dark-theme-light-grey": {
+          "definition": "d0240",
+          "line": 592
+        },
+        "dark-theme-magenta": {
+          "definition": "d0247",
+          "line": 648
+        },
+        "dark-theme-red": {
+          "definition": "d0244",
+          "line": 624
+        },
+        "dark-theme-white": {
+          "definition": "d0239",
+          "line": 584
+        },
+        "dark-theme-yellow": {
+          "definition": "d0243",
+          "line": 616
+        },
+        "default-client-command": {
+          "definition": "d0205",
+          "line": 372
+        },
+        "default-command": {
+          "definition": "d0064",
+          "line": 801
+        },
+        "default-shell": {
+          "definition": "d0065",
+          "line": 809
+        },
+        "default-size": {
+          "definition": "d0066",
+          "line": 816
+        },
+        "default-terminal": {
+          "definition": "d0067",
+          "line": 379
+        },
+        "destroy-unattached": {
+          "definition": "d0187",
+          "line": 824
+        },
+        "detach-on-destroy": {
+          "definition": "d0188",
+          "line": 833
+        },
+        "display-panes-active-colour": {
+          "definition": "d0261",
+          "line": 1349
+        },
+        "display-panes-border-style": {
+          "definition": "d0262",
+          "line": 1357
+        },
+        "display-panes-colour": {
+          "definition": "d0263",
+          "line": 1366
+        },
+        "display-panes-format": {
+          "definition": "d0264",
+          "line": 1374
+        },
+        "display-panes-time": {
+          "definition": "d0265",
+          "line": 1383
+        },
+        "display-time": {
+          "definition": "d0073",
+          "line": 842
+        },
+        "editor": {
+          "definition": "d0074",
+          "line": 386
+        },
+        "escape-time": {
+          "definition": "d0172",
+          "line": 393
+        },
+        "exit-empty": {
+          "definition": "d0076",
+          "line": 403
+        },
+        "exit-unattached": {
+          "definition": "d0077",
+          "line": 410
+        },
+        "extended-keys": {
+          "definition": "d0078",
+          "line": 418
+        },
+        "extended-keys-format": {
+          "definition": "d0196",
+          "line": 427
+        },
+        "fill-character": {
+          "definition": "d0173",
+          "line": 1489
+        },
+        "focus-events": {
+          "definition": "d0079",
+          "line": 435
+        },
+        "focus-follows-mouse": {
+          "definition": "d0224",
+          "line": 852
+        },
+        "get-clipboard": {
+          "definition": "d0225",
+          "line": 442
+        },
+        "history-file": {
+          "definition": "d0080",
+          "line": 454
+        },
+        "history-limit": {
+          "definition": "d0081",
+          "line": 859
+        },
+        "initial-repeat-time": {
+          "definition": "d0206",
+          "line": 871
+        },
+        "input-buffer-size": {
+          "definition": "d0207",
+          "line": 462
+        },
+        "key-table": {
+          "definition": "d0082",
+          "line": 883
+        },
+        "light-theme-black": {
+          "definition": "d0248",
+          "line": 656
+        },
+        "light-theme-blue": {
+          "definition": "d0255",
+          "line": 712
+        },
+        "light-theme-cyan": {
+          "definition": "d0256",
+          "line": 720
+        },
+        "light-theme-dark-grey": {
+          "definition": "d0251",
+          "line": 680
+        },
+        "light-theme-green": {
+          "definition": "d0252",
+          "line": 688
+        },
+        "light-theme-light-grey": {
+          "definition": "d0250",
+          "line": 672
+        },
+        "light-theme-magenta": {
+          "definition": "d0257",
+          "line": 728
+        },
+        "light-theme-red": {
+          "definition": "d0254",
+          "line": 704
+        },
+        "light-theme-white": {
+          "definition": "d0249",
+          "line": 664
+        },
+        "light-theme-yellow": {
+          "definition": "d0253",
+          "line": 696
+        },
+        "lock-after-time": {
+          "definition": "d0083",
+          "line": 891
+        },
+        "lock-command": {
+          "definition": "d0084",
+          "line": 901
+        },
+        "main-pane-height": {
+          "definition": "d0085",
+          "line": 1496
+        },
+        "main-pane-width": {
+          "definition": "d0086",
+          "line": 1504
+        },
+        "marked-pane-changed": {
+          "definition": "d0278",
+          "line": 1992
+        },
+        "menu-border-lines": {
+          "definition": "d0189",
+          "line": 498
+        },
+        "menu-border-style": {
+          "definition": "d0190",
+          "line": 489
+        },
+        "menu-selected-style": {
+          "definition": "d0191",
+          "line": 480
+        },
+        "menu-style": {
+          "definition": "d0192",
+          "line": 471
+        },
+        "message-command-style": {
+          "definition": "d0087",
+          "line": 908
+        },
+        "message-format": {
+          "definition": "d0226",
+          "line": 920
+        },
+        "message-limit": {
+          "definition": "d0088",
+          "line": 507
+        },
+        "message-line": {
+          "definition": "d0193",
+          "line": 931
+        },
+        "message-style": {
+          "definition": "d0089",
+          "line": 939
+        },
+        "mode-keys": {
+          "definition": "d0090",
+          "line": 1512
+        },
+        "mode-style": {
+          "definition": "d0091",
+          "line": 1520
+        },
+        "monitor-activity": {
+          "definition": "d0092",
+          "line": 1529
+        },
+        "monitor-bell": {
+          "definition": "d0093",
+          "line": 1536
+        },
+        "monitor-silence": {
+          "definition": "d0094",
+          "line": 1543
+        },
+        "mouse": {
+          "definition": "d0095",
+          "line": 953
+        },
+        "other-pane-height": {
+          "definition": "d0096",
+          "line": 1554
+        },
+        "other-pane-width": {
+          "definition": "d0097",
+          "line": 1562
+        },
+        "pane-active-border-style": {
+          "definition": "d0227",
+          "line": 1570
+        },
+        "pane-activity": {
+          "definition": "d0279",
+          "line": 1994
+        },
+        "pane-base-index": {
+          "definition": "d0099",
+          "line": 1582
+        },
+        "pane-bell": {
+          "definition": "d0280",
+          "line": 1996
+        },
+        "pane-border-format": {
+          "definition": "d0174",
+          "line": 1591
+        },
+        "pane-border-indicators": {
+          "definition": "d0175",
+          "line": 1609
+        },
+        "pane-border-lines": {
+          "definition": "d0297",
+          "line": 1618
+        },
+        "pane-border-status": {
+          "definition": "d0268",
+          "line": 1627
+        },
+        "pane-border-style": {
+          "definition": "d0228",
+          "line": 1635
+        },
+        "pane-colours": {
+          "definition": "d0176",
+          "line": 1644
+        },
+        "pane-command-finished": {
+          "definition": "d0281",
+          "line": 1998
+        },
+        "pane-command-started": {
+          "definition": "d0282",
+          "line": 2000
+        },
+        "pane-created": {
+          "definition": "d0283",
+          "line": 2002
+        },
+        "pane-died": {
+          "definition": "d0104",
+          "line": 2004
+        },
+        "pane-exited": {
+          "definition": "d0105",
+          "line": 2007
+        },
+        "pane-focus-in": {
+          "definition": "d0106",
+          "line": 2009
+        },
+        "pane-focus-out": {
+          "definition": "d0107",
+          "line": 2012
+        },
+        "pane-mode-changed": {
+          "definition": "d0108",
+          "line": 2015
+        },
+        "pane-mode-entered": {
+          "definition": "d0284",
+          "line": 2017
+        },
+        "pane-mode-exited": {
+          "definition": "d0285",
+          "line": 2019
+        },
+        "pane-moved": {
+          "definition": "d0286",
+          "line": 2021
+        },
+        "pane-prompt-closed": {
+          "definition": "d0287",
+          "line": 2023
+        },
+        "pane-prompt-opened": {
+          "definition": "d0288",
+          "line": 2025
+        },
+        "pane-resized": {
+          "definition": "d0289",
+          "line": 2027
+        },
+        "pane-scrollbars": {
+          "definition": "d0269",
+          "line": 1652
+        },
+        "pane-scrollbars-position": {
+          "definition": "d0210",
+          "line": 1679
+        },
+        "pane-scrollbars-style": {
+          "definition": "d0211",
+          "line": 1670
+        },
+        "pane-scrollbars-timeout": {
+          "definition": "d0270",
+          "line": 1660
+        },
+        "pane-set-clipboard": {
+          "definition": "d0109",
+          "line": 2029
+        },
+        "pane-shell-prompt": {
+          "definition": "d0290",
+          "line": 2032
+        },
+        "pane-status-current-style": {
+          "definition": "d0212",
+          "line": 1149
+        },
+        "pane-status-style": {
+          "definition": "d0213",
+          "line": 1158
+        },
+        "pane-title-changed": {
+          "definition": "d0110",
+          "line": 2034
+        },
+        "prefix": {
+          "definition": "d0111",
+          "line": 962
+        },
+        "prefix-timeout": {
+          "definition": "d0197",
+          "line": 516
+        },
+        "prefix2": {
+          "definition": "d0112",
+          "line": 969
+        },
+        "prompt-command-cursor-colour": {
+          "definition": "d0259",
+          "line": 1176
+        },
+        "prompt-command-cursor-style": {
+          "definition": "d0229",
+          "line": 1193
+        },
+        "prompt-cursor-colour": {
+          "definition": "d0258",
+          "line": 1168
+        },
+        "prompt-cursor-style": {
+          "definition": "d0215",
+          "line": 1185
+        },
+        "prompt-history-limit": {
+          "definition": "d0180",
+          "line": 527
+        },
+        "remain-on-exit": {
+          "definition": "d0271",
+          "line": 1687
+        },
+        "remain-on-exit-format": {
+          "definition": "d0181",
+          "line": 1698
+        },
+        "renumber-windows": {
+          "definition": "d0114",
+          "line": 976
+        },
+        "repeat-time": {
+          "definition": "d0216",
+          "line": 984
+        },
+        "scroll-on-clear": {
+          "definition": "d0182",
+          "line": 1711
+        },
+        "session-added-to-group": {
+          "definition": "d0291",
+          "line": 2040
+        },
+        "session-closed": {
+          "definition": "d0116",
+          "line": 2036
+        },
+        "session-created": {
+          "definition": "d0117",
+          "line": 2038
+        },
+        "session-removed-from-group": {
+          "definition": "d0292",
+          "line": 2044
+        },
+        "session-renamed": {
+          "definition": "d0118",
+          "line": 2042
+        },
+        "session-status-current-style": {
+          "definition": "d0217",
+          "line": 1202
+        },
+        "session-status-style": {
+          "definition": "d0218",
+          "line": 1211
+        },
+        "session-window-changed": {
+          "definition": "d0119",
+          "line": 2046
+        },
+        "set-clipboard": {
+          "definition": "d0120",
+          "line": 536
+        },
+        "set-titles": {
+          "definition": "d0121",
+          "line": 995
+        },
+        "set-titles-string": {
+          "definition": "d0122",
+          "line": 1002
+        },
+        "silence-action": {
+          "definition": "d0123",
+          "line": 1009
+        },
+        "status": {
+          "definition": "d0124",
+          "line": 1017
+        },
+        "status-bg": {
+          "definition": "d0125",
+          "line": 1025
+        },
+        "status-fg": {
+          "definition": "d0126",
+          "line": 1033
+        },
+        "status-format": {
+          "definition": "d0127",
+          "line": 1041
+        },
+        "status-interval": {
+          "definition": "d0128",
+          "line": 1053
+        },
+        "status-justify": {
+          "definition": "d0129",
+          "line": 1063
+        },
+        "status-keys": {
+          "definition": "d0130",
+          "line": 1071
+        },
+        "status-left": {
+          "definition": "d0131",
+          "line": 1079
+        },
+        "status-left-length": {
+          "definition": "d0132",
+          "line": 1086
+        },
+        "status-left-style": {
+          "definition": "d0133",
+          "line": 1095
+        },
+        "status-position": {
+          "definition": "d0134",
+          "line": 1104
+        },
+        "status-right": {
+          "definition": "d0135",
+          "line": 1112
+        },
+        "status-right-length": {
+          "definition": "d0136",
+          "line": 1122
+        },
+        "status-right-style": {
+          "definition": "d0137",
+          "line": 1131
+        },
+        "status-style": {
+          "definition": "d0138",
+          "line": 1140
+        },
+        "switch-mode-match-style": {
+          "definition": "d0272",
+          "line": 1719
+        },
+        "synchronize-panes": {
+          "definition": "d0139",
+          "line": 1728
+        },
+        "terminal-features": {
+          "definition": "d0140",
+          "line": 555
+        },
+        "terminal-overrides": {
+          "definition": "d0141",
+          "line": 546
+        },
+        "theme": {
+          "definition": "d0237",
+          "line": 567
+        },
+        "tiled-layout-max-columns": {
+          "definition": "d0219",
+          "line": 1735
+        },
+        "tree-mode-border-style": {
+          "definition": "d0273",
+          "line": 1745
+        },
+        "tree-mode-preview-format": {
+          "definition": "d0231",
+          "line": 1754
+        },
+        "tree-mode-preview-style": {
+          "definition": "d0232",
+          "line": 1763
+        },
+        "tree-mode-selection-style": {
+          "definition": "d0274",
+          "line": 1776
+        },
+        "update-environment": {
+          "definition": "d0142",
+          "line": 1221
+        },
+        "user-keys": {
+          "definition": "d0143",
+          "line": 736
+        },
+        "variation-selector-always-wide": {
+          "definition": "d0220",
+          "line": 756
+        },
+        "visual-activity": {
+          "definition": "d0144",
+          "line": 1233
+        },
+        "visual-bell": {
+          "definition": "d0145",
+          "line": 1242
+        },
+        "visual-silence": {
+          "definition": "d0146",
+          "line": 1251
+        },
+        "window-active-style": {
+          "definition": "d0147",
+          "line": 1785
+        },
+        "window-closed": {
+          "definition": "d0294",
+          "line": 2050
+        },
+        "window-created": {
+          "definition": "d0293",
+          "line": 2048
+        },
+        "window-default-command": {
+          "definition": "d0298",
+          "line": 1794
+        },
+        "window-layout-changed": {
+          "definition": "d0148",
+          "line": 2052
+        },
+        "window-linked": {
+          "definition": "d0183",
+          "line": 2054
+        },
+        "window-pane-changed": {
+          "definition": "d0150",
+          "line": 2056
+        },
+        "window-pane-current-status-format": {
+          "definition": "d0233",
+          "line": 1802
+        },
+        "window-pane-status-format": {
+          "definition": "d0234",
+          "line": 1809
+        },
+        "window-renamed": {
+          "definition": "d0151",
+          "line": 2058
+        },
+        "window-resized": {
+          "definition": "d0184",
+          "line": 2060
+        },
+        "window-size": {
+          "definition": "d0152",
+          "line": 1817
+        },
+        "window-status-activity-style": {
+          "definition": "d0153",
+          "line": 1838
+        },
+        "window-status-bell-style": {
+          "definition": "d0154",
+          "line": 1847
+        },
+        "window-status-current-format": {
+          "definition": "d0155",
+          "line": 1856
+        },
+        "window-status-current-style": {
+          "definition": "d0156",
+          "line": 1863
+        },
+        "window-status-format": {
+          "definition": "d0157",
+          "line": 1872
+        },
+        "window-status-last-style": {
+          "definition": "d0158",
+          "line": 1880
+        },
+        "window-status-separator": {
+          "definition": "d0159",
+          "line": 1889
+        },
+        "window-status-style": {
+          "definition": "d0160",
+          "line": 1896
+        },
+        "window-style": {
+          "definition": "d0161",
+          "line": 1829
+        },
+        "window-unlinked": {
+          "definition": "d0185",
+          "line": 2067
+        },
+        "window-unzoomed": {
+          "definition": "d0295",
+          "line": 2063
+        },
+        "window-zoomed": {
+          "definition": "d0296",
+          "line": 2065
+        },
+        "word-separators": {
+          "definition": "d0163",
+          "line": 1260
+        },
+        "wrap-search": {
+          "definition": "d0164",
+          "line": 1906
+        },
+        "xterm-keys": {
+          "definition": "d0165",
+          "line": 1914
+        }
+      },
+      "revision": "b17d3da7cd84114e4c58630637f0b80428c0aa34",
+      "sources": {
+        "options-table.c": {
+          "sha256": "4a93c07f3f69d7c37555e2ced710697ae1a8c186556a69b8f621012f24ddd8f6",
+          "url": "https://github.com/tmux/tmux/blob/b17d3da7cd84114e4c58630637f0b80428c0aa34/options-table.c"
+        },
+        "options.c": {
+          "sha256": "650d12b9fc247dcfd88cd7319e3d373434f3a98e362e072602f7e11dd1c75d79",
+          "url": "https://github.com/tmux/tmux/blob/b17d3da7cd84114e4c58630637f0b80428c0aa34/options.c"
+        },
+        "tmux.h": {
+          "sha256": "557f4c206d5ff17aa14570f06fac04d6d3581fda701afd54a58ddf46b396ee68",
+          "url": "https://github.com/tmux/tmux/blob/b17d3da7cd84114e4c58630637f0b80428c0aa34/tmux.h"
         }
       }
     }

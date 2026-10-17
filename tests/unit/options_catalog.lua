@@ -21,6 +21,9 @@ function tests.test_exact_release_maps_refuse_unknown_versions_and_abbreviations
         ["3.7a"] = 221,
         ["3.7b"] = 221,
         ["3.7c"] = 221,
+        ["3.7d"] = 221,
+        ["3.8"] = 272,
+        ["next-3.9"] = 270,
     }
     for version, count in pairs(counts) do
         local names = assert(options.names(version))
@@ -38,8 +41,8 @@ function tests.test_exact_release_maps_refuse_unknown_versions_and_abbreviations
         "3.3",
         "3.2",
         "3.2b",
-        "3.7d",
-        "3.8",
+        "3.9",
+        "3.8-rc2",
         "next-3.8",
         "3.7-rc",
         "tmux 3.7c",
