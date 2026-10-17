@@ -47,7 +47,9 @@ neither the daemon's value nor future Requests.
 `server:delete_buffer(name)` removes the current value on tmux 3.4 and later.
 It returns `unsupported` before dispatch on 3.3a: that release
 can delete the most recent buffer when the requested name is missing. Checking
-existence first would still race with other clients. This limitation does not
+existence first would still race with other clients. A literal
+`delete-buffer -b` or `set-buffer -n` through `server:command` is refused on
+the same releases. This limitation does not
 affect `paste_buffer` with `delete_after`, whose native lookup rejects missing
 names before deletion.
 
