@@ -18,6 +18,17 @@ function M.test_metadata_codec_preserves_bytes_rows_and_delimiters()
     test.assertEquals(codec.decode(marker .. "\n;.\n", 1), { { "\n" } })
 end
 
+function M.test_tmux_38_escapes_braces_newlines_and_tabs()
+    local rows, err = codec.decode(marker .. "a\\{b\\}c;x\\\ny\\\tz;.\n", 2)
+    test.assertNil(err)
+    test.assertEquals(rows, { { "a{b}c", "x\ny\tz" } })
+    -- Other punctuation stays an unknown escape.
+    local value
+    value, err = codec.decode(marker .. "\\@;.\n", 1)
+    test.assertNil(value)
+    test.assertEquals(assert(err).code, "invalid_frame")
+end
+
 function M.test_printer_dialects_preserve_literal_escapes_and_control_bytes()
     local expected = "\r\001\255\\r\\001\\$NAME;$NAME;${NAME};$0;\a\b\f\v"
     local fields = {

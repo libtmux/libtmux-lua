@@ -28,6 +28,18 @@ local function work(runtime)
         assert(err.code == "unsupported_version" and err.effect == "not_sent", tostring(err))
         return "refuse passed"
     end
+    if mode == "snapshot" then
+        assert(server, tostring(err))
+        local snapshot =
+            assert(server:snapshot({ fields = { sessions = { "id", "name" } } }):await())
+        local found = false
+        for _, session in ipairs(snapshot.sessions) do
+            found = found or session.name == assert(os.getenv("LIBTMUX_EXPECT_NAME"))
+        end
+        assert(found, "snapshot lost the session name")
+        assert(server:close():await())
+        return "snapshot passed"
+    end
     if mode == "observe" then
         assert(server, tostring(err))
         local snapshot =
