@@ -137,6 +137,27 @@ function tests.test_version_grammar_matches_every_string_tmux_reports()
     test.assertNil(catalog.at_least(nil, "3.7"))
 end
 
+function tests.test_exactly_matches_one_final_release_only()
+    local catalog = fields()
+    test.assertTrue(catalog.exactly("3.7", "3.7"))
+    for _, version in ipairs({
+        "3.7a",
+        "3.7d",
+        "3.7-rc",
+        "3.7-rc2",
+        "next-3.7",
+        "3.8",
+        "3.6",
+        "master",
+        "",
+    }) do
+        test.assertFalse(catalog.exactly(version, "3.7"), version)
+    end
+    test.assertTrue(catalog.exactly("3.4", "3.4"))
+    test.assertFalse(catalog.exactly("3.4a", "3.4"))
+    test.assertTrue(catalog.exactly("3.7a", "3.7a"))
+end
+
 function tests.test_nullable_and_string_fields_preserve_tmux_meanings()
     local catalog = fields()
     local pane = must(catalog.schema("pane", "3.7c"))

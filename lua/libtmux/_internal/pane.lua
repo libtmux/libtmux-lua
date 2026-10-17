@@ -1,5 +1,6 @@
 local utf8 = require("libtmux._internal.text").valid_utf8
 local errors = require("libtmux._internal.error")
+local fields = require("libtmux._internal.fields")
 local execution = require("libtmux._internal.execution")
 local identity = require("libtmux._internal.identity")
 local process = require("libtmux._internal.process")
@@ -439,7 +440,7 @@ local function prepare(state, ref, kind, data, options, inspect)
         if data:find("[%z\001-\031\127]") then
             invalid("pane title cannot contain ASCII control bytes", "invalid_argument")
         end
-        if data == "" and state.version == "3.7" then
+        if data == "" and fields.exactly(state.version, "3.7") then
             invalid("tmux 3.7 silently ignores an empty pane title", "unsupported")
         end
         flag("-T", (data:gsub("#", "##")))
