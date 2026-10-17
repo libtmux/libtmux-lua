@@ -208,6 +208,35 @@ function M.test_only_the_exact_probe_report_is_daemon_evidence()
     end)
 end
 
+function M.test_daemon_release_is_admitted_from_the_probe_not_the_client()
+    local admitted = { "3.3a", "3.4", "3.7c", "3.10" }
+    local refused = { "3.2a", "3.3", "3.2", "next-3.9", "3.8-rc2", "master" }
+    for _, version in ipairs(admitted) do
+        local f = fixture()
+        f.uv.daemon_version = version
+        f:start(function(rt)
+            local bound, err =
+                endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await()
+            t.assertNotNil(bound, version .. tostring(err))
+            t.assertEquals(assert(bound:evidence()).version, version)
+        end)
+    end
+    for _, version in ipairs(refused) do
+        local f = fixture()
+        f.uv.daemon_version = version
+        f:start(function(rt)
+            local bound, err =
+                endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await()
+            t.assertNil(bound, version)
+            t.assertEquals(assert(err).code, "unsupported_version", version)
+            t.assertEquals(err.effect, "not_sent", version)
+            -- Only the probe ran: no command reached the refused daemon.
+            t.assertEquals(#f.uv.spawned, 1, version)
+        end)
+        t.assertNil(f.uv.files[f.uv.alias], version)
+    end
+end
+
 function M.test_probe_names_a_fresh_marker_and_never_runs_display_message()
     local f = fixture()
     f:start(function(rt)

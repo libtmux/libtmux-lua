@@ -2,8 +2,6 @@ local t = require("luaunit")
 local available, codec = pcall(require, "libtmux._internal.option_codec")
 local M = {}
 local versions = {
-    "3.2a",
-    "3.3",
     "3.3a",
     "3.4",
     "3.5",
@@ -63,7 +61,7 @@ function M.test_34_removes_exactly_one_outer_dollar_escape_and_preserves_program
         local canonical = '"' .. string.rep("\\", count * 2) .. '\\$HOME $9 $ \\${x} \\$_x"'
         local printed = canonical:gsub("(%$[A-Za-z_{])", "\\%1")
         t.assertEquals(decode(printed, "3.4"), literal)
-        for _, version in ipairs({ "3.2a", "3.5a", "3.7c" }) do
+        for _, version in ipairs({ "3.3a", "3.5a", "3.7c" }) do
             t.assertEquals(decode(canonical, version), literal)
         end
         local source = "set-option -g @x " .. canonical .. " ; display-message -p \\n"

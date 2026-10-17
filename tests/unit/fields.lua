@@ -31,7 +31,7 @@ function tests.test_all_entity_schemas_keep_window_link_context_separate()
         "buffer",
     })
     for _, kind in ipairs(catalog.kinds()) do
-        local schema, err = catalog.schema(kind, "3.2a")
+        local schema, err = catalog.schema(kind, "3.3a")
         test.assertNil(err)
         test.assertNotNil(query.compile(schema, {}))
     end
@@ -47,21 +47,46 @@ function tests.test_all_entity_schemas_keep_window_link_context_separate()
     test.assertNil(catalog.schema("pane", "3.7c").fields.session_id)
 end
 
-function tests.test_version_gates_preserve_known_unsupported_fields()
+function tests.test_every_cataloged_field_is_available_from_the_floor()
     local catalog = fields()
-    local floor = must(catalog.schema("pane", "3.2a"))
-    test.assertFalse(floor.fields.dead_signal.supported)
-    test.assertFalse(floor.fields.dead_time.supported)
-    test.assertTrue(floor.fields.dead_status.supported)
-    local compiled, err = query.compile(floor, { dead_signal = { is_null = true } })
-    test.assertNil(compiled)
-    test.assertEquals(err and err.code, "unsupported_field")
-    local next_version = must(catalog.schema("pane", "3.3"))
-    test.assertTrue(next_version.fields.dead_signal.supported)
-    test.assertTrue(next_version.fields.dead_time.supported)
-    test.assertNotNil(query.compile(next_version, { dead_signal = { is_null = true } }))
-    for _, version in ipairs({ "3.2a", "3.2b", "3.3", "3.7c", "3.7d", "3.10" }) do
-        test.assertNotNil(catalog.schema("session", version))
+    test.assertEquals(catalog.support_floor, "3.3a")
+    for _, kind in ipairs(catalog.kinds()) do
+        for name, field in pairs(must(catalog.schema(kind, "3.3a")).fields) do
+            test.assertTrue(field.supported, kind .. "." .. name)
+        end
+    end
+    local pane = must(catalog.schema("pane", "3.3a"))
+    test.assertNotNil(query.compile(pane, { dead_signal = { is_null = true } }))
+end
+
+function tests.test_release_admission_orders_patch_letters_and_refuses_development_builds()
+    local catalog = fields()
+    for _, version in ipairs({ "3.3a", "3.3b", "3.4", "3.7c", "3.7d", "3.8", "3.10", "4.0" }) do
+        test.assertNotNil(catalog.schema("session", version), version)
+    end
+    for _, version in ipairs({ "3.2a", "3.3", "3.2", "3.0", "2.9a", "3.1c" }) do
+        local value, err = catalog.schema("session", version)
+        test.assertNil(value, version)
+        test.assertEquals(err and err.code, "unsupported_version", version)
+        test.assertStrContains(err.message, "3.3a or newer")
+    end
+    -- A development build ranks below its release, so none is admitted.
+    for _, version in ipairs({
+        "next-3.9",
+        "next-3.3a",
+        "next-3.4",
+        "3.8-rc",
+        "3.8-rc2",
+        "3.3a-rc1",
+        "master",
+        "3.3a ",
+        "3.3A",
+        "",
+    }) do
+        local value, err = catalog.schema("session", version)
+        test.assertNil(value, version)
+        test.assertEquals(err and err.code, "unsupported_version", version)
+        test.assertStrContains(err.message, "prerelease builds are not admitted")
     end
 end
 
@@ -94,9 +119,9 @@ function tests.test_catalog_and_schema_results_are_copies()
     test.assertEquals(catalog.catalog("pane").id.type, "string")
     test.assertEquals(catalog.catalog("pane").id.symbol, "format_cb_pane_id")
     test.assertEquals(catalog.catalog("pane").id.lines.floor, source_line)
-    local schema = must(catalog.schema("pane", "3.2a"))
-    schema.fields.dead_signal.supported = true
-    test.assertFalse(catalog.schema("pane", "3.2a").fields.dead_signal.supported)
+    local schema = must(catalog.schema("pane", "3.3a"))
+    schema.fields.dead_signal.supported = false
+    test.assertTrue(catalog.schema("pane", "3.3a").fields.dead_signal.supported)
     local kinds = catalog.kinds()
     kinds[1] = "mutated"
     test.assertEquals(catalog.kinds()[1], "server")

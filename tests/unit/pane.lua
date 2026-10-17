@@ -193,7 +193,7 @@ end
 
 function M.test_capture_capabilities_fail_before_dispatch_and_ranges_are_explicit()
     fixture(function(state, pane)
-        state.version = "3.2a"
+        state.version = "3.3a"
         for _, options in ipairs({
             { mode_screen = true },
             { trim_empty_cells = true },

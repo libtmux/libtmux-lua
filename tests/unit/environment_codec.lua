@@ -64,8 +64,6 @@ function M.test_native_printer_vectors_preserve_every_non_nul_byte_and_visibilit
     end
     local expected = table.concat(bytes)
     for _, version in ipairs({
-        "3.2a",
-        "3.3",
         "3.3a",
         "3.4",
         "3.5",
