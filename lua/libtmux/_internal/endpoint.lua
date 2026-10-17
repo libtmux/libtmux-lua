@@ -237,24 +237,10 @@ local function read_evidence(state, operation)
     return observed
 end
 
-local function preflight(state, operation)
-    local valid, err = verify(state)
-    if not valid then
-        return nil, err
-    end
-    local observed
-    observed, err = read_evidence(state, operation)
-    local matched = observed ~= nil
-    for key, value in pairs(state.evidence) do
-        if not observed or observed[key] ~= value then
-            matched = false
-        end
-    end
-    if not matched then
-        invalidate(state, "daemon evidence changed or became uncertain")
-        return nil,
-            failure("stale_generation", "pinned daemon evidence changed or became uncertain", err)
-    end
+-- The checked release, pid and start time are cached from binding. Each
+-- dispatch carries them as a fence, so no probe runs per command; only the
+-- socket identity is rechecked here.
+local function preflight(state)
     return verify(state)
 end
 
@@ -295,8 +281,24 @@ local function fence_refused(report, fence)
     return false
 end
 
+-- With -N a client never starts a daemon: these two reports mean nothing ran.
+local function daemon_absent(report)
+    local output = type(report) == "table" and (report.partial or report) or nil
+    local stderr = type(output) == "table" and rawget(output, "stderr") or nil
+    if type(stderr) ~= "string" or rawget(output, "exit_code") ~= 1 then
+        return false
+    end
+    for line in stderr:gmatch("[^\n]+") do
+        if line:find("^no server running on ") or line:find("^error connecting to ") then
+            return true
+        end
+    end
+    return false
+end
+
 local function execute(state, commands, options, raw_result)
-    local fence = { version = state.evidence.version, marker = versions.marker(state.uv) }
+    local fence =
+        { condition = versions.condition(state.evidence), marker = versions.marker(state.uv) }
     local prepared, preparation_error = command.prepare(state.endpoint, commands, fence)
     local plan
     if not preparation_error then
@@ -308,7 +310,7 @@ local function execute(state, commands, options, raw_result)
             return nil, preparation_error
         end
         assert(plan)
-        local valid, err = preflight(state, operation)
+        local valid, err = preflight(state)
         if not valid then
             return nil, err
         end
@@ -322,6 +324,16 @@ local function execute(state, commands, options, raw_result)
                     "stale_generation",
                     "pinned daemon was replaced by another tmux release before dispatch",
                     err
+                )
+        end
+        if daemon_absent(result or err) then
+            invalidate(state, "pinned daemon is no longer listening")
+            local _, kept = process.retain_output(operation, result, err, "endpoint")
+            return nil,
+                failure(
+                    "stale_generation",
+                    "pinned daemon is no longer listening on its socket",
+                    kept or err
                 )
         end
         result, err = process.retain_output(operation, result, err, "endpoint")
@@ -378,7 +390,7 @@ function Bound:_client(open, close)
         end
         state.clients[lease], state.client_count = true, state.client_count + 1
         local valid
-        valid, err = preflight(state, operation)
+        valid, err = preflight(state)
         if not valid then
             return nil, err
         end

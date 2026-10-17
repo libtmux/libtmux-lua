@@ -71,7 +71,9 @@ local function fixture()
         local last = spec.args[#spec.args]
         local metadata = last:match("^libtmux%-version%-[0-9a-f]+%-") ~= nil
         local function finish()
-            if not metadata and uv.fence_refused then
+            if not metadata and uv.dead_listener then
+                spec.stdio[3].read(nil, "no server running on /owned/tmux.sock\n")
+            elseif not metadata and uv.fence_refused then
                 for _, word in ipairs(spec.args) do
                     if word:match("^libtmux%-version%-%x+%-$") then
                         spec.stdio[3].read(nil, "unknown command: " .. word .. "\n")
@@ -99,7 +101,10 @@ local function fixture()
             spec.stdio[2].read(nil, nil)
             spec.stdio[3].read(nil, nil)
             on_exit(
-                metadata and (uv.probe_exit or 1) or uv.fence_refused and 1 or uv.exit_code or 0,
+                metadata and (uv.probe_exit or 1)
+                    or (uv.fence_refused or uv.dead_listener) and 1
+                    or uv.exit_code
+                    or 0,
                 0
             )
         end
@@ -338,13 +343,18 @@ function M.test_every_dispatch_is_fenced_on_the_checked_release()
             if args[dash + 1] == "if-shell" then
                 seen[#seen + 1] = args
                 t.assertEquals(args[dash + 2], "-F")
-                t.assertEquals(args[dash + 3], "#{==:#{version},3.7c}")
+                t.assertEquals(
+                    args[dash + 3],
+                    "#{&&:#{==:#{pid},123},#{&&:#{==:#{start_time},100},#{==:#{version},3.7c}}}"
+                )
                 t.assertEquals(args[dash + 4], "")
                 t.assertNotNil(args[dash + 5]:match("^libtmux%-version%-%x+%-$"))
                 t.assertEquals(args[dash + 6], ";")
             end
         end
         t.assertEquals(#seen, 2)
+        -- The checked version is cached: the binding probe is the only probe.
+        t.assertEquals(#f.uv.spawned, 3)
         t.assertEquals(seen[1][#seen[1]], "one")
         t.assertEquals(table.concat(seen[2], " ", #seen[2] - 4), "new-window -d ; rename-window x")
         t.assertNotEquals(seen[1][#seen[1] - 4], seen[2][#seen[2] - 10])
@@ -370,11 +380,16 @@ function M.test_fence_refusal_reports_a_replaced_daemon_and_pins_nothing_further
             t.assertNil(value)
             t.assertEquals(assert(err).code, "stale_generation")
             t.assertEquals(err.effect, "not_sent")
-            -- The refusal came from the dispatched command, not the preflight probe.
-            t.assertEquals(#f.uv.spawned, 3)
+            -- The refusal came from the dispatched command, not a probe.
+            t.assertEquals(#f.uv.spawned, 2)
             f.uv.fence_refused = false
             t.assertNil(bound:generation())
             t.assertNil(identity.evidence(generation))
+            -- The fence dropped the cached version: the next call dispatches nothing.
+            local again, again_error = bound:execute({ "display-message", "-p", "late" }):await()
+            t.assertNil(again)
+            t.assertEquals(assert(again_error).code, "stale_generation")
+            t.assertEquals(#f.uv.spawned, 2)
         end)
     end
 end
@@ -395,16 +410,16 @@ function M.test_copies_binding_and_invalidates_replaced_path_without_dispatch()
         local generation = assert(bound:generation())
         local result = bound:execute({ "display-message", "-p", "done" }):await()
         t.assertEquals(result.stdout, "done\n")
-        t.assertEquals(f.uv.spawned[3].program, "/actual/tmux")
-        t.assertEquals(f.uv.spawned[3].args[2], f.uv.alias)
-        t.assertNotNil(table.concat(f.uv.spawned[3].args, " "):find(" -N ", 1, true))
+        t.assertEquals(f.uv.spawned[2].program, "/actual/tmux")
+        t.assertEquals(f.uv.spawned[2].args[2], f.uv.alias)
+        t.assertNotNil(table.concat(f.uv.spawned[2].args, " "):find(" -N ", 1, true))
         f.uv.files["/owned/tmux.sock"] = { type = "socket", dev = 1, ino = 20 }
         result, err = bound:execute({ "kill-session", "-t", "$0" }):await()
         t.assertNil(result)
         assert(err)
         t.assertEquals(err.code, "stale_generation")
         t.assertEquals(err.effect, "not_sent")
-        t.assertEquals(#f.uv.spawned, 3)
+        t.assertEquals(#f.uv.spawned, 2)
         t.assertNil(identity.evidence(generation))
         t.assertTrue(bound:close() == bound:close())
         bound:close():await()
@@ -668,8 +683,8 @@ function M.test_dead_listener_invalidates_generation_before_mutation_dispatch()
         t.assertEquals(err.code, "stale_generation")
         t.assertEquals(err.effect, "not_sent")
         t.assertNil(bound:generation())
+        -- The bind probe and the one dispatch that found no daemon.
         t.assertEquals(#f.uv.spawned, 2)
-        t.assertNotNil(f.uv.spawned[2].args[#f.uv.spawned[2].args]:find("#{pid}", 1, true))
     end)
     t.assertNil(f.uv.files[f.uv.alias])
 end
@@ -723,13 +738,14 @@ function M.test_preflight_error_payload_stays_reserved_through_outer_callback()
     f:start(function(rt)
         local bound =
             assert(endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await())
-        f.uv.dead_listener, f.uv.evidence_stderr = true, "failed"
+        f.uv.dead_listener = true
         local request = bound:group({ { "display-message" } })
         local initial = request._cost
+        local absent = "no server running on /owned/tmux.sock\n"
         request:on_complete(function(value, err)
             t.assertNil(value)
-            t.assertEquals(err.cause.cause.partial.stderr, "failed")
-            t.assertEquals(rt:stats().bytes, initial + #"failed")
+            t.assertEquals(err.cause.partial.stderr, absent)
+            t.assertEquals(rt:stats().bytes, initial + #absent)
             delivered = true
         end)
     end)

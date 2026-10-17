@@ -176,15 +176,19 @@ class VersionCheckTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
             self.assertIn(b"snapshot passed", result.stdout)
 
-    def test_fence_refuses_another_release_before_any_effect(self):
+    def test_fence_refuses_another_daemon_before_any_effect(self):
         with TmuxFixture() as fixture:
             version = fixture.run("display-message", "-p", "#{version}").stdout.strip()
             if ranks(version, "3.2")[0] is not True:
                 self.skipTest("the client has no -N before tmux 3.2")
             marker = "unknown command: libtmux-version-0123456789abcdef-"
-            for mode, refused in (("fence_wrong", True), ("fence_right", False)):
+            pid = fixture.run("display-message", "-p", "#{pid}").stdout.strip()
+            started = fixture.run("display-message", "-p", "#{start_time}").stdout.strip()
+            for mode, refused in (("fence_wrong_version", True), ("fence_wrong_pid", True),
+                                  ("fence_wrong_start", True), ("fence_right", False)):
                 env = dict(fixture.env, TMUX_BIN=shutil.which(fixture.binary),
                            TMUX_SOCKET=str(fixture.socket), TMUX_DAEMON_VERSION=version,
+                           TMUX_DAEMON_PID=pid, TMUX_DAEMON_START=started,
                            LIBTMUX_VERSION_CHECK_CASE=mode)
                 built = subprocess.run([env.get("LIBTMUX_TEST_LUA") or shutil.which("lua"),
                                         "tests/integration/version_check.lua"], cwd=ROOT, env=env,

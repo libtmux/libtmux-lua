@@ -110,9 +110,9 @@ function M.prepare_program(input, compact)
     return table.concat(encoded, " ; ")
 end
 
--- A fence names the daemon release the caller admitted. When another release
--- answers, if-shell runs the marker word, tmux refuses it, and the commands
--- after the fence never run.
+-- A fence is a format condition that is true only on the checked daemon. When
+-- another daemon answers, if-shell runs the marker word, tmux refuses it, and
+-- the commands after the fence never run.
 function M.prepare(endpoint, commands, fence)
     if not plain(endpoint) then
         return invalid("invalid_endpoint", "tmux endpoint must be a plain table")
@@ -155,7 +155,7 @@ function M.prepare(endpoint, commands, fence)
         for _, word in ipairs({
             "if-shell",
             "-F",
-            "#{==:#{version}," .. fence.version .. "}",
+            fence.condition,
             "",
             fence.marker,
             ";",

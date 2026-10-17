@@ -949,13 +949,7 @@ function M.open(runtime, bound, options)
         state.fence = versions.marker(rt._driver.uv)
         endpoint.fence = {
             marker = state.fence,
-            condition = "#{&&:#{==:#{pid},"
-                .. evidence.pid
-                .. "},#{&&:#{==:#{start_time},"
-                .. evidence.started
-                .. "},#{==:#{version},"
-                .. evidence.version
-                .. "}}}",
+            condition = versions.condition(evidence),
         }
         state.io, err = native.start(rt, endpoint, limits, function(data)
             consume(state, data)
