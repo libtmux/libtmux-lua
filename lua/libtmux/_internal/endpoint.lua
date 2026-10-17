@@ -1,5 +1,6 @@
 local command = require("libtmux._internal.command")
 local errors = require("libtmux._internal.error")
+local features = require("libtmux._internal.features")
 local fields = require("libtmux._internal.fields")
 local identity = require("libtmux._internal.identity")
 local versions = require("libtmux._internal.support.versions")
@@ -265,6 +266,10 @@ local function execute(state, commands, options, raw_result)
     local prepared, preparation_error = command.prepare(state.endpoint, commands, fence)
     local plan
     if not preparation_error then
+        -- Refuse unsafe literal commands for the checked release before any probe.
+        preparation_error = features.commands(state.evidence.version, commands)
+    end
+    if not preparation_error then
         plan, preparation_error = process.prepare(prepared, options)
     end
     state.active = state.active + 1
@@ -331,8 +336,16 @@ end
 function Bound:_client(open, close)
     local state = assert(bindings[self], "invalid endpoint")
     local lease
+    -- The daemon release decides before a control client or lease exists.
+    local unsupported = features.control(state.evidence.version)
+    if unsupported then
+        unsupported.operation = "endpoint.observe"
+    end
     state.active = state.active + 1
     local request = state.runtime:_operation(function(rt, operation)
+        if unsupported then
+            return nil, unsupported
+        end
         if state.invalid then
             return nil, failure("stale_generation", "endpoint generation is no longer current")
         end

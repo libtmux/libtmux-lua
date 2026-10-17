@@ -50,6 +50,18 @@ class _ProcessExit:
         signal.pidfd_send_signal(self.fd, signal.SIGKILL)
 
 
+def require_control(case, fixture):
+    """Skip a case that opens control observation on a daemon below tmux 3.7.
+
+    The library refuses that acquisition; test_features asserts the refusal.
+    """
+    version = fixture.run("display-message", "-p", "#{version}").stdout.strip()
+    parts = version.removeprefix("next-").split(".")
+    major, minor = int(parts[0]), int("".join(ch for ch in parts[1] if ch.isdigit()))
+    if (major, minor) < (3, 7):
+        case.skipTest(f"control observation needs tmux 3.7; daemon is {version}")
+
+
 class TmuxFixture:
     """Context manager with an explicit socket and sanitized child environment.
 

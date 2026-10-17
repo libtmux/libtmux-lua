@@ -6,7 +6,7 @@ import shutil
 import subprocess
 import unittest
 
-from tests.support.tmux_fixture import TmuxFixture
+from tests.support.tmux_fixture import TmuxFixture, require_control
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -15,6 +15,7 @@ class ObservationTests(unittest.TestCase):
     def test_shared_client_streams_and_reopen_after_native_cleanup(self):
         for host in ("luv", "nvim"):
             with self.subTest(host=host), TmuxFixture() as fixture:
+                require_control(self, fixture)
                 fixture.run("resize-window", "-t", "fixture:0", "-x", "121", "-y", "37")
                 topology = "#{session_id};#{pane_id};#{window_id};#{window_width};#{window_height}"
                 before = fixture.run("display-message", "-p", "-t", "fixture:0.0", topology).stdout

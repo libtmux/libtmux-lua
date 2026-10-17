@@ -66,8 +66,7 @@ local function work(runtime)
             local value, err = server:show_buffer(name):await()
             assert(value == nil and err and err.code == "exit_failed")
         else
-            local observation = must(server:observe(created.session):await())
-            local watch = must(observation:watch_pane(pane):await())
+            local output = require("tests.support.pane_output").open(server, created.session, pane)
             must(pane:respawn({
                 kill = true,
                 argv = {
@@ -79,10 +78,7 @@ local function work(runtime)
                     mode,
                 },
             }):await())
-            local ready = ""
-            repeat
-                ready = ready .. must(watch:next({ timeout = 750 }):await()).data
-            until ready:find("BUFFER_READY", 1, true)
+            output.until_text("BUFFER_READY")
             local options = {}
             if mode == "raw" or mode == "bracket" then
                 options.bytes, options.linefeed_separator = "raw", true
@@ -95,8 +91,7 @@ local function work(runtime)
             must(pane:paste_buffer(name, options):await())
             must(server:command({ "wait-for", "buffer-read" }):await())
             assert(must(server:show_buffer(name):await()).bytes == payload)
-            must(watch:close():await())
-            must(observation:close():await())
+            output.close()
         end
     end
     must(server:close():await())

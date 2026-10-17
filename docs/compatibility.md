@@ -57,6 +57,27 @@ daemon.
 CI runs tmux 3.2a and the unpatched 3.3 as refusal lanes. They assert the
 refusal and that no command ran; they do not run the integration suite.
 
+## Optional features
+
+The 3.3a minimum covers subprocess commands, typed operations, snapshots and
+polling captures. Each feature below names its own release requirement and
+its state in the stated evidence. A refusal is checked by a test that fails
+when the guard is removed; a feature without such a test is unverified.
+
+| Feature | tmux | State |
+| --- | --- | --- |
+| Commands, typed operations, snapshots, captures | 3.3a to 3.8, 3.7d and the pinned next-3.9 build | Qualified where the CI integration suite passes at that release |
+| Control observation (`observe`, watches, subscriptions) | below 3.7 | Non-operative: refused with `unsupported` before any attachment |
+| Control observation | 3.7 to 3.8 | Qualified for idle attachment, watches and subscriptions; concurrent acquisition from several processes is unverified |
+| Named buffer deletion (typed and literal) | below 3.4 | Non-operative: refused |
+| Named paste with `delete_after` | 3.3a and later | Qualified: tmux looks the buffer up exactly |
+| `run-shell` output | 3.3a to 3.4 | Raw client output only: tmux sends job output to pane view mode, so nothing is captured; later releases write it to the client |
+| Custom layout strings | below 3.4 | Operative with validation: a checksum header is required |
+| Percentage splits | 3.4 | Typed splits encode `-l N%`; literal `-p` is refused |
+| Window breaks | exactly 3.7 | Typed `break_out` is operative with a rename repair; literal `break-pane` is refused |
+| Session and window names with `:` or `.` | exactly 3.7 | Refused before dispatch |
+| Development builds | `next-3.9` | Qualified only for the master commit pinned in the option catalog; other development builds and `-rc` builds are supported but their option table is unlisted, so option operations refuse them |
+
 Named buffer deletion requires tmux 3.4 or later. The typed API refuses older
 releases because a missing target can delete another buffer. The older-release
 deletion parity requirement remains open; see [buffers](buffers.md).

@@ -5,6 +5,14 @@ Pass a session handle from that Server's snapshot or creation result. Concurrent
 leases for the same session share one owned persistent client. General commands
 use the [process command API](commands.md).
 
+Observation needs a daemon at tmux 3.7 or newer. On an older daemon,
+`server:observe` returns `unsupported` with `required = "3.7"` and
+`effect = "not_sent"` before any lease, process or client exists, because a
+short-lived control attach can crash servers that lack the 3.7 initialization
+fixes. Ordinary commands, typed operations, snapshots and polling captures
+stay available from tmux 3.3a; use `pane:capture` to poll output on an older
+daemon.
+
 Opening verifies the pinned daemon before spawning. The client's command
 list starts with a fence on the checked pid, start time and version, so a
 replaced daemon attaches nothing and reports `stale_generation`. Every client
