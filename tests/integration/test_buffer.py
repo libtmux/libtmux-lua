@@ -57,7 +57,7 @@ class BufferTests(unittest.TestCase):
                     if mode == "bracket":
                         expected = b"\x1b[200~" + PAYLOAD + b"\x1b[201~"
                     elif mode in ("native", "separator"):
-                        if version.startswith("3.7"):
+                        if version.startswith(("3.7", "3.8", "next-")):
                             expected = b"A^@^A^[^?M^?\nBENDMARK"
                         expected = expected.replace(b"\n", b"|" if mode == "separator" else b"\r")
                     self.assertEqual(report.read_bytes(), expected)

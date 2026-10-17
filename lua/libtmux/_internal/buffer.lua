@@ -19,6 +19,9 @@ local versions = {
     ["3.7a"] = 7,
     ["3.7b"] = 7,
     ["3.7c"] = 7,
+    ["3.7d"] = 7,
+    ["3.8"] = 8,
+    ["next-3.9"] = 9,
 }
 local paste_fields = {
     bytes = true,

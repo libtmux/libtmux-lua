@@ -13,6 +13,9 @@ local versions = {
     "3.7a",
     "3.7b",
     "3.7c",
+    "3.7d",
+    "3.8",
+    "next-3.9",
 }
 
 local function decode(text, version)
@@ -101,7 +104,7 @@ function M.test_malformed_tokens_are_rejected_without_guessing_or_trailing_text(
         rejected(text, "invalid_frame")
     end
     rejected(false, "invalid_frame")
-    for _, version in ipairs({ "3.2", "3.8", "next-3.7c", "tmux 3.7c", false }) do
+    for _, version in ipairs({ "3.2", "3.9", "next-3.7", "tmux 3.7c", false }) do
         local value, err = decode("value", version)
         if version == false then
             value, err = codec.decode_string("value", false)
