@@ -10,6 +10,28 @@ No shell parses argv. tmux still parses its own command syntax; the library
 protects literal separator arguments. A tmux command that explicitly accepts
 shell text, such as `run-shell`, retains that command's shell semantics.
 
+Before dispatch, the library refuses a literal command item that is unsafe on
+the connected daemon's release. The check resolves the command through tmux's
+own alias and unique-prefix rules, so `breakp` and `split` match `break-pane`
+and `split-window`. A refusal returns `unsupported` with the required release,
+`effect = "not_sent"` and no process; a group with a refused item runs
+nothing. The refused forms are:
+
+| Command | Refused on | Reason |
+| --- | --- | --- |
+| `delete-buffer -b`, `set-buffer -n` | below 3.4 | A missing buffer name acts on another buffer. |
+| `select-layout` with a custom layout that has no checksum header | below 3.4 | tmux 3.3a crashes on an invalid layout. |
+| `split-window -p` | 3.4 | The percentage flag is broken; use `-l N%`. |
+| `break-pane` | exactly 3.7 | tmux 3.7 misnames windows; use `Pane:break_out`. |
+| `new-session -s/-n`, `new-window -n`, `rename-session`, `rename-window` with `:` or `.` in the name | exactly 3.7 | tmux 3.7 rejects those names. |
+
+The check does not look inside a tmux command string nested in another
+command, such as the argument of `if-shell`, `run-shell -C` or a brace block,
+and it does not look inside the contents of configured command aliases. Do not
+nest a command from the table above: the nested copy reaches tmux unchecked and
+can crash a daemon on the releases listed. Shell text that a command runs, such
+as the body of `run-shell`, keeps native semantics.
+
 Native command aliases apply even to full built-in names, including commands
 used by typed domain methods. Hooks can run additional commands and affect
 state. The library does not change borrowed server configuration or promise
