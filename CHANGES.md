@@ -2,6 +2,28 @@
 
 ## Unreleased
 
+- Commands: refuse literal commands that are unsafe on the connected release
+  before dispatch, with `unsupported` and effect `not_sent`: named buffer
+  deletion and rename below 3.4, custom layouts without a checksum below 3.4,
+  `refresh-client -l` below 3.6a (tmux 3.3a can stop when it asks an attached
+  terminal for its clipboard, and 3.4 through 3.6 when that client leaves
+  before answering), `split-window -p` on 3.4, `break-pane` on exactly 3.7,
+  and names containing `:` or `.` on exactly 3.7. Typed operations keep
+  working; a typed name containing `:` or `.` on exactly 3.7 now returns
+  `unsupported` before dispatch.
+  See the [proposal](https://github.com/libtmux/libtmux-lua/issues/32).
+  (#36)
+- Control: observation needs tmux 3.7 or newer and returns `unsupported`
+  before any attachment, process or client on an older daemon. (#36)
+- Support: add the `libtmux._internal.support.capabilities` registry, which
+  holds the release each optional feature needs and which `Commands`,
+  `Control`, named buffer deletion and mirrored layout refusals read, and
+  publish it as `capabilities.json` for the documentation site. The registry
+  also lists JSON layouts and the capture `trim_empty_cells` and `line_flags`
+  options, and their release floors are read from it. (#36)
+
+## 0.1.0alpha3-1
+
 - Docs: list the packages in the README under linked headings, each with
   reference links and a tested example, and add READMEs for the core package
   and the unpublished MCP and workspace scaffolds.
