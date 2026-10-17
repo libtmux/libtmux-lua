@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Docs: add complete common API examples with private tmux setup and cleanup.
+- Docs: show the `Server:handle` description on `handle`, not on `command`.
 
 ## 0.1.0alpha2-1
 

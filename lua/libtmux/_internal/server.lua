@@ -657,6 +657,7 @@ end
 ---@field switch_client fun(self:libtmux.Server,selector:libtmux.ClientSelector,
 --- session:libtmux.Session,options?:libtmux.SwitchClientOptions):
 --- libtmux.Request<boolean>
+--- Binds a snapshot record to a live handle of its class.
 ---@field handle (fun(self:libtmux.Server,snapshot:libtmux.Snapshot,
 --- record:libtmux.SnapshotSession):libtmux.Session?,libtmux.Error?)|(fun(
 --- self:libtmux.Server,snapshot:libtmux.Snapshot,
@@ -669,7 +670,6 @@ end
 --- record:libtmux.SnapshotClient):libtmux.Client?,libtmux.Error?)|(fun(
 --- self:libtmux.Server,snapshot:libtmux.Snapshot,
 --- record:libtmux.SnapshotBuffer):libtmux.Buffer?,libtmux.Error?)
---- Binds a snapshot record to a live handle of its class.
 ---@field command fun(self:libtmux.Server, argv:string[],
 --- options?:libtmux.CommandOptions):libtmux.Request<libtmux.CommandResult>
 ---@field group fun(self:libtmux.Server, commands:string[][],
