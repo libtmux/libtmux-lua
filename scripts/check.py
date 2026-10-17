@@ -95,7 +95,7 @@ def docs():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("gate", choices=("unit", "mid", "format", "lint", "generated", "docs", "integration", "package", "types", "outer"))
+    parser.add_argument("gate", choices=("unit", "mid", "format", "lint", "generated", "docs", "integration", "refusal", "package", "types", "outer"))
     parser.add_argument("suites", nargs="*", help="unit suite names")
     parser.add_argument("--lua", default="lua", help="interpreter executable")
     parser.add_argument("--nvim", help="Neovim executable for embedded integration tests")
@@ -133,6 +133,8 @@ def main():
             run([sys.executable, "scripts/release.py", "prepare", "--check"], timeout=5)
         elif gate == "integration":
             run([sys.executable, "tests/run_integration.py"], env=env)
+        elif gate == "refusal":
+            run([sys.executable, "tests/run_integration.py", "--pattern", "test_admission.py"], env=env)
         elif gate == "package":
             run([sys.executable, "scripts/package.py", "--lua", lua], env=env)
         elif gate == "types":
