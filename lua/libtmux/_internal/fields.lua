@@ -736,39 +736,48 @@ local function copy(value)
     return result
 end
 
+-- tmux has only reported X.Y with an optional patch letter, X.Y-rc and
+-- X.Y-rcN candidates, and next-X.Y development builds. They rank
+-- next-X.Y < X.Y-rc < X.Y-rcN < X.Y < X.Ya; anything else names no release.
 local function version(value)
     if type(value) ~= "string" or #value > 32 then
         return nil
     end
-    -- A development build ranks just below the release it names.
-    local development = false
-    if value:sub(1, 5) == "next-" then
-        development, value = true, value:sub(6)
+    local major, minor, letter = value:match("^(%d+)%.(%d+)(%l?)$")
+    if major then
+        return { tonumber(major), tonumber(minor), 2, 0, letter }
     end
-    local major, minor, suffix, tail = value:match("^(%d+)%.(%d+)(%l*)(.*)$")
-    if not major then
-        return nil
+    local candidate
+    major, minor, candidate = value:match("^(%d+)%.(%d+)%-rc(%d*)$")
+    if major then
+        return { tonumber(major), tonumber(minor), 1, tonumber(candidate) or 0, "" }
     end
-    if tail ~= "" then
-        if
-            not tail:match("^%-master$")
-            and not tail:match("^%-dev$")
-            and not tail:match("^%-rc%d+$")
-        then
-            return nil
-        end
-        development = true
+    major, minor = value:match("^next%-(%d+)%.(%d+)$")
+    if major then
+        return { tonumber(major), tonumber(minor), 0, 0, "" }
     end
-    return { tonumber(major), tonumber(minor), suffix, development }
+    return nil
 end
 
 local function at_least(actual, required)
-    for index = 1, 3 do
+    for index = 1, 5 do
         if actual[index] ~= required[index] then
             return actual[index] > required[index]
         end
     end
-    return not actual[4]
+    return true
+end
+
+---Whether a reported release ranks at or above a required one.
+---@param reported string
+---@param required string A release such as "3.7" or "3.4".
+---@return boolean? ranked Nil when the report names no release.
+function M.at_least(reported, required)
+    local actual = version(reported)
+    if not actual then
+        return nil
+    end
+    return at_least(actual, assert(version(required)))
 end
 
 function M.kinds()
@@ -801,7 +810,7 @@ function M.schema(kind, tmux_version)
             errors.new(
                 "unsupported_version",
                 "schema needs a tmux release or development build (MAJOR.MINOR with an optional "
-                    .. "patch letter, next- prefix or -rcN suffix)"
+                    .. "patch letter, a -rc or -rcN candidate, or a next- prefix)"
             )
     end
     if not at_least(actual, version(M.support_floor)) then
