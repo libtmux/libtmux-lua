@@ -161,6 +161,21 @@ class VersionCheckTests(unittest.TestCase):
                     self.assertEqual(fixture.run("list-clients").stdout, "", lie)
                     self.assertEqual(self.state(fixture), before, lie)
 
+    def test_snapshot_decodes_names_with_braces(self):
+        with TmuxFixture() as fixture:
+            version = fixture.run("display-message", "-p", "#{version}").stdout.strip()
+            if not supported(version):
+                self.skipTest("refused release")
+            fixture.run("new-session", "-d", "-s", "br{ace}s", "exec /bin/cat")
+            env = dict(fixture.env, TMUX_BIN=shutil.which(fixture.binary),
+                       TMUX_SOCKET=str(fixture.socket), LIBTMUX_VERSION_CHECK_CASE="snapshot",
+                       LIBTMUX_EXPECT_NAME="br{ace}s")
+            result = subprocess.run([env.get("LIBTMUX_TEST_LUA") or shutil.which("lua"),
+                                     "tests/integration/version_check.lua"], cwd=ROOT, env=env,
+                                    capture_output=True, timeout=DEADLINE)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            self.assertIn(b"snapshot passed", result.stdout)
+
     def test_fence_refuses_another_release_before_any_effect(self):
         with TmuxFixture() as fixture:
             version = fixture.run("display-message", "-p", "#{version}").stdout.strip()

@@ -1,7 +1,8 @@
 local errors = require("libtmux._internal.error")
 local M = {}
 local marker = "LQ1\r$a;"
-local quoted = "|&;<>()$`\\\"'*?[# =%"
+-- tmux 3.8 also backslash-escapes braces, newlines and tabs.
+local quoted = "|&;<>()$`\\\"'*?[# =%{}\n\t"
 local controls = { a = "\a", b = "\b", f = "\f", r = "\r", v = "\v" }
 
 local function failure(code, message, offset)
