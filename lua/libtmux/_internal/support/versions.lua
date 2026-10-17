@@ -28,6 +28,17 @@ function M.marker(uv)
     return string.format("libtmux-version-%s%04x-", random, sequence % 65536)
 end
 
+-- True only on the daemon whose pid, start time and release were checked.
+function M.condition(evidence)
+    return "#{&&:#{==:#{pid},"
+        .. evidence.pid
+        .. "},#{&&:#{==:#{start_time},"
+        .. evidence.started
+        .. "},#{==:#{version},"
+        .. evidence.version
+        .. "}}}"
+end
+
 function M.argv(prefix)
     return { "run-shell", "-C", prefix .. TEMPLATE }
 end

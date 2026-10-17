@@ -43,10 +43,13 @@ catalog and layout check cover those. `next-3.9` is a development build: its
 row describes the upstream master commit pinned in the option catalog, so a
 later master build can differ. CI builds all three.
 
-The pinned endpoint reads the daemon version with `run-shell -C`, which fires
-no `after-*` or `command-error` hook, and fences each dispatched command group
-on that release. A daemon that changed after admission raises
-`stale_generation` and none of the group's commands run. A daemon below the
+The pinned endpoint reads the daemon's version, pid and start time once, when
+it binds, with `run-shell -C`, which fires no `after-*` or `command-error`
+hook. It caches that version and starts each dispatched command group with a
+fence on the cached pid, start time and release, so a command costs no probe.
+A daemon that changed after the check raises `stale_generation`, none of the
+group's commands run, and the cache is dropped; a daemon that is gone raises
+the same error because `-N` stops a client from starting another. A daemon below the
 minimum raises `unsupported_version` when connecting. The endpoint only binds
 to an existing socket and always passes `-N`, so no client binary starts a
 daemon.

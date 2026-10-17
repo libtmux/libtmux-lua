@@ -7,7 +7,7 @@ local options = {
 }
 
 local function work(runtime)
-    if mode == "fence_right" or mode == "fence_wrong" then
+    if mode:match("^fence_") then
         -- Print the argv this library would run; the caller executes it.
         local command = require("libtmux._internal.command")
         local argv = assert(command.prepare({
@@ -16,7 +16,13 @@ local function work(runtime)
             config = "/dev/null",
             no_start = true,
         }, { { "new-session", "-d", "-s", "fenced", "/bin/cat" } }, {
-            version = mode == "fence_right" and assert(os.getenv("TMUX_DAEMON_VERSION")) or "9.9",
+            condition = require("libtmux._internal.support.versions").condition({
+                version = mode == "fence_wrong_version" and "9.9"
+                    or assert(os.getenv("TMUX_DAEMON_VERSION")),
+                pid = mode == "fence_wrong_pid" and "1" or assert(os.getenv("TMUX_DAEMON_PID")),
+                started = mode == "fence_wrong_start" and "1"
+                    or assert(os.getenv("TMUX_DAEMON_START")),
+            }),
             marker = "libtmux-version-0123456789abcdef-",
         }))
         io.stdout:write(table.concat(argv, "\0"), "\0\n", mode, " passed\n")
