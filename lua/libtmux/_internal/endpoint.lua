@@ -2,39 +2,14 @@ local command = require("libtmux._internal.command")
 local errors = require("libtmux._internal.error")
 local fields = require("libtmux._internal.fields")
 local identity = require("libtmux._internal.identity")
+local versions = require("libtmux._internal.support.versions")
 local process = require("libtmux._internal.process")
 local unpack_values = rawget(table, "unpack") or unpack
 local M, Bound = {}, {}
 local bindings = setmetatable({}, { __mode = "kv" })
-local MAX_INTEGER = 9007199254740991
--- tmux fires no hook for run-shell -C: its expanded text fails in the parser.
--- The doubled q: survives that parser's one level of unquoting.
-local PROBE = "#{pid}_#{start_time}_#{version}_#{q:#{q:socket_path}}."
-local sequence = 0
 
 local function failure(code, message, cause)
     return errors.new(code, message, { operation = "endpoint", effect = "not_sent", cause = cause })
-end
-
--- A marker names no tmux command, so tmux refuses it and reports the word.
-local function marker(uv)
-    sequence = sequence + 1
-    local random
-    if uv and type(uv.random) == "function" then
-        local ok, bytes = pcall(uv.random, 8)
-        if ok and type(bytes) == "string" and #bytes == 8 then
-            random = bytes:gsub(".", function(byte)
-                return string.format("%02x", byte:byte())
-            end)
-        end
-    end
-    random = random
-        or string.format(
-            "%08x%08x",
-            (os.time() * 65537 + sequence) % 4294967296,
-            math.floor(os.clock() * 1000000) % 4294967296
-        )
-    return string.format("libtmux-version-%s%04x-", random, sequence % 65536)
 end
 
 local function plain(value)
@@ -195,46 +170,19 @@ end
 
 local function parse_probe(prefix, err)
     local partial = type(err) == "table" and rawget(err, "partial") or nil
-    if
-        type(partial) ~= "table"
-        or partial.exit_code ~= 1
-        or partial.stdout ~= ""
-        or type(partial.stderr) ~= "string"
-    then
+    if type(partial) ~= "table" or partial.exit_code ~= 1 or partial.stdout ~= "" then
         return nil
     end
-    local head = "unknown command: " .. prefix
-    local stderr = partial.stderr
-    if stderr:sub(1, #head) ~= head or stderr:sub(-1) ~= "\n" then
-        return nil
-    end
-    local report = stderr:sub(#head + 1, -2)
-    local pid, started, version, socket = report:match("^(%d+)_(%d+)_([^_]+)_(.+)%.$")
-    local pid_number, start_number = tonumber(pid), tonumber(started)
-    if
-        not pid
-        or socket:find("\n", 1, true)
-        or pid_number <= 0
-        or pid_number > MAX_INTEGER
-        or start_number > MAX_INTEGER
-    then
-        return nil
-    end
-    return {
-        pid = string.format("%.0f", pid_number),
-        started = string.format("%.0f", start_number),
-        version = version,
-        socket = socket,
-    }
+    return versions.report(prefix, partial.stderr)
 end
 
 local function read_evidence(state, operation)
-    local prefix = marker(state.uv)
+    local prefix = versions.marker(state.uv)
     local result, err = command
         .execute(
             state.runtime,
             state.endpoint,
-            { "run-shell", "-C", prefix .. PROBE },
+            versions.argv(prefix),
             { timeout = 750, max_output_bytes = 16384 }
         )
         :await()
@@ -311,7 +259,7 @@ local function fence_refused(report, fence)
 end
 
 local function execute(state, commands, options, raw_result)
-    local fence = { version = state.evidence.version, marker = marker(state.uv) }
+    local fence = { version = state.evidence.version, marker = probe.marker(state.uv) }
     local prepared, preparation_error = command.prepare(state.endpoint, commands, fence)
     local plan
     if not preparation_error then
