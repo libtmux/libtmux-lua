@@ -85,6 +85,16 @@ local function work(runtime)
         assert(err.message:find(phrase, 1, true), phrase .. " missing from: " .. err.message)
         return "refuse passed"
     end
+    if mode == "observe" then
+        assert(server, tostring(err))
+        local snapshot =
+            assert(server:snapshot({ fields = { sessions = { "id", "name" } } }):await())
+        local session = assert(server:handle(snapshot, assert(snapshot.sessions:first())))
+        local observer = assert(server:observe(session):await())
+        assert(observer:close():await())
+        assert(server:close():await())
+        return "observe passed"
+    end
     assert(mode == "supported", "unknown version check case")
     assert(server, tostring(err))
     local created

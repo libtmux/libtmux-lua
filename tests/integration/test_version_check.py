@@ -121,6 +121,9 @@ class VersionCheckTests(unittest.TestCase):
                 armed = self.arm_hooks(fixture)
                 self.exercise(fixture, armed)
                 self.run_lua(fixture, mode, host, version)
+                if mode == "supported" and ranks(version, "3.7")[0]:
+                    # The control attachment verifies its daemon with the same probe.
+                    self.run_lua(fixture, "observe", host, version)
                 for _, option, _ in HOOKS:
                     self.assertFalse(self.fired(fixture, option), option)
                 sessions = sorted(fixture.run("list-sessions", "-F", "#{session_name}").stdout.split())

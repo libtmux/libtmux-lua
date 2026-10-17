@@ -228,8 +228,14 @@ function M.start(runtime, endpoint, options, on_data, on_end)
     if endpoint.config then
         args[#args + 1], args[#args + 2] = "-f", endpoint.config
     end
+    args[#args + 1] = "-C"
+    local fence = endpoint.fence
+    if fence then
+        for _, arg in ipairs({ "if-shell", "-F", fence.condition, "", fence.marker, ";" }) do
+            args[#args + 1] = arg
+        end
+    end
     for _, arg in ipairs({
-        "-C",
         "attach-session",
         "-E",
         "-f",
