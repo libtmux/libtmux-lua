@@ -59,8 +59,10 @@ $ luarocks --local install luv 1.52.1-0
 
 Core and local queries require only Lua. Importing a module does not start
 tmux or an event loop. CI runs unit tests on Lua 5.1–5.5 and LuaJIT, plus live
-tests across tmux 3.2a–3.7c. See the [compatibility matrix](docs/compatibility.md)
-for exact versions and remaining platform coverage.
+tests on tmux 3.3a or newer. The library refuses a daemon older than 3.3a
+before any command runs. See the [compatibility
+matrix](docs/compatibility.md) for exact versions and remaining platform
+coverage.
 
 ## Read a server
 

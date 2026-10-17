@@ -23,8 +23,8 @@ and delayed WAIT-command failures can still allow later commands. A group
 provides neither transactions nor independently attributed member results.
 
 Output routing also follows tmux: `run-shell` without a pane target writes
-job output to pane view mode on tmux 3.3–3.4; tmux 3.2a and 3.5 onward
-write it to the waiting client's stdout. An explicit `-t` pane target
+job output to pane view mode on tmux 3.3a and 3.4; tmux 3.5 onward
+writes it to the waiting client's stdout. An explicit `-t` pane target
 selects pane output. Without `-b`, client completion still waits for the job,
 and a control-mode `%end` marker can precede that completion. See the upstream
 [stdout restoration](https://github.com/tmux/tmux/commit/fb37d52ddeccb603b0932b81cff3a6228f1fd83d).

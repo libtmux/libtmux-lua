@@ -45,7 +45,7 @@ returns `nil, err` with `invalid_utf8`. Mutating this returned record changes
 neither the daemon's value nor future Requests.
 
 `server:delete_buffer(name)` removes the current value on tmux 3.4 and later.
-It returns `unsupported` before dispatch on 3.2a, 3.3 and 3.3a: those releases
+It returns `unsupported` before dispatch on 3.3a: that release
 can delete the most recent buffer when the requested name is missing. Checking
 existence first would still race with other clients. This limitation does not
 affect `paste_buffer` with `delete_after`, whose native lookup rejects missing
