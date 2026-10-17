@@ -134,7 +134,8 @@ def main():
         elif gate == "integration":
             run([sys.executable, "tests/run_integration.py"], env=env)
         elif gate == "refusal":
-            run([sys.executable, "tests/run_integration.py", "--pattern", "test_admission.py"], env=env)
+            env["LIBTMUX_REQUIRE_REFUSED"] = "1"
+            run([sys.executable, "tests/run_integration.py", "--pattern", "test_version_check.py"], env=env)
         elif gate == "package":
             run([sys.executable, "scripts/package.py", "--lua", lua], env=env)
         elif gate == "types":

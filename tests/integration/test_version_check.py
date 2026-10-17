@@ -42,6 +42,17 @@ class VersionCheckTests(unittest.TestCase):
             armed[option] = result.returncode == 0
         return armed
 
+    def state(self, fixture):
+        """What a refused connect must leave alone."""
+        return tuple(fixture.run(*command).stdout for command in (
+            ("list-sessions", "-F", "#{session_name}"),
+            ("list-windows", "-a", "-F", "#{window_id}"),
+            ("list-panes", "-a", "-F", "#{pane_id}"),
+            ("list-buffers", "-F", "#{buffer_name}:#{buffer_size}"),
+            ("show-options", "-g", "@sentinel"),
+            ("show-options", "-s"),
+        ))
+
     def fired(self, fixture, option):
         return fixture.run("show-options", "-gqv", option).stdout.strip() == "fired"
 
@@ -77,7 +88,13 @@ class VersionCheckTests(unittest.TestCase):
         for host in ("luv", "nvim"):
             with self.subTest(host=host), TmuxFixture() as fixture:
                 version = fixture.run("display-message", "-p", "#{version}").stdout.strip()
-                mode = "admit" if admitted(version) else "refuse"
+                mode = "supported" if supported(version) else "refuse"
+                if os.environ.get("LIBTMUX_REQUIRE_REFUSED"):
+                    # A refusal lane built from a supported release would prove nothing.
+                    self.assertEqual(mode, "refuse", version)
+                fixture.run("set-option", "-g", "@sentinel", "kept")
+                fixture.run("set-buffer", "-b", "sentinel", "kept")
+                before = self.state(fixture)
                 armed = self.arm_hooks(fixture)
                 self.exercise(fixture, armed)
                 self.run_lua(fixture, mode, host)
@@ -89,6 +106,9 @@ class VersionCheckTests(unittest.TestCase):
                 sessions = sorted(fixture.run("list-sessions", "-F", "#{session_name}").stdout.split())
                 self.assertEqual(sessions, ["fixture", "supported"] if mode == "supported" else ["fixture"])
                 self.assertEqual(list(fixture.path.glob("libtmux-lua-pin-*")), [])
+                if mode == "refuse":
+                    # A refused connect leaves sessions, options and buffers untouched.
+                    self.assertEqual(self.state(fixture), before)
 
     def test_snapshot_decodes_names_with_braces(self):
         with TmuxFixture() as fixture:
