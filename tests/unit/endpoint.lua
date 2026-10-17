@@ -303,6 +303,81 @@ function M.test_daemons_before_3_2_are_refused_not_reported_as_probe_failures()
     end)
 end
 
+function M.test_unsafe_literal_commands_are_refused_before_any_process_starts()
+    local cases = {
+        { "3.7", { "break-pane", "-t", "%1" } },
+        { "3.4", { "splitw", "-p", "40" } },
+        { "3.3a", { "select-layout", "not-a-layout" } },
+        { "3.3a", { "delete-buffer", "-b", "name" } },
+        { "3.7", { "new-session", "-d", "-s", "a.b" } },
+    }
+    for _, case in ipairs(cases) do
+        local f = fixture()
+        f.uv.daemon_version = case[1]
+        f:start(function(rt)
+            local bound = assert(
+                endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await()
+            )
+            local safe = { "display-message", "-p", "done" }
+            for _, call in ipairs({
+                function()
+                    return bound:execute(case[2])
+                end,
+                function()
+                    return bound:group({ safe, case[2] })
+                end,
+            }) do
+                local value, err = call():await()
+                t.assertNil(value)
+                t.assertEquals(assert(err).code, "unsupported", case[1])
+                t.assertEquals(err.effect, "not_sent")
+            end
+            -- Only the bind probe ran: neither the refused item nor its group member did.
+            t.assertEquals(#f.uv.spawned, 1)
+            assert(bound:group({ safe }):await())
+            t.assertEquals(#f.uv.spawned, 2)
+        end)
+    end
+end
+
+function M.test_control_attachment_is_decided_by_the_daemon_release_before_any_client()
+    for _, case in ipairs({
+        { "3.3a", false },
+        { "3.6b", false },
+        { "3.7", true },
+        { "3.7c", true },
+    }) do
+        local f = fixture()
+        f.uv.daemon_version = case[1]
+        local opened = false
+        f:start(function(rt)
+            local bound = assert(
+                endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await()
+            )
+            local request = bound:_client(function()
+                opened = true
+                return true
+            end, function(done)
+                done()
+            end)
+            local value, err = request:await()
+            if case[2] then
+                t.assertNotNil(value, case[1])
+                t.assertTrue(opened)
+            else
+                t.assertNil(value, case[1])
+                t.assertEquals(assert(err).code, "unsupported")
+                t.assertEquals(err.required, "3.7")
+                t.assertEquals(err.version, case[1])
+                t.assertEquals(err.effect, "not_sent")
+                t.assertFalse(opened)
+                -- No lease, probe or client started for the refused release.
+                t.assertEquals(#f.uv.spawned, 1)
+            end
+        end)
+    end
+end
+
 function M.test_probe_names_a_fresh_marker_and_never_runs_display_message()
     local f = fixture()
     f:start(function(rt)

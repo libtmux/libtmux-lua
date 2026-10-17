@@ -157,6 +157,8 @@ class VersionCheckTests(unittest.TestCase):
                 version = fixture.run("display-message", "-p", "#{version}").stdout.strip()
                 if not supported(version):
                     self.skipTest("refused release")
+                if not ranks(version, "3.7")[0]:
+                    self.skipTest("control observation needs tmux 3.7")
                 # A quiet daemon: tmux before 3.7 can crash on a notification during identify.
                 session = fixture.run("display-message", "-p", "#{session_id}").stdout.strip()
                 fixture.run("set-option", "-g", "@sentinel", "kept")

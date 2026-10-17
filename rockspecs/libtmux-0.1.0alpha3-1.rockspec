@@ -33,6 +33,7 @@ build = {
         ["libtmux._internal.environment_codec"] = "lua/libtmux/_internal/environment_codec.lua",
         ["libtmux._internal.error"] = "lua/libtmux/_internal/error.lua",
         ["libtmux._internal.execution"] = "lua/libtmux/_internal/execution.lua",
+        ["libtmux._internal.features"] = "lua/libtmux/_internal/features.lua",
         ["libtmux._internal.fields"] = "lua/libtmux/_internal/fields.lua",
         ["libtmux._internal.graph"] = "lua/libtmux/_internal/graph.lua",
         ["libtmux._internal.identity"] = "lua/libtmux/_internal/identity.lua",
