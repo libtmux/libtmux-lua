@@ -35,15 +35,9 @@ local function work(runtime)
     end
     if mode == "io" then
         command({ "wait-for", "pane-input-ready" })
-        local observation = must(server:observe(created.session):await())
-        local watch = must(observation:watch_pane(pane):await())
+        local output = require("tests.support.pane_output").open(server, created.session, pane)
         local function output_until(marker)
-            local output = ""
-            repeat
-                local event = must(watch:next({ timeout = 750 }):await())
-                output = output .. event.data
-            until output:find(marker, 1, true)
-            return output
+            return output.until_text(marker)
         end
         must(pane:send_text("literal;#{pane_id}\\λ雪"):await())
         output_until("TEXT_OK")
@@ -80,8 +74,7 @@ local function work(runtime)
         end
         must(pane:copy_command("cancel"):await())
         assert(command({ "display-message", "-p", "-t", id, "#{pane_in_mode}" }) == "0\n")
-        must(watch:close():await())
-        must(observation:close():await())
+        output.close()
     else
         local other =
             must(pane:split({ direction = "right", percent = 40, argv = { "/bin/cat" } }):await())

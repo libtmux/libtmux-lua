@@ -36,6 +36,7 @@ build = {
         ["libtmux._internal.observation"] = "lua/libtmux/_internal/observation.lua",
         ["libtmux._internal.control_io"] = "lua/libtmux/_internal/control_io.lua",
         ["libtmux._internal.endpoint"] = "lua/libtmux/_internal/endpoint.lua",
+        ["libtmux._internal.features"] = "lua/libtmux/_internal/features.lua",
         ["libtmux._internal.support.versions"] = "lua/libtmux/_internal/support/versions.lua",
         ["libtmux._internal.server"] = "lua/libtmux/_internal/server.lua",
         ["libtmux._internal.batch"] = "lua/libtmux/_internal/batch.lua",

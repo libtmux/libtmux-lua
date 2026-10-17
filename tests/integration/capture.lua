@@ -36,15 +36,14 @@ local function work(runtime)
         return result.stdout
     end
     command({ "wait-for", "capture-input-ready" })
-    local observation = must(server:observe(created.session):await())
-    local watch = must(observation:watch_pane(pane):await())
+    local output = require("tests.support.pane_output").open(server, created.session, pane)
     must(pane:send_text("x"):await())
     local pending_case = case == "pending" or case == "buffer_pending"
-    local marker = pending_case and "PENDING_READY\027[" or "CAPTURE_READY"
-    local output = ""
-    repeat
-        output = output .. must(watch:next({ timeout = 750 }):await()).data
-    until output:find(marker, 1, true)
+    if pending_case then
+        output.until_text("PENDING_READY\027[", "PENDING_READY")
+    else
+        output.until_text("CAPTURE_READY")
+    end
 
     if case == "pending" then
         local pending = must(pane:capture({ pending_escape_sequences = true }):await())
@@ -118,8 +117,7 @@ local function work(runtime)
             assert(must(pane:capture({ hyperlinks_only = true }):await()).bytes == "\n")
         end
     end
-    must(watch:close():await())
-    must(observation:close():await())
+    output.close()
     must(server:close():await())
     return "public capture/history PASS " .. id
 end
