@@ -44,6 +44,9 @@ jobs:
           - {name: 'tmux 3.7a', gate: integration, lua: '5.5.1', tmux: '3.7a', nvim: '0.12.5'}
           - {name: 'tmux 3.7b', gate: integration, lua: '5.5.1', tmux: '3.7b', nvim: '0.12.5'}
           - {name: 'tmux 3.7c', gate: integration, lua: '5.5.1', tmux: '3.7c', nvim: '0.12.5'}
+          - {name: 'tmux 3.7d', gate: integration, lua: '5.5.1', tmux: '3.7d', nvim: '0.12.5'}
+          - {name: 'tmux 3.8', gate: integration, lua: '5.5.1', tmux: '3.8', nvim: '0.12.5'}
+          - {name: 'tmux next-3.9', gate: integration, lua: '5.5.1', tmux: 'next-3.9', nvim: '0.12.5'}
     env:
       CI_LUA: ${{ matrix.lua }}
       CI_TMUX: ${{ matrix.tmux }}

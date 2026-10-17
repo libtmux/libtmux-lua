@@ -202,7 +202,8 @@ dependency bootstrap:
 - Full outer checks at Lua/tmux/Neovim floor and current versions, including
   format, lint, generated files, docs, installed rocks and LuaLS completion.
 - The full integration suite on every accepted tmux release from 3.3a, using
-  current Lua and Neovim.
+  current Lua and Neovim. This includes 3.7d, 3.8 and the pinned `next-3.9`
+  development build, which build from a branch commit when they have no tag.
 - A refusal lane for each release below the minimum (3.2a and the unpatched
   3.3). It runs only the version check tests, which assert the refusal and that no
   command reached the daemon.
