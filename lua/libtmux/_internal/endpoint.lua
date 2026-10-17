@@ -280,8 +280,24 @@ function Bound:close()
     return state.lease:close()
 end
 
+local function fence_refused(report, fence)
+    local output = type(report) == "table" and (report.partial or report) or nil
+    local stderr = type(output) == "table" and rawget(output, "stderr") or nil
+    if type(stderr) ~= "string" then
+        return false
+    end
+    local refusal = "unknown command: " .. fence.marker
+    for line in stderr:gmatch("[^\n]+") do
+        if line == refusal then
+            return true
+        end
+    end
+    return false
+end
+
 local function execute(state, commands, options, raw_result)
-    local prepared, preparation_error = command.prepare(state.endpoint, commands)
+    local fence = { version = state.evidence.version, marker = versions.marker(state.uv) }
+    local prepared, preparation_error = command.prepare(state.endpoint, commands, fence)
     local plan
     if not preparation_error then
         plan, preparation_error = process.prepare(prepared, options)
@@ -299,6 +315,15 @@ local function execute(state, commands, options, raw_result)
         operation:_set_effect("unknown")
         local result
         result, err = process.execute(rt, plan.argv, plan.options):await()
+        if fence_refused(result or err, fence) then
+            invalidate(state, "daemon version changed after the version check")
+            return nil,
+                failure(
+                    "stale_generation",
+                    "pinned daemon was replaced by another tmux release before dispatch",
+                    err
+                )
+        end
         result, err = process.retain_output(operation, result, err, "endpoint")
         if raw_result and err and err.code == "exit_failed" and err.effect == "completed" then
             return err.partial

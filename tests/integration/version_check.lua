@@ -18,6 +18,21 @@ local options = {
 }
 
 local function work(runtime)
+    if mode == "fence_right" or mode == "fence_wrong" then
+        -- Print the argv this library would run; the caller executes it.
+        local command = require("libtmux._internal.command")
+        local argv = assert(command.prepare({
+            binary = options.binary,
+            socket = options.socket_path,
+            config = "/dev/null",
+            no_start = true,
+        }, { { "new-session", "-d", "-s", "fenced", "/bin/cat" } }, {
+            version = mode == "fence_right" and assert(os.getenv("TMUX_DAEMON_VERSION")) or "9.9",
+            marker = "libtmux-version-0123456789abcdef-",
+        }))
+        io.stdout:write(table.concat(argv, "\0"), "\0\n", mode, " passed\n")
+        return mode .. " passed"
+    end
     if mode:match("^control_fence_") then
         -- Attach through an endpoint whose evidence misstates the daemon; the
         -- real daemon must refuse the fence and attach nothing.
