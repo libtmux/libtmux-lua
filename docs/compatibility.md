@@ -28,10 +28,13 @@ PUC Lua 5.1 yield behavior. A Neovim build using PUC Lua is a separate host gate
 ## Minimum tmux release
 
 The supported minimum is tmux 3.3a, compared as a complete release: 3.3 is
-below it. The library admits the connected daemon's own `#{version}`, never
-the client executable's `-V`, so a newer client cannot admit an older daemon.
-Development builds (`next-X.Y`), release candidates (`X.Y-rcN`) and unknown
-version strings are refused rather than ranked.
+below it. The library checks the connected daemon's own `#{version}`, never
+the client executable's `-V`, so a newer client cannot pass for an older daemon.
+A development build (`next-X.Y`) or release candidate (`X.Y-rcN`) ranks just
+below the release it names: `next-3.9` and `3.8-rc2` clear the minimum, while
+`next-3.3a` does not. Reports that name no release, such as bare `master`, are
+refused. Admission does not qualify a release: subsystems that key on exact
+releases still refuse versions they do not list.
 
 The pinned endpoint reads the daemon version with `run-shell -C`, which fires
 no `after-*` or `command-error` hook, and fences each dispatched command group
