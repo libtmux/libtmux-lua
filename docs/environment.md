@@ -76,8 +76,8 @@ creating client.
 ## Consistency and bounds
 
 Reads use literal `show-environment -s` arguments and a bounded decoder, never a
-shell evaluator. The decoder recognizes the thirteen catalog releases from
-3.2a through 3.7c. It reverses the 3.4–3.5a printer escapes and the additional
+shell evaluator. The decoder recognizes the catalog releases from
+3.3a through 3.7c. It reverses the 3.4–3.5a printer escapes and the additional
 3.4 variable-like dollar escape. Unsupported releases fail explicitly.
 
 A listing of a nonportable removal name can resemble several portable removal

@@ -10,7 +10,7 @@ successful import, or sibling-port result does not establish live compatibility.
 | LuaJIT | v2.1 at c6ffc141a8762b41703f9287d63d93622a13dd8f |
 | Standalone adapter | luv 1.52.1-0 built for each runtime ABI |
 | Neovim | 0.10.0, 0.10.4, 0.11.7, 0.12.5 |
-| tmux | 3.2a, 3.3, 3.3a, 3.4, 3.5, 3.5a, 3.6, 3.6a, 3.6b, 3.7, 3.7a, 3.7b, 3.7c |
+| tmux | 3.3a, 3.4, 3.5, 3.5a, 3.6, 3.6a, 3.6b, 3.7, 3.7a, 3.7b, 3.7c |
 | Platforms | Linux x86_64, macOS arm64; WSL2 recorded separately |
 
 Pure-core tests run once per runtime/platform. Standalone and embedded live
@@ -24,6 +24,25 @@ macOS x86_64 and native Windows transport are outside the initial platform
 matrix. Local tmux 3.7d and 3.8-rc results are diagnostic evidence and cannot
 replace released-version checks. Neovim's LuaJIT results do not prove stock
 PUC Lua 5.1 yield behavior. A Neovim build using PUC Lua is a separate host gate.
+
+## Minimum tmux release
+
+The supported minimum is tmux 3.3a, compared as a complete release: 3.3 is
+below it. The library admits the connected daemon's own `#{version}`, never
+the client executable's `-V`, so a newer client cannot admit an older daemon.
+Development builds (`next-X.Y`), release candidates (`X.Y-rcN`) and unknown
+version strings are refused rather than ranked.
+
+The pinned endpoint reads the daemon version with `run-shell -C`, which fires
+no `after-*` or `command-error` hook, and fences each dispatched command group
+on that release. A daemon that changed after admission raises
+`stale_generation` and none of the group's commands run. A daemon below the
+minimum raises `unsupported_version` when connecting. The endpoint only binds
+to an existing socket and always passes `-N`, so no client binary starts a
+daemon.
+
+CI runs tmux 3.2a and the unpatched 3.3 as refusal lanes. They assert the
+refusal and that no command ran; they do not run the integration suite.
 
 Named buffer deletion requires tmux 3.4 or later. The typed API refuses older
 releases because a missing target can delete another buffer. The older-release
