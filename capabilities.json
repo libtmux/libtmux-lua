@@ -1,0 +1,116 @@
+{
+  "schema": "libtmux-capabilities/1",
+  "port": "lua",
+  "floor": {"minimum": "3.3a"},
+  "capabilities": [
+    {
+      "id": "control-mode",
+      "name": "Control mode observation",
+      "summary": "Server:observe attaches a library-managed control client and streams events.",
+      "since": "3.7",
+      "handling": "refuse",
+      "error": "libtmux.Error",
+      "apis": ["libtmux.Server:observe"],
+      "commands": [{"command": "attach-session", "flags": ["-E", "-f", "-t"]}]
+    },
+    {
+      "id": "buffer-delete-named",
+      "name": "Named buffer deletion",
+      "summary": "Delete one paste buffer by name without risking another buffer.",
+      "since": "3.4",
+      "handling": "refuse",
+      "error": "libtmux.Error",
+      "apis": ["libtmux.Server:delete_buffer", "libtmux.Server:command", "libtmux.Server:batch", "libtmux.Server:group"],
+      "commands": [{"command": "delete-buffer", "flags": ["-b"]}]
+    },
+    {
+      "id": "buffer-rename",
+      "name": "Buffer rename",
+      "summary": "Rename a paste buffer without risking another buffer.",
+      "since": "3.4",
+      "handling": "refuse",
+      "error": "libtmux.Error",
+      "apis": ["libtmux.Server:command", "libtmux.Server:batch", "libtmux.Server:group"],
+      "commands": [{"command": "set-buffer", "flags": ["-n"]}]
+    },
+    {
+      "id": "layout-without-checksum",
+      "name": "Layouts without a checksum",
+      "summary": "Apply a layout string or a named layout that tmux validates before use.",
+      "since": "3.4",
+      "handling": "refuse",
+      "error": "libtmux.Error",
+      "apis": ["libtmux.Server:command", "libtmux.Server:batch", "libtmux.Server:group"],
+      "commands": [{"command": "select-layout"}]
+    },
+    {
+      "id": "layout-mirrored-main",
+      "name": "Mirrored main layouts",
+      "summary": "Window:layout applies main-horizontal-mirrored and main-vertical-mirrored.",
+      "since": "3.5",
+      "handling": "refuse",
+      "error": "libtmux.Error",
+      "apis": ["libtmux.Window:layout"],
+      "commands": [{"command": "select-layout"}]
+    },
+    {
+      "id": "layout-json",
+      "name": "JSON layouts",
+      "summary": "Window:layout applies a layout in the JSON form tmux reports.",
+      "since": "3.8-rc2",
+      "handling": "refuse",
+      "error": "libtmux.Error",
+      "apis": ["libtmux.Window:layout"],
+      "commands": [{"command": "select-layout"}]
+    },
+    {
+      "id": "capture-trim-blank-cells",
+      "name": "Trim blank cells in captures",
+      "summary": "Pane:capture stops each row at the last used cell.",
+      "since": "3.4",
+      "handling": "refuse",
+      "error": "libtmux.Error",
+      "apis": ["libtmux.Pane:capture", "libtmux.Pane:capture_to_buffer"],
+      "commands": [{"command": "capture-pane", "flags": ["-T"]}]
+    },
+    {
+      "id": "capture-line-flags",
+      "name": "Line flags in captures",
+      "summary": "Pane:capture prefixes each captured row with its line flags.",
+      "since": "3.7",
+      "handling": "refuse",
+      "error": "libtmux.Error",
+      "apis": ["libtmux.Pane:capture", "libtmux.Pane:capture_to_buffer"],
+      "commands": [{"command": "capture-pane", "flags": ["-F"]}]
+    }
+  ],
+  "workarounds": [
+    {
+      "id": "break-pane-misnames-windows",
+      "name": "break-pane window naming",
+      "summary": "break-pane misnames the new window on exactly tmux 3.7; Pane:break_out repairs it.",
+      "releases": ["3.7"],
+      "handling": "repair",
+      "apis": ["libtmux.Pane:break_out"],
+      "commands": [{"command": "break-pane"}]
+    },
+    {
+      "id": "split-window-percent-size",
+      "name": "split-window -p",
+      "summary": "split-window -p is broken on tmux 3.4; use -l N%.",
+      "releases": ["3.4"],
+      "handling": "refuse",
+      "apis": ["libtmux.Server:command", "libtmux.Server:batch", "libtmux.Server:group"],
+      "commands": [{"command": "split-window", "flags": ["-p"]}]
+    },
+    {
+      "id": "name-separators-rejected",
+      "name": "Colon and dot in names",
+      "summary": "tmux 3.7 rejects ':' and '.' in session and window names.",
+      "releases": ["3.7"],
+      "handling": "refuse",
+      "apis": ["libtmux.Server:new_session", "libtmux.Session:new_window", "libtmux.Session:rename", "libtmux.Window:rename", "libtmux.Server:command", "libtmux.Server:batch", "libtmux.Server:group"],
+      "commands": [{"command": "new-session", "flags": ["-s"]}, {"command": "new-window", "flags": ["-n"]}, {"command": "rename-session"}, {"command": "rename-window"}]
+    }
+  ]
+}

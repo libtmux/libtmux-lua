@@ -36,6 +36,15 @@ function M.test_every_release_is_one_the_library_can_place()
     end
 end
 
+function M.test_the_committed_manifest_is_the_registry()
+    local render = assert(loadfile("scripts/emit_capabilities.lua"))
+    local expected = render("render")
+    local file = assert(io.open("capabilities.json", "rb"))
+    local committed = file:read("*a")
+    file:close()
+    t.assertEquals(committed, expected, "capabilities.json differs from the registry")
+end
+
 function M.test_lookup_rejects_an_unknown_id()
     t.assertEquals(registry.since("control-mode"), "3.7")
     t.assertError(registry.since, "no-such-capability")
