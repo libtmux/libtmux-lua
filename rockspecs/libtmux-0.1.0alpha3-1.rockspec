@@ -51,6 +51,7 @@ build = {
         ["libtmux._internal.scope"] = "lua/libtmux/_internal/scope.lua",
         ["libtmux._internal.server"] = "lua/libtmux/_internal/server.lua",
         ["libtmux._internal.settings"] = "lua/libtmux/_internal/settings.lua",
+        ["libtmux._internal.support.capabilities"] = "lua/libtmux/_internal/support/capabilities.lua",
         ["libtmux._internal.support.versions"] = "lua/libtmux/_internal/support/versions.lua",
         ["libtmux._internal.text"] = "lua/libtmux/_internal/text.lua",
         ["libtmux._internal.topology"] = "lua/libtmux/_internal/topology.lua",
