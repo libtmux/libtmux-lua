@@ -17,6 +17,14 @@
 - Releases: support tmux 3.7d, 3.8 and the pinned next-3.9 development
   build in option, buffer, topology and layout operations, including 3.8's
   JSON layouts and the metadata escapes it adds. (#35)
+- Control: observation needs tmux 3.7 or newer and returns `unsupported`
+  before any attachment on an older daemon.
+- Commands: refuse literal commands that are unsafe on the connected release
+  before dispatch: named buffer deletion and rename below 3.4, custom layouts
+  without a checksum below 3.4, `split-window -p` on 3.4, `break-pane` on
+  exactly 3.7, and names containing `:` or `.` on exactly 3.7. Typed
+  operations are unchanged. See the
+  [proposal](https://github.com/libtmux/libtmux-lua/issues/32).
 
 ## 0.1.0alpha2-1
 
