@@ -71,7 +71,13 @@ local function fixture()
         local last = spec.args[#spec.args]
         local metadata = last:match("^libtmux%-version%-[0-9a-f]+%-") ~= nil
         local function finish()
-            if not metadata then
+            if not metadata and uv.fence_refused then
+                for _, word in ipairs(spec.args) do
+                    if word:match("^libtmux%-version%-%x+%-$") then
+                        spec.stdio[3].read(nil, "unknown command: " .. word .. "\n")
+                    end
+                end
+            elseif not metadata then
                 spec.stdio[2].read(nil, "done\n")
             elseif uv.probe_reply then
                 local prefix = last:match("^(libtmux%-version%-[0-9a-f]+%-)")
@@ -92,7 +98,10 @@ local function fixture()
             end
             spec.stdio[2].read(nil, nil)
             spec.stdio[3].read(nil, nil)
-            on_exit(metadata and (uv.probe_exit or 1) or uv.exit_code or 0, 0)
+            on_exit(
+                metadata and (uv.probe_exit or 1) or uv.fence_refused and 1 or uv.exit_code or 0,
+                0
+            )
         end
         local child = uv.new_pipe()
         function child.kill()
@@ -220,6 +229,64 @@ function M.test_probe_names_a_fresh_marker_and_never_runs_display_message()
         end
         t.assertEquals(next(markers) ~= nil, true)
     end)
+end
+
+function M.test_every_dispatch_is_fenced_on_the_admitted_release()
+    local f = fixture()
+    f:start(function(rt)
+        local bound =
+            assert(endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await())
+        assert(bound:execute({ "display-message", "-p", "one" }):await())
+        assert(bound:group({ { "new-window", "-d" }, { "rename-window", "x" } }):await())
+        local seen = {}
+        for _, spawn in ipairs(f.uv.spawned) do
+            local args = spawn.args
+            local dash = 1
+            while args[dash] ~= "--" do
+                dash = dash + 1
+            end
+            if args[dash + 1] == "if-shell" then
+                seen[#seen + 1] = args
+                t.assertEquals(args[dash + 2], "-F")
+                t.assertEquals(args[dash + 3], "#{==:#{version},3.7c}")
+                t.assertEquals(args[dash + 4], "")
+                t.assertNotNil(args[dash + 5]:match("^libtmux%-version%-%x+%-$"))
+                t.assertEquals(args[dash + 6], ";")
+            end
+        end
+        t.assertEquals(#seen, 2)
+        t.assertEquals(seen[1][#seen[1]], "one")
+        t.assertEquals(table.concat(seen[2], " ", #seen[2] - 4), "new-window -d ; rename-window x")
+        t.assertNotEquals(seen[1][#seen[1] - 4], seen[2][#seen[2] - 10])
+    end)
+end
+
+function M.test_fence_refusal_reports_a_replaced_daemon_and_pins_nothing_further()
+    for _, group in ipairs({ false, true }) do
+        local f = fixture()
+        f:start(function(rt)
+            local bound = assert(
+                endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await()
+            )
+            local generation = assert(bound:generation())
+            f.uv.fence_refused = true
+            local argv = { "new-session", "-d", "-s", "must-not-exist" }
+            local value, err
+            if group then
+                value, err = bound:group({ argv }):await()
+            else
+                value, err = bound:execute(argv):await()
+            end
+            t.assertNil(value)
+            t.assertEquals(assert(err).code, "stale_generation")
+            t.assertEquals(err.effect, "not_sent")
+            -- The refusal came from the dispatched command, not the preflight probe.
+            t.assertEquals(#f.uv.spawned, 3)
+            f.uv.fence_refused = false
+            t.assertNil(bound:generation())
+            t.assertNil(identity.evidence(generation))
+        end)
+    end
 end
 
 function M.test_copies_binding_and_invalidates_replaced_path_without_dispatch()

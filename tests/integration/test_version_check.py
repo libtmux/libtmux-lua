@@ -75,3 +75,26 @@ class VersionCheckTests(unittest.TestCase):
                 sessions = sorted(fixture.run("list-sessions", "-F", "#{session_name}").stdout.split())
                 self.assertEqual(sessions, ["fixture", "supported"] if mode == "supported" else ["fixture"])
                 self.assertEqual(list(fixture.path.glob("libtmux-lua-pin-*")), [])
+
+    def test_fence_refuses_another_release_before_any_effect(self):
+        with TmuxFixture() as fixture:
+            version = fixture.run("display-message", "-p", "#{version}").stdout.strip()
+            marker = "unknown command: libtmux-version-0123456789abcdef-"
+            for mode, refused in (("fence_wrong", True), ("fence_right", False)):
+                env = dict(fixture.env, TMUX_BIN=shutil.which(fixture.binary),
+                           TMUX_SOCKET=str(fixture.socket), TMUX_DAEMON_VERSION=version,
+                           LIBTMUX_ADMISSION_CASE=mode)
+                built = subprocess.run([env.get("LIBTMUX_TEST_LUA") or shutil.which("lua"),
+                                        "tests/integration/admission.lua"], cwd=ROOT, env=env,
+                                       capture_output=True, timeout=0.8, check=True)
+                argv = built.stdout.split(b"\0\n")[0].split(b"\0")
+                result = subprocess.run([os.fsdecode(word) for word in argv], env=fixture.env,
+                                        capture_output=True, text=True, timeout=0.8)
+                sessions = fixture.run("list-sessions", "-F", "#{session_name}").stdout.split()
+                if refused:
+                    self.assertEqual(result.returncode, 1, mode)
+                    self.assertEqual(result.stderr.splitlines(), [marker], mode)
+                    self.assertEqual(sessions, ["fixture"], mode)
+                else:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(sorted(sessions), ["fenced", "fixture"])
