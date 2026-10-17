@@ -125,6 +125,21 @@ function M.at_least(reported, required)
     return at_least(actual, assert(version(required)))
 end
 
+---Whether a report is exactly one final release: "3.7" matches neither
+---"3.7a" nor a "3.7-rc" candidate or a next-3.7 development build.
+---@param reported string
+---@param release string
+---@return boolean
+function M.exactly(reported, release)
+    local actual, required = version(reported), version(release)
+    return actual ~= nil
+        and required ~= nil
+        and actual[1] == required[1]
+        and actual[2] == required[2]
+        and actual[3] == 2
+        and actual[5] == required[5]
+end
+
 function M.kinds()
     return copy(kinds)
 end

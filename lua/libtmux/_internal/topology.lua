@@ -276,7 +276,7 @@ local function prepare_link(state, ref, kind, input, options, inspect, invalid, 
         if options.name then
             flag("-n", options.name)
         end
-        if state.version == "3.7" then
+        if fields.exactly(state.version, "3.7") then
             local multi = {}
             for index, value in ipairs(argv) do
                 multi[index] = value

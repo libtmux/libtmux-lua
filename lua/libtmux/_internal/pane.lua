@@ -1,5 +1,6 @@
 local utf8 = require("libtmux._internal.text").valid_utf8
 local errors = require("libtmux._internal.error")
+local fields = require("libtmux._internal.fields")
 local execution = require("libtmux._internal.execution")
 local identity = require("libtmux._internal.identity")
 local process = require("libtmux._internal.process")
@@ -230,17 +231,14 @@ local function prepare(state, ref, kind, data, options, inspect)
             argv[#argv + 1] = tostring(value)
         end
     end
-    local function boolean(name, argument, minimum_minor)
+    local function boolean(name, argument, minimum)
         local value = options[name]
         if value ~= nil and type(value) ~= "boolean" then
             invalid(name .. " must be boolean")
         end
         if value then
-            if minimum_minor then
-                local major, minor = state.version:match("^(%d+)%.(%d+)")
-                if tonumber(major) == 3 and tonumber(minor) < minimum_minor then
-                    invalid(name .. " is unavailable on this tmux version", "unsupported")
-                end
+            if minimum and not fields.at_least(state.version, minimum) then
+                invalid(name .. " is unavailable on this tmux version", "unsupported")
             end
             flag(argument)
         end
@@ -354,18 +352,18 @@ local function prepare(state, ref, kind, data, options, inspect)
             { "escape_sequences", "-e" },
             { "escape_nonprintable", "-C" },
             { "alternate_screen", "-a" },
-            { "mode_screen", "-M", 6 },
-            { "trim_empty_cells", "-T", 4 },
+            { "mode_screen", "-M", "3.6" },
+            { "trim_empty_cells", "-T", "3.4" },
             { "pending_escape_sequences", "-P" },
             { "ignore_missing_alternate", "-q" },
-            { "hyperlinks_only", "-H", 7 },
-            { "line_numbers", "-L", 7 },
-            { "line_flags", "-F", 7 },
+            { "hyperlinks_only", "-H", "3.7" },
+            { "line_numbers", "-L", "3.7" },
+            { "line_flags", "-F", "3.7" },
         }) do
             boolean(item[1], item[2], item[3])
         end
     elseif kind == "clear_history" then
-        boolean("clear_hyperlinks", "-H", 4)
+        boolean("clear_hyperlinks", "-H", "3.4")
     elseif kind == "send_text" then
         string_value(data, 65536)
         if not utf8(data) then
@@ -439,7 +437,7 @@ local function prepare(state, ref, kind, data, options, inspect)
         if data:find("[%z\001-\031\127]") then
             invalid("pane title cannot contain ASCII control bytes", "invalid_argument")
         end
-        if data == "" and state.version == "3.7" then
+        if data == "" and fields.exactly(state.version, "3.7") then
             invalid("tmux 3.7 silently ignores an empty pane title", "unsupported")
         end
         flag("-T", (data:gsub("#", "##")))
