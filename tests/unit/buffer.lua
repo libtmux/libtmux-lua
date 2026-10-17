@@ -152,6 +152,15 @@ function M.test_delete_refuses_releases_that_fall_back_to_another_buffer()
     end
 end
 
+function M.test_delete_runs_from_the_release_that_validates_the_name()
+    for _, version in ipairs({ "3.4", "3.5a", "3.7c", "next-3.9" }) do
+        fixture(function(state, run)
+            assert(run("delete", "missing"):await())
+            t.assertEquals(state.calls[1].argv, { "delete-buffer", "-b", "missing" })
+        end, nil, version)
+    end
+end
+
 function M.test_invalid_options_names_values_and_scope_fail_before_io()
     fixture(function(state, run)
         for _, name in ipairs({

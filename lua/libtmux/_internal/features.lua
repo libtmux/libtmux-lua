@@ -1,5 +1,6 @@
 local errors = require("libtmux._internal.error")
 local fields = require("libtmux._internal.fields")
+local registry = require("libtmux._internal.support.capabilities")
 local M = {}
 
 -- Every command name and alias in tmux 3.3a through master. A caller's word
@@ -203,11 +204,14 @@ end
 ---@param version string
 ---@return table? error
 function M.control(version)
-    if below(version, "3.7") then
+    local required = registry.since("control-mode")
+    if below(version, required) then
         return refuse(
             version,
-            "3.7",
-            "control observation requires tmux 3.7 or newer; the daemon reports "
+            required,
+            "control observation requires tmux "
+                .. required
+                .. " or newer; the daemon reports "
                 .. tostring(version)
         )
     end
@@ -250,15 +254,29 @@ function M.command(version, argv)
         return nil
     end
     local flags, positional = parse(argv, takes)
-    if name == "break-pane" and fields.exactly(version, "3.7") then
+    local break_pane = registry.workaround("break-pane-misnames-windows")
+    local split_percent = registry.workaround("split-window-percent-size")
+    local separators = registry.workaround("name-separators-rejected")
+    local delete_floor = registry.since("buffer-delete-named")
+    local rename_floor = registry.since("buffer-rename")
+    local layout_floor = registry.since("layout-without-checksum")
+    if name == "break-pane" and fields.exactly(version, break_pane.releases[1]) then
         return refuse(
             version,
-            "3.7a",
+            break_pane.required,
             "break-pane misnames windows on exactly tmux 3.7; use Pane:break_out or tmux 3.7a"
         )
-    elseif name == "split-window" and fields.exactly(version, "3.4") and has_flag(flags, "p") then
-        return refuse(version, nil, "split-window -p is broken on tmux 3.4; use -l N%")
-    elseif name == "select-layout" and below(version, "3.4") then
+    elseif
+        name == "split-window"
+        and fields.exactly(version, split_percent.releases[1])
+        and has_flag(flags, "p")
+    then
+        return refuse(
+            version,
+            split_percent.required,
+            "split-window -p is broken on tmux 3.4; use -l N%"
+        )
+    elseif name == "select-layout" and below(version, layout_floor) then
         local layout = positional[1]
         if
             layout ~= nil
@@ -270,24 +288,24 @@ function M.command(version, argv)
             if not header and (has_flag(flags, "o") or not unique_preset(layout)) then
                 return refuse(
                     version,
-                    "3.4",
+                    layout_floor,
                     "tmux 3.3a crashes on an invalid layout; use a checksummed layout or a name"
                 )
             end
         end
-    elseif name == "delete-buffer" and below(version, "3.4") and has_flag(flags, "b") then
+    elseif name == "delete-buffer" and below(version, delete_floor) and has_flag(flags, "b") then
         return refuse(
             version,
-            "3.4",
+            delete_floor,
             "named buffer deletion requires tmux 3.4; older releases can delete another buffer"
         )
-    elseif name == "set-buffer" and below(version, "3.4") and has_flag(flags, "n") then
+    elseif name == "set-buffer" and below(version, rename_floor) and has_flag(flags, "n") then
         return refuse(
             version,
-            "3.4",
+            rename_floor,
             "buffer rename requires tmux 3.4; older releases can rename another buffer"
         )
-    elseif fields.exactly(version, "3.7") then
+    elseif fields.exactly(version, separators.releases[1]) then
         local bad = (name == "new-session" and (misnamed(flags.s) or misnamed(flags.n)))
             or (name == "new-window" and misnamed(flags.n))
             or (
@@ -297,7 +315,7 @@ function M.command(version, argv)
         if bad then
             return refuse(
                 version,
-                "3.7a",
+                separators.required,
                 "tmux 3.7 rejects ':' and '.' in session and window names"
             )
         end
