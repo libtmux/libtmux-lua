@@ -2,17 +2,11 @@ local command = require("libtmux._internal.command")
 local errors = require("libtmux._internal.error")
 local fields = require("libtmux._internal.fields")
 local identity = require("libtmux._internal.identity")
-local metadata = require("libtmux._internal.metadata")
+local versions = require("libtmux._internal.support.versions")
 local process = require("libtmux._internal.process")
 local unpack_values = rawget(table, "unpack") or unpack
 local M, Bound = {}, {}
 local bindings = setmetatable({}, { __mode = "kv" })
-local projection = assert(metadata.projection("server", "3.2a", {
-    "pid",
-    "start_time",
-    "version",
-    "socket_path",
-}))
 
 local function failure(code, message, cause)
     return errors.new(code, message, { operation = "endpoint", effect = "not_sent", cause = cause })
@@ -174,36 +168,73 @@ local function verify(state)
     return true
 end
 
+local function parse_probe(prefix, err)
+    local partial = type(err) == "table" and rawget(err, "partial") or nil
+    if type(partial) ~= "table" or partial.exit_code ~= 1 or partial.stdout ~= "" then
+        return nil
+    end
+    return versions.report(prefix, partial.stderr)
+end
+
+local REMEDY = "upgrade tmux to "
+    .. fields.support_floor
+    .. " or newer and restart the server, or install the previous libtmux release"
+
+local function unsupported(message, cause)
+    return failure("unsupported_version", message .. "; " .. REMEDY, cause)
+end
+
 local function read_evidence(state, operation)
+    local prefix = versions.marker(state.uv)
     local result, err = command
-        .execute(state.runtime, state.endpoint, {
-            "display-message",
-            "-p",
-            assert(metadata.format(projection)),
-        }, { timeout = 750, max_output_bytes = 16384 })
+        .execute(
+            state.runtime,
+            state.endpoint,
+            versions.argv(prefix),
+            { timeout = 750, max_output_bytes = 16384 }
+        )
         :await()
-    if not result then
-        local _, retained_error = process.retain_output(operation, nil, err, "endpoint")
+    local observed = not result and parse_probe(prefix, err) or nil
+    if not observed then
+        local _, retained_error = process.retain_output(operation, result, err, "endpoint")
+        local partial = type(err) == "table" and rawget(err, "partial") or nil
+        local side = type(partial) == "table"
+                and partial.exit_code == 1
+                and partial.stdout == ""
+                and versions.too_old(partial.stderr)
+            or nil
+        if side then
+            return nil,
+                unsupported(
+                    "the tmux " .. side .. " is older than 3.2 and cannot be version-checked",
+                    retained_error
+                )
+        end
         return nil,
             failure("uncertain_generation", "cannot read pinned daemon evidence", retained_error)
     end
-    local rows
-    rows, err = metadata.decode(result.stdout, projection, { max_rows = 1, max_bytes = 16384 })
-    if not rows or #rows ~= 1 or rows[1].pid <= 0 or rows[1].start_time < 0 then
-        return nil, failure("uncertain_generation", "pinned daemon evidence is malformed", err)
+    local ranked = fields.at_least(observed.version, fields.support_floor)
+    if ranked == nil then
+        return nil,
+            unsupported(
+                "tmux server reports "
+                    .. string.format("%q", observed.version)
+                    .. ", which names no release this library recognizes",
+                nil
+            )
+    elseif not ranked then
+        return nil,
+            unsupported(
+                "tmux server " .. observed.version .. " is older than " .. fields.support_floor,
+                nil
+            )
     end
-    local row = rows[1]
     local schema
-    schema, err = fields.schema("server", row.version)
+    schema, err = fields.schema("server", observed.version)
     if not schema then
-        return nil, failure("unsupported_version", "pinned daemon version is unsupported", err)
+        return nil, unsupported("pinned daemon version is unsupported", err)
     end
-    return {
-        pid = string.format("%.0f", row.pid),
-        started = string.format("%.0f", row.start_time),
-        version = row.version,
-        socket = row.socket_path,
-    }
+    return observed
 end
 
 local function preflight(state, operation)

@@ -101,6 +101,18 @@ local function at_least(actual, required)
     return true
 end
 
+---Whether a reported release ranks at or above a required one.
+---@param reported string
+---@param required string A release such as "3.7" or "3.4".
+---@return boolean? ranked Nil when the report names no release.
+function M.at_least(reported, required)
+    local actual = version(reported)
+    if not actual then
+        return nil
+    end
+    return at_least(actual, assert(version(required)))
+end
+
 function M.kinds()
     return copy(kinds)
 end
