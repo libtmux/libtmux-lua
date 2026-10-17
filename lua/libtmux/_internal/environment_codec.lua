@@ -2,8 +2,6 @@ local errors = require("libtmux._internal.error")
 local M = {}
 local MAX_BYTES, MAX_ROWS, MAX_NAME = 1048576, 4096, 256
 local dialects = {
-    ["3.2a"] = "raw",
-    ["3.3"] = "raw",
     ["3.3a"] = "raw",
     ["3.4"] = "vis",
     ["3.5"] = "vis",
@@ -15,6 +13,9 @@ local dialects = {
     ["3.7a"] = "raw",
     ["3.7b"] = "raw",
     ["3.7c"] = "raw",
+    ["3.7d"] = "raw",
+    ["3.8"] = "raw",
+    ["next-3.9"] = "raw",
 }
 local controls = { a = "\a", b = "\b", f = "\f", r = "\r", v = "\v" }
 

@@ -2,8 +2,6 @@ local errors = require("libtmux._internal.error")
 local M = {}
 local MAX_BYTES = 1048576
 local versions = {
-    ["3.2a"] = true,
-    ["3.3"] = true,
     ["3.3a"] = true,
     ["3.4"] = true,
     ["3.5"] = true,
@@ -15,6 +13,9 @@ local versions = {
     ["3.7a"] = true,
     ["3.7b"] = true,
     ["3.7c"] = true,
+    ["3.7d"] = true,
+    ["3.8"] = true,
+    ["next-3.9"] = true,
 }
 local controls = { a = "\a", b = "\b", f = "\f", n = "\n", r = "\r", t = "\t", v = "\v" }
 

@@ -2,8 +2,6 @@ local t = require("luaunit")
 local available, codec = pcall(require, "libtmux._internal.option_codec")
 local M = {}
 local versions = {
-    "3.2a",
-    "3.3",
     "3.3a",
     "3.4",
     "3.5",
@@ -15,6 +13,9 @@ local versions = {
     "3.7a",
     "3.7b",
     "3.7c",
+    "3.7d",
+    "3.8",
+    "next-3.9",
 }
 
 local function decode(text, version)
@@ -63,7 +64,7 @@ function M.test_34_removes_exactly_one_outer_dollar_escape_and_preserves_program
         local canonical = '"' .. string.rep("\\", count * 2) .. '\\$HOME $9 $ \\${x} \\$_x"'
         local printed = canonical:gsub("(%$[A-Za-z_{])", "\\%1")
         t.assertEquals(decode(printed, "3.4"), literal)
-        for _, version in ipairs({ "3.2a", "3.5a", "3.7c" }) do
+        for _, version in ipairs({ "3.3a", "3.5a", "3.7c" }) do
             t.assertEquals(decode(canonical, version), literal)
         end
         local source = "set-option -g @x " .. canonical .. " ; display-message -p \\n"
@@ -103,7 +104,7 @@ function M.test_malformed_tokens_are_rejected_without_guessing_or_trailing_text(
         rejected(text, "invalid_frame")
     end
     rejected(false, "invalid_frame")
-    for _, version in ipairs({ "3.2", "3.8", "next-3.7c", "tmux 3.7c", false }) do
+    for _, version in ipairs({ "3.2", "3.9", "next-3.7", "tmux 3.7c", false }) do
         local value, err = decode("value", version)
         if version == false then
             value, err = codec.decode_string("value", false)

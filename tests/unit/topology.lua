@@ -226,7 +226,7 @@ function M.test_literal_rename_navigation_renumber_and_kill_use_private_stable_t
         t.assertEquals(state.calls[5].argv, { "move-window", "-t", "$2", "-r" })
         t.assertEquals(state.calls[6].argv, { "kill-session", "-t", "$2" })
     end)
-    fixture("window", "3.2a", function(state, run)
+    fixture("window", "3.3a", function(state, run)
         assert(run("rename", "window#{pane_id}"):await())
         assert(run("kill"):await())
         t.assertEquals(
@@ -271,7 +271,7 @@ function M.test_resize_and_layout_select_exactly_one_explicit_native_mode()
 end
 
 function M.test_custom_layout_header_is_validated_before_native_parser()
-    for _, version in ipairs({ "3.2a", "3.3", "3.3a", "3.7c" }) do
+    for _, version in ipairs({ "3.3a", "3.7c" }) do
         fixture("window", version, function(state, run)
             for _, value in ipairs({ "invalid-layout", "a", "1234", "1234,", "ffff:80x24" }) do
                 reject(run("layout", nil, { layout = value }), "invalid_layout")
@@ -285,6 +285,24 @@ function M.test_custom_layout_header_is_validated_before_native_parser()
                 "--",
                 "0000,invalid-layout",
             })
+        end)
+    end
+end
+
+function M.test_json_layouts_are_accepted_only_from_tmux_3_8()
+    local json = '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"%0"}}'
+    for _, version in ipairs({ "3.8", "next-3.9" }) do
+        fixture("window", version, function(state, run)
+            assert(run("layout", nil, { layout = json }):await())
+            t.assertEquals(state.calls[1].argv, { "select-layout", "-t", "@3", "--", json })
+            reject(run("layout", nil, { layout = "{" }), "invalid_layout")
+            reject(run("layout", nil, { layout = "zz" }), "invalid_layout")
+        end)
+    end
+    for _, version in ipairs({ "3.3a", "3.7c", "3.7d" }) do
+        fixture("window", version, function(state, run)
+            reject(run("layout", nil, { layout = json }), "invalid_layout")
+            t.assertEquals(#state.calls, 0)
         end)
     end
 end
@@ -358,8 +376,6 @@ end
 
 function M.test_layout_capabilities_are_exact_release_gates()
     for _, version in ipairs({
-        "3.2a",
-        "3.3",
         "3.3a",
         "3.4",
         "3.5",
@@ -371,11 +387,14 @@ function M.test_layout_capabilities_are_exact_release_gates()
         "3.7a",
         "3.7b",
         "3.7c",
+        "3.7d",
+        "3.8",
+        "next-3.9",
     }) do
         fixture("window", version, function(state, run)
             assert(run("layout", nil, { named = "main-horizontal" }):await())
             local request = run("layout", nil, { named = "main-vertical-mirrored" })
-            if tonumber(version:match("^3%.(%d+)")) < 5 then
+            if tonumber(version:gsub("^next%-", ""):match("^3%.(%d+)")) < 5 then
                 reject(request, "unsupported")
                 t.assertEquals(#state.calls, 1)
             else
@@ -384,7 +403,7 @@ function M.test_layout_capabilities_are_exact_release_gates()
             end
         end)
     end
-    fixture("window", "3.8", function(state, run)
+    fixture("window", "3.9", function(state, run)
         reject(run("kill"), "unsupported_version")
         t.assertEquals(#state.calls, 0)
     end)

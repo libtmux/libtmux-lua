@@ -22,7 +22,7 @@ local result, failure = adapter.run(function(runtime)
     execute({ "new-session", "-d", "-s", "second", "exec /bin/cat" })
     execute({ "link-window", "-s", window, "-t", "second:7" })
     execute({ "set-buffer", "-b", "graph-buffer", "bytes;" })
-    local server_projection = assert(metadata.projection("server", "3.2a", {
+    local server_projection = assert(metadata.projection("server", "3.3a", {
         "pid",
         "start_time",
         "socket_path",

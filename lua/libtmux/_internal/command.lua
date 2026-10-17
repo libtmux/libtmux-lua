@@ -110,7 +110,10 @@ function M.prepare_program(input, compact)
     return table.concat(encoded, " ; ")
 end
 
-function M.prepare(endpoint, commands)
+-- A fence is a format condition that is true only on the checked daemon. When
+-- another daemon answers, if-shell runs the marker word, tmux refuses it, and
+-- the commands after the fence never run.
+function M.prepare(endpoint, commands, fence)
     if not plain(endpoint) then
         return invalid("invalid_endpoint", "tmux endpoint must be a plain table")
     end
@@ -148,6 +151,18 @@ function M.prepare(endpoint, commands)
         result[#result + 1] = "-N"
     end
     result[#result + 1] = "--"
+    if fence then
+        for _, word in ipairs({
+            "if-shell",
+            "-F",
+            fence.condition,
+            "",
+            fence.marker,
+            ";",
+        }) do
+            result[#result + 1] = word
+        end
+    end
     for index = 1, count do
         local argv = rawget(commands, index)
         local argc = length(argv)

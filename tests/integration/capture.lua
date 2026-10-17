@@ -65,8 +65,13 @@ local function work(runtime)
         must(pane:capture_to_buffer("absent", { pending_escape_sequences = true }):await())
         must(pane:capture_to_buffer("screen", { start_line = 0, end_line = 0 }):await())
     else
-        local minor =
-            assert(tonumber(command({ "display-message", "-p", "#{version}" }):match("^3%.(%d+)")))
+        local minor = assert(
+            tonumber(
+                command({ "display-message", "-p", "#{version}" })
+                    :gsub("^next%-", "")
+                    :match("^3%.(%d+)")
+            )
+        )
         local value, err = pane:capture({ alternate_screen = true }):await()
         assert(value == nil and err and err.code == "exit_failed")
         local alternate = must(pane:capture({

@@ -42,7 +42,7 @@ end
 function M.test_link_client_and_buffer_identity_preserves_context()
     test.assertTrue(available, "generation-bound identity is not implemented")
     local generation =
-        assert(identity.generation({ pid = "1", started = "2", socket = "s", version = "3.2a" }))
+        assert(identity.generation({ pid = "1", started = "2", socket = "s", version = "3.3a" }))
     for _, record in ipairs({
         { kind = "server" },
         { kind = "window", id = "@4" },

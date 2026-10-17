@@ -15,7 +15,7 @@ KINDS = ("server", "session", "window", "window_link", "pane", "client", "buffer
 
 def load_catalog():
     data = json.loads(CATALOG.read_text())
-    if data["schema_version"] != 1 or data["support_floor"] != "3.2a":
+    if data["schema_version"] != 1 or data["support_floor"] != "3.3a":
         raise ValueError("unsupported catalog schema or support floor")
     if tuple(entity["name"] for entity in data["entities"]) != KINDS:
         raise ValueError("catalog must include each supported entity in canonical order")
@@ -32,11 +32,11 @@ def load_catalog():
                 raise ValueError("unsupported scalar type")
             if type(field["nullable"]) is not bool:
                 raise ValueError("nullable must be boolean")
-            if field["since"] not in ("3.2a", "3.3"):
+            if field["since"] != data["support_floor"]:
                 raise ValueError("field availability needs reviewed version evidence")
             if not {"stable", "upstream"} <= field["lines"].keys():
                 raise ValueError("field needs stable and upstream source evidence")
-            if (field["since"] == "3.2a") != ("floor" in field["lines"]):
+            if "floor" not in field["lines"]:
                 raise ValueError("floor availability disagrees with source evidence")
             if field["source_scope"] not in (*KINDS, "winlink"):
                 raise ValueError("unknown native format scope")
@@ -81,24 +81,63 @@ local function copy(value)
     return result
 end
 
+-- tmux has only reported X.Y with an optional patch letter, X.Y-rc and
+-- X.Y-rcN candidates, and next-X.Y development builds. They rank
+-- next-X.Y < X.Y-rc < X.Y-rcN < X.Y < X.Ya; anything else names no release.
 local function version(value)
     if type(value) ~= "string" or #value > 32 then
         return nil
     end
-    local major, minor, suffix = value:match("^(%d+)%.(%d+)(%l*)$")
-    if not major then
-        return nil
+    local major, minor, letter = value:match("^(%d+)%.(%d+)(%l?)$")
+    if major then
+        return { tonumber(major), tonumber(minor), 2, 0, letter }
     end
-    return { tonumber(major), tonumber(minor), suffix }
+    local candidate
+    major, minor, candidate = value:match("^(%d+)%.(%d+)%-rc(%d*)$")
+    if major then
+        return { tonumber(major), tonumber(minor), 1, tonumber(candidate) or 0, "" }
+    end
+    major, minor = value:match("^next%-(%d+)%.(%d+)$")
+    if major then
+        return { tonumber(major), tonumber(minor), 0, 0, "" }
+    end
+    return nil
 end
 
 local function at_least(actual, required)
-    for index = 1, 3 do
+    for index = 1, 5 do
         if actual[index] ~= required[index] then
             return actual[index] > required[index]
         end
     end
     return true
+end
+
+---Whether a reported release ranks at or above a required one.
+---@param reported string
+---@param required string A release such as "3.7" or "3.4".
+---@return boolean? ranked Nil when the report names no release.
+function M.at_least(reported, required)
+    local actual = version(reported)
+    if not actual then
+        return nil
+    end
+    return at_least(actual, assert(version(required)))
+end
+
+---Whether a report is exactly one final release: "3.7" matches neither
+---"3.7a" nor a "3.7-rc" candidate or a next-3.7 development build.
+---@param reported string
+---@param release string
+---@return boolean
+function M.exactly(reported, release)
+    local actual, required = version(reported), version(release)
+    return actual ~= nil
+        and required ~= nil
+        and actual[1] == required[1]
+        and actual[2] == required[2]
+        and actual[3] == 2
+        and actual[5] == required[5]
 end
 
 function M.kinds()
@@ -126,8 +165,17 @@ function M.schema(kind, tmux_version)
         return nil, errors.new("invalid_entity", "unknown field catalog entity")
     end
     local actual = version(tmux_version)
-    if not actual or not at_least(actual, version(M.support_floor)) then
-        return nil, errors.new("unsupported_version", "schema needs a tmux release version at least 3.2a")
+    if not actual then
+        return nil,
+            errors.new(
+                "unsupported_version",
+                "schema needs a tmux release or development build (MAJOR.MINOR with an optional "
+                    .. "patch letter, a -rc or -rcN candidate, or a next- prefix)"
+            )
+    end
+    if not at_least(actual, version(M.support_floor)) then
+        return nil,
+            errors.new("unsupported_version", "schema needs tmux " .. M.support_floor .. " or newer")
     end
     local schema = { name = kind, fields = {} }
     for name, field in pairs(fields) do
@@ -185,7 +233,7 @@ def generate_docs(data):
               "Git checkout and verifies every pinned format mapping and source anchor.", "",
               "## Availability and values", "",
               "`Since` means the first release supported by this catalog for that field,",
-              "not necessarily the release that introduced it. The floor is tmux 3.2a.",
+              f"not necessarily the release that introduced it. The floor is tmux {data['support_floor']}.",
               "Source inspection establishes format availability; it does not establish",
               "complete runtime or platform compatibility. Later release strings retain",
               "known fields; development and prerelease strings require explicit capability",

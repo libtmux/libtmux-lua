@@ -3,6 +3,20 @@
 ## Unreleased
 
 - Docs: add complete common API examples with private tmux setup and cleanup.
+- Core: require tmux 3.3a, checked against the running tmux server rather
+  than the `tmux` executable. Connecting to an older server, including 3.3
+  without its patch letter, fails with `unsupported_version` before any
+  command runs; upgrade tmux and restart the server after saving its
+  sessions. Development builds pass only above the release they name. See
+  the [proposal](https://github.com/libtmux/libtmux-lua/issues/31). (#35)
+- Core: reading the server's version no longer runs the user's tmux hooks,
+  and a control attachment no longer runs `display-message`. (#35)
+- Core: commands no longer start a version probe each. The version is read
+  once when the endpoint connects, and a server replaced afterwards fails
+  with `stale_generation` before any command runs. (#35)
+- Releases: support tmux 3.7d, 3.8 and the pinned next-3.9 development
+  build in option, buffer, topology and layout operations, including 3.8's
+  JSON layouts and the metadata escapes it adds. (#35)
 
 ## 0.1.0alpha2-1
 

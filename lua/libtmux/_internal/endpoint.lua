@@ -2,17 +2,11 @@ local command = require("libtmux._internal.command")
 local errors = require("libtmux._internal.error")
 local fields = require("libtmux._internal.fields")
 local identity = require("libtmux._internal.identity")
-local metadata = require("libtmux._internal.metadata")
+local versions = require("libtmux._internal.support.versions")
 local process = require("libtmux._internal.process")
 local unpack_values = rawget(table, "unpack") or unpack
 local M, Bound = {}, {}
 local bindings = setmetatable({}, { __mode = "kv" })
-local projection = assert(metadata.projection("server", "3.2a", {
-    "pid",
-    "start_time",
-    "version",
-    "socket_path",
-}))
 
 local function failure(code, message, cause)
     return errors.new(code, message, { operation = "endpoint", effect = "not_sent", cause = cause })
@@ -174,56 +168,42 @@ local function verify(state)
     return true
 end
 
+local function parse_probe(prefix, err)
+    local partial = type(err) == "table" and rawget(err, "partial") or nil
+    if type(partial) ~= "table" or partial.exit_code ~= 1 or partial.stdout ~= "" then
+        return nil
+    end
+    return versions.report(prefix, partial.stderr)
+end
+
 local function read_evidence(state, operation)
+    local prefix = versions.marker(state.uv)
     local result, err = command
-        .execute(state.runtime, state.endpoint, {
-            "display-message",
-            "-p",
-            assert(metadata.format(projection)),
-        }, { timeout = 750, max_output_bytes = 16384 })
+        .execute(
+            state.runtime,
+            state.endpoint,
+            versions.argv(prefix),
+            { timeout = 750, max_output_bytes = 16384 }
+        )
         :await()
-    if not result then
-        local _, retained_error = process.retain_output(operation, nil, err, "endpoint")
+    local observed = not result and parse_probe(prefix, err) or nil
+    if not observed then
+        local _, retained_error = process.retain_output(operation, result, err, "endpoint")
         return nil,
             failure("uncertain_generation", "cannot read pinned daemon evidence", retained_error)
     end
-    local rows
-    rows, err = metadata.decode(result.stdout, projection, { max_rows = 1, max_bytes = 16384 })
-    if not rows or #rows ~= 1 or rows[1].pid <= 0 or rows[1].start_time < 0 then
-        return nil, failure("uncertain_generation", "pinned daemon evidence is malformed", err)
-    end
-    local row = rows[1]
     local schema
-    schema, err = fields.schema("server", row.version)
+    schema, err = fields.schema("server", observed.version)
     if not schema then
         return nil, failure("unsupported_version", "pinned daemon version is unsupported", err)
     end
-    return {
-        pid = string.format("%.0f", row.pid),
-        started = string.format("%.0f", row.start_time),
-        version = row.version,
-        socket = row.socket_path,
-    }
+    return observed
 end
 
-local function preflight(state, operation)
-    local valid, err = verify(state)
-    if not valid then
-        return nil, err
-    end
-    local observed
-    observed, err = read_evidence(state, operation)
-    local matched = observed ~= nil
-    for key, value in pairs(state.evidence) do
-        if not observed or observed[key] ~= value then
-            matched = false
-        end
-    end
-    if not matched then
-        invalidate(state, "daemon evidence changed or became uncertain")
-        return nil,
-            failure("stale_generation", "pinned daemon evidence changed or became uncertain", err)
-    end
+-- The checked release, pid and start time are cached from binding. Each
+-- dispatch carries them as a fence, so no probe runs per command; only the
+-- socket identity is rechecked here.
+local function preflight(state)
     return verify(state)
 end
 
@@ -249,8 +229,40 @@ function Bound:close()
     return state.lease:close()
 end
 
+local function fence_refused(report, fence)
+    local output = type(report) == "table" and (report.partial or report) or nil
+    local stderr = type(output) == "table" and rawget(output, "stderr") or nil
+    if type(stderr) ~= "string" then
+        return false
+    end
+    local refusal = "unknown command: " .. fence.marker
+    for line in stderr:gmatch("[^\n]+") do
+        if line == refusal then
+            return true
+        end
+    end
+    return false
+end
+
+-- With -N a client never starts a daemon: these two reports mean nothing ran.
+local function daemon_absent(report)
+    local output = type(report) == "table" and (report.partial or report) or nil
+    local stderr = type(output) == "table" and rawget(output, "stderr") or nil
+    if type(stderr) ~= "string" or rawget(output, "exit_code") ~= 1 then
+        return false
+    end
+    for line in stderr:gmatch("[^\n]+") do
+        if line:find("^no server running on ") or line:find("^error connecting to ") then
+            return true
+        end
+    end
+    return false
+end
+
 local function execute(state, commands, options, raw_result)
-    local prepared, preparation_error = command.prepare(state.endpoint, commands)
+    local fence =
+        { condition = versions.condition(state.evidence), marker = versions.marker(state.uv) }
+    local prepared, preparation_error = command.prepare(state.endpoint, commands, fence)
     local plan
     if not preparation_error then
         plan, preparation_error = process.prepare(prepared, options)
@@ -261,13 +273,32 @@ local function execute(state, commands, options, raw_result)
             return nil, preparation_error
         end
         assert(plan)
-        local valid, err = preflight(state, operation)
+        local valid, err = preflight(state)
         if not valid then
             return nil, err
         end
         operation:_set_effect("unknown")
         local result
         result, err = process.execute(rt, plan.argv, plan.options):await()
+        if fence_refused(result or err, fence) then
+            invalidate(state, "daemon version changed after the version check")
+            return nil,
+                failure(
+                    "stale_generation",
+                    "pinned daemon was replaced by another tmux release before dispatch",
+                    err
+                )
+        end
+        if daemon_absent(result or err) then
+            invalidate(state, "pinned daemon is no longer listening")
+            local _, kept = process.retain_output(operation, result, err, "endpoint")
+            return nil,
+                failure(
+                    "stale_generation",
+                    "pinned daemon is no longer listening on its socket",
+                    kept or err
+                )
+        end
         result, err = process.retain_output(operation, result, err, "endpoint")
         if raw_result and err and err.code == "exit_failed" and err.effect == "completed" then
             return err.partial
@@ -322,7 +353,7 @@ function Bound:_client(open, close)
         end
         state.clients[lease], state.client_count = true, state.client_count + 1
         local valid
-        valid, err = preflight(state, operation)
+        valid, err = preflight(state)
         if not valid then
             return nil, err
         end

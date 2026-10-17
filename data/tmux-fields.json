@@ -1,18 +1,12 @@
 {
   "schema_version": 1,
-  "support_floor": "3.2a",
+  "support_floor": "3.3a",
   "sources": {
     "floor": {
-      "revision": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
-      "version": "3.2a",
+      "revision": "0b355ae8114511e1ff6359272b164f1cdf718e80",
+      "version": "3.3a",
       "file": "format.c",
-      "url": "https://github.com/tmux/tmux/blob/3b929f332aafa7f1080eacc31feb11ffbb1d1841/format.c"
-    },
-    "added": {
-      "revision": "87fe00e8b44901240fc22d7120c1b31e4331f6f5",
-      "version": "3.3",
-      "file": "format.c",
-      "url": "https://github.com/tmux/tmux/blob/87fe00e8b44901240fc22d7120c1b31e4331f6f5/format.c"
+      "url": "https://github.com/tmux/tmux/blob/0b355ae8114511e1ff6359272b164f1cdf718e80/format.c"
     },
     "stable": {
       "revision": "e476c1230b958df0cb12977517d24b3dc931375b",
@@ -36,12 +30,11 @@
           "format": "pid",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "server",
           "symbol": "format_cb_pid",
           "lines": {
-            "floor": 500,
-            "added": 502,
+            "floor": 502,
             "stable": 541,
             "upstream": 558
           },
@@ -52,12 +45,11 @@
           "format": "socket_path",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "server",
           "symbol": "format_cb_socket_path",
           "lines": {
-            "floor": 2088,
-            "added": 2187,
+            "floor": 2187,
             "stable": 2690,
             "upstream": 3058
           },
@@ -68,12 +60,11 @@
           "format": "version",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "server",
           "symbol": "format_cb_version",
           "lines": {
-            "floor": 2095,
-            "added": 2194,
+            "floor": 2194,
             "stable": 2697,
             "upstream": 3065
           },
@@ -84,12 +75,11 @@
           "format": "start_time",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "server",
           "symbol": "format_cb_start_time",
           "lines": {
-            "floor": 2465,
-            "added": 2564,
+            "floor": 2564,
             "stable": 3107,
             "upstream": 3510
           },
@@ -105,12 +95,11 @@
           "format": "session_id",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "session",
           "symbol": "format_cb_session_id",
           "lines": {
-            "floor": 2028,
-            "added": 2127,
+            "floor": 2127,
             "stable": 2630,
             "upstream": 2998
           },
@@ -121,12 +110,11 @@
           "format": "session_name",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "session",
           "symbol": "format_cb_session_name",
           "lines": {
-            "floor": 2061,
-            "added": 2160,
+            "floor": 2160,
             "stable": 2663,
             "upstream": 3031
           },
@@ -137,12 +125,11 @@
           "format": "session_created",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "session",
           "symbol": "format_cb_session_created",
           "lines": {
-            "floor": 2447,
-            "added": 2546,
+            "floor": 2546,
             "stable": 3089,
             "upstream": 3492
           },
@@ -153,12 +140,11 @@
           "format": "session_activity",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "session",
           "symbol": "format_cb_session_activity",
           "lines": {
-            "floor": 2438,
-            "added": 2537,
+            "floor": 2537,
             "stable": 3080,
             "upstream": 3483
           },
@@ -169,12 +155,11 @@
           "format": "session_attached",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "session",
           "symbol": "format_cb_session_attached",
           "lines": {
-            "floor": 1951,
-            "added": 2050,
+            "floor": 2050,
             "stable": 2553,
             "upstream": 2921
           },
@@ -185,12 +170,11 @@
           "format": "session_windows",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "session",
           "symbol": "format_cb_session_windows",
           "lines": {
-            "floor": 2079,
-            "added": 2178,
+            "floor": 2178,
             "stable": 2681,
             "upstream": 3049
           },
@@ -201,12 +185,11 @@
           "format": "session_group",
           "type": "string",
           "nullable": true,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "session",
           "symbol": "format_cb_session_group",
           "lines": {
-            "floor": 1969,
-            "added": 2068,
+            "floor": 2068,
             "stable": 2571,
             "upstream": 2939
           },
@@ -217,12 +200,11 @@
           "format": "session_grouped",
           "type": "boolean",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "session",
           "symbol": "format_cb_session_grouped",
           "lines": {
-            "floor": 2016,
-            "added": 2115,
+            "floor": 2115,
             "stable": 2618,
             "upstream": 2986
           },
@@ -233,12 +215,11 @@
           "format": "session_path",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "session",
           "symbol": "format_cb_session_path",
           "lines": {
-            "floor": 2070,
-            "added": 2169,
+            "floor": 2169,
             "stable": 2672,
             "upstream": 3040
           },
@@ -254,12 +235,11 @@
           "format": "window_id",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "window",
           "symbol": "format_cb_window_id",
           "lines": {
-            "floor": 2231,
-            "added": 2330,
+            "floor": 2330,
             "stable": 2844,
             "upstream": 3225
           },
@@ -270,12 +250,11 @@
           "format": "window_name",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "window",
           "symbol": "format_cb_window_name",
           "lines": {
-            "floor": 2294,
-            "added": 2393,
+            "floor": 2393,
             "stable": 2936,
             "upstream": 3326
           },
@@ -286,12 +265,11 @@
           "format": "window_width",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "window",
           "symbol": "format_cb_window_width",
           "lines": {
-            "floor": 2373,
-            "added": 2472,
+            "floor": 2472,
             "stable": 3015,
             "upstream": 3405
           },
@@ -302,12 +280,11 @@
           "format": "window_height",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "window",
           "symbol": "format_cb_window_height",
           "lines": {
-            "floor": 2222,
-            "added": 2321,
+            "floor": 2321,
             "stable": 2835,
             "upstream": 3203
           },
@@ -318,12 +295,11 @@
           "format": "window_panes",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "window",
           "symbol": "format_cb_window_panes",
           "lines": {
-            "floor": 2331,
-            "added": 2430,
+            "floor": 2430,
             "stable": 2973,
             "upstream": 3363
           },
@@ -334,12 +310,11 @@
           "format": "window_layout",
           "type": "string",
           "nullable": true,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "window",
           "symbol": "format_cb_window_layout",
           "lines": {
-            "floor": 766,
-            "added": 768,
+            "floor": 768,
             "stable": 839,
             "upstream": 856
           },
@@ -350,12 +325,11 @@
           "format": "window_visible_layout",
           "type": "string",
           "nullable": true,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "window",
           "symbol": "format_cb_window_visible_layout",
           "lines": {
-            "floor": 780,
-            "added": 782,
+            "floor": 782,
             "stable": 853,
             "upstream": 880
           },
@@ -366,12 +340,11 @@
           "format": "window_zoomed_flag",
           "type": "boolean",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "window",
           "symbol": "format_cb_window_zoomed_flag",
           "lines": {
-            "floor": 2382,
-            "added": 2481,
+            "floor": 2481,
             "stable": 3024,
             "upstream": 3427
           },
@@ -387,12 +360,11 @@
           "format": "session_id",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "session",
           "symbol": "format_cb_session_id",
           "lines": {
-            "floor": 2028,
-            "added": 2127,
+            "floor": 2127,
             "stable": 2630,
             "upstream": 2998
           },
@@ -403,12 +375,11 @@
           "format": "window_id",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "window",
           "symbol": "format_cb_window_id",
           "lines": {
-            "floor": 2231,
-            "added": 2330,
+            "floor": 2330,
             "stable": 2844,
             "upstream": 3225
           },
@@ -419,12 +390,11 @@
           "format": "window_index",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "winlink",
           "symbol": "format_cb_window_index",
           "lines": {
-            "floor": 2240,
-            "added": 2339,
+            "floor": 2339,
             "stable": 2853,
             "upstream": 3234
           },
@@ -435,12 +405,11 @@
           "format": "window_active",
           "type": "boolean",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "winlink",
           "symbol": "format_cb_window_active",
           "lines": {
-            "floor": 2124,
-            "added": 2223,
+            "floor": 2223,
             "stable": 2737,
             "upstream": 3105
           },
@@ -451,12 +420,11 @@
           "format": "window_flags",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "winlink",
           "symbol": "format_cb_window_flags",
           "lines": {
-            "floor": 2204,
-            "added": 2303,
+            "floor": 2303,
             "stable": 2817,
             "upstream": 3185
           },
@@ -472,12 +440,11 @@
           "format": "pane_id",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_id",
           "lines": {
-            "floor": 1739,
-            "added": 1838,
+            "floor": 1838,
             "stable": 2152,
             "upstream": 2444
           },
@@ -488,12 +455,11 @@
           "format": "window_id",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "window",
           "symbol": "format_cb_window_id",
           "lines": {
-            "floor": 2231,
-            "added": 2330,
+            "floor": 2330,
             "stable": 2844,
             "upstream": 3225
           },
@@ -504,12 +470,11 @@
           "format": "pane_index",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_index",
           "lines": {
-            "floor": 1748,
-            "added": 1847,
+            "floor": 1847,
             "stable": 2161,
             "upstream": 2453
           },
@@ -520,12 +485,11 @@
           "format": "pane_active",
           "type": "boolean",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_active",
           "lines": {
-            "floor": 1650,
-            "added": 1718,
+            "floor": 1718,
             "stable": 2028,
             "upstream": 2207
           },
@@ -536,12 +500,11 @@
           "format": "pane_title",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_title",
           "lines": {
-            "floor": 1897,
-            "added": 1996,
+            "floor": 1996,
             "stable": 2384,
             "upstream": 2676
           },
@@ -552,12 +515,11 @@
           "format": "pane_width",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_width",
           "lines": {
-            "floor": 1924,
-            "added": 2023,
+            "floor": 2023,
             "stable": 2411,
             "upstream": 2779
           },
@@ -568,12 +530,11 @@
           "format": "pane_height",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_height",
           "lines": {
-            "floor": 1730,
-            "added": 1829,
+            "floor": 1829,
             "stable": 2143,
             "upstream": 2435
           },
@@ -584,12 +545,11 @@
           "format": "pane_left",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_left",
           "lines": {
-            "floor": 1783,
-            "added": 1882,
+            "floor": 1882,
             "stable": 2225,
             "upstream": 2517
           },
@@ -600,12 +560,11 @@
           "format": "pane_top",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_top",
           "lines": {
-            "floor": 1906,
-            "added": 2005,
+            "floor": 2005,
             "stable": 2393,
             "upstream": 2685
           },
@@ -616,12 +575,11 @@
           "format": "pane_pid",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_pid",
           "lines": {
-            "floor": 1843,
-            "added": 1942,
+            "floor": 1942,
             "stable": 2285,
             "upstream": 2577
           },
@@ -632,12 +590,11 @@
           "format": "pane_tty",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_tty",
           "lines": {
-            "floor": 1915,
-            "added": 2014,
+            "floor": 2014,
             "stable": 2402,
             "upstream": 2694
           },
@@ -648,12 +605,11 @@
           "format": "pane_current_path",
           "type": "string",
           "nullable": true,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_current_path",
           "lines": {
-            "floor": 828,
-            "added": 844,
+            "floor": 844,
             "stable": 915,
             "upstream": 979
           },
@@ -664,12 +620,11 @@
           "format": "pane_current_command",
           "type": "string",
           "nullable": true,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_current_command",
           "lines": {
-            "floor": 804,
-            "added": 820,
+            "floor": 820,
             "stable": 891,
             "upstream": 955
           },
@@ -680,12 +635,11 @@
           "format": "pane_start_command",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_start_command",
           "lines": {
-            "floor": 792,
-            "added": 794,
+            "floor": 794,
             "stable": 865,
             "upstream": 898
           },
@@ -696,12 +650,11 @@
           "format": "pane_dead",
           "type": "boolean",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_dead",
           "lines": {
-            "floor": 1695,
-            "added": 1763,
+            "floor": 1763,
             "stable": 2075,
             "upstream": 2254
           },
@@ -712,12 +665,11 @@
           "format": "pane_dead_status",
           "type": "number",
           "nullable": true,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_dead_status",
           "lines": {
-            "floor": 1707,
-            "added": 1792,
+            "floor": 1792,
             "stable": 2106,
             "upstream": 2285
           },
@@ -728,11 +680,11 @@
           "format": "pane_dead_signal",
           "type": "string",
           "nullable": true,
-          "since": "3.3",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_dead_signal",
           "lines": {
-            "added": 1775,
+            "floor": 1775,
             "stable": 2089,
             "upstream": 2268
           },
@@ -743,11 +695,11 @@
           "format": "pane_dead_time",
           "type": "number",
           "nullable": true,
-          "since": "3.3",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_dead_time",
           "lines": {
-            "added": 1806,
+            "floor": 1806,
             "stable": 2120,
             "upstream": 2299
           },
@@ -758,12 +710,11 @@
           "format": "pane_mode",
           "type": "string",
           "nullable": true,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_mode",
           "lines": {
-            "floor": 1816,
-            "added": 1915,
+            "floor": 1915,
             "stable": 2258,
             "upstream": 2550
           },
@@ -774,12 +725,11 @@
           "format": "pane_in_mode",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_in_mode",
           "lines": {
-            "floor": 1022,
-            "added": 1044,
+            "floor": 1044,
             "stable": 1138,
             "upstream": 1216
           },
@@ -790,12 +740,11 @@
           "format": "pane_synchronized",
           "type": "boolean",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "pane",
           "symbol": "format_cb_pane_synchronized",
           "lines": {
-            "floor": 1885,
-            "added": 1984,
+            "floor": 1984,
             "stable": 2372,
             "upstream": 2664
           },
@@ -811,12 +760,11 @@
           "format": "client_name",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "client",
           "symbol": "format_cb_client_name",
           "lines": {
-            "floor": 1292,
-            "added": 1314,
+            "floor": 1314,
             "stable": 1539,
             "upstream": 1642
           },
@@ -827,12 +775,11 @@
           "format": "client_tty",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "client",
           "symbol": "format_cb_client_tty",
           "lines": {
-            "floor": 1376,
-            "added": 1398,
+            "floor": 1398,
             "stable": 1623,
             "upstream": 1726
           },
@@ -843,12 +790,11 @@
           "format": "client_pid",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "client",
           "symbol": "format_cb_client_pid",
           "lines": {
-            "floor": 1301,
-            "added": 1323,
+            "floor": 1323,
             "stable": 1548,
             "upstream": 1651
           },
@@ -859,12 +805,11 @@
           "format": "client_session",
           "type": "string",
           "nullable": true,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "client",
           "symbol": "format_cb_client_session",
           "lines": {
-            "floor": 1337,
-            "added": 1359,
+            "floor": 1359,
             "stable": 1584,
             "upstream": 1687
           },
@@ -875,12 +820,11 @@
           "format": "client_width",
           "type": "number",
           "nullable": true,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "client",
           "symbol": "format_cb_client_width",
           "lines": {
-            "floor": 1397,
-            "added": 1448,
+            "floor": 1448,
             "stable": 1677,
             "upstream": 1780
           },
@@ -891,12 +835,11 @@
           "format": "client_height",
           "type": "number",
           "nullable": true,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "client",
           "symbol": "format_cb_client_height",
           "lines": {
-            "floor": 1263,
-            "added": 1285,
+            "floor": 1285,
             "stable": 1510,
             "upstream": 1613
           },
@@ -907,12 +850,11 @@
           "format": "client_control_mode",
           "type": "boolean",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "client",
           "symbol": "format_cb_client_control_mode",
           "lines": {
-            "floor": 1233,
-            "added": 1255,
+            "floor": 1255,
             "stable": 1480,
             "upstream": 1583
           },
@@ -923,12 +865,11 @@
           "format": "client_readonly",
           "type": "boolean",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "client",
           "symbol": "format_cb_client_readonly",
           "lines": {
-            "floor": 1325,
-            "added": 1347,
+            "floor": 1347,
             "stable": 1572,
             "upstream": 1675
           },
@@ -939,12 +880,11 @@
           "format": "client_created",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "client",
           "symbol": "format_cb_client_created",
           "lines": {
-            "floor": 2429,
-            "added": 2528,
+            "floor": 2528,
             "stable": 3071,
             "upstream": 3474
           },
@@ -955,12 +895,11 @@
           "format": "client_activity",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "client",
           "symbol": "format_cb_client_activity",
           "lines": {
-            "floor": 2420,
-            "added": 2519,
+            "floor": 2519,
             "stable": 3062,
             "upstream": 3465
           },
@@ -976,12 +915,11 @@
           "format": "buffer_name",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "buffer",
           "symbol": "format_cb_buffer_name",
           "lines": {
-            "floor": 1184,
-            "added": 1206,
+            "floor": 1206,
             "stable": 1416,
             "upstream": 1492
           },
@@ -992,12 +930,11 @@
           "format": "buffer_size",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "buffer",
           "symbol": "format_cb_buffer_size",
           "lines": {
-            "floor": 1202,
-            "added": 1224,
+            "floor": 1224,
             "stable": 1449,
             "upstream": 1525
           },
@@ -1008,12 +945,11 @@
           "format": "buffer_sample",
           "type": "string",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "buffer",
           "symbol": "format_cb_buffer_sample",
           "lines": {
-            "floor": 1193,
-            "added": 1215,
+            "floor": 1215,
             "stable": 1425,
             "upstream": 1501
           },
@@ -1024,12 +960,11 @@
           "format": "buffer_created",
           "type": "number",
           "nullable": false,
-          "since": "3.2a",
+          "since": "3.3a",
           "source_scope": "buffer",
           "symbol": "format_cb_buffer_created",
           "lines": {
-            "floor": 2406,
-            "added": 2505,
+            "floor": 2505,
             "stable": 3048,
             "upstream": 3451
           },

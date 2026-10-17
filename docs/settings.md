@@ -86,7 +86,7 @@ single `source`. They can be retrieved by name but are omitted from
 Session, Window and Pane handles offer `run_hook(name, options)`. Execution
 uses that live context's native hook lookup. Only process limits are accepted;
 storage scopes, indices, append and replacement source do not select a hook
-for execution. Custom hook execution requires tmux 3.3 or newer. A successful
+for execution. A successful
 process result means tmux completed its command; malformed custom source may
 still be ignored by tmux without an error.
 

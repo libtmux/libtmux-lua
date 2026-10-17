@@ -43,6 +43,7 @@ build = {
         ["libtmux._internal.options_catalog"] = "lua/libtmux/_internal/options_catalog.lua",
         ["libtmux._internal.pane"] = "lua/libtmux/_internal/pane.lua",
         ["libtmux._internal.planner"] = "lua/libtmux/_internal/planner.lua",
+        ["libtmux._internal.support.versions"] = "lua/libtmux/_internal/support/versions.lua",
         ["libtmux._internal.process"] = "lua/libtmux/_internal/process.lua",
         ["libtmux._internal.query"] = "lua/libtmux/_internal/query.lua",
         ["libtmux._internal.query_wire"] = "lua/libtmux/_internal/query_wire.lua",

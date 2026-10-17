@@ -178,15 +178,8 @@ local function work(runtime)
                 :await())
             local record = must(session:get_hook("@custom_hook"):await())
             assert(record.present and type(record.source) == "string")
-            if os.getenv("TMUX_DAEMON_VERSION") == "3.2a" then
-                rejected(session:run_hook("@custom_hook"), "unsupported")
-                local absent =
-                    must(session:get_option("@custom_value", { inherit = false }):await())
-                assert(not absent.present)
-            else
-                must(session:run_hook("@custom_hook"):await())
-                assert(must(session:get_option("@custom_value"):await()).value == "custom")
-            end
+            must(session:run_hook("@custom_hook"):await())
+            assert(must(session:get_option("@custom_value"):await()).value == "custom")
             must(session:unset_hook("@custom_hook"):await())
             assert(not must(session:get_hook("@custom_hook", { inherit = false }):await()).present)
         end
