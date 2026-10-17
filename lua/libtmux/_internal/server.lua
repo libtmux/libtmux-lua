@@ -600,6 +600,87 @@ end
 ---@field value? libtmux.CommandResult
 ---@field error? libtmux.Error
 
+--- A handle to one running tmux server, reached through a connected runtime.
+---
+--- `libtmux.Runtime:connect` resolves to a server for a daemon that is already
+--- running. The library neither starts a daemon nor picks a default one, and
+--- closing the handle leaves the daemon running. A method that talks to tmux
+--- returns a `libtmux.Request`: call `libtmux.Request:await` from a task the
+--- runtime manages, or pass a callback to `libtmux.Request:on_complete`. A
+--- failed request reports a `libtmux.Error`. If the daemon restarts or its
+--- socket is replaced, the handle stops working and the caller connects again.
+---
+--- # What is on here
+---
+--- A tmux server does a great many things, so this class has a great many
+--- methods. They fall into a few groups:
+---
+--- **Connecting.** `libtmux.Runtime:connect` takes `libtmux.ConnectOptions`:
+--- absolute paths to the tmux binary and to the daemon's socket.
+--- `Server:close` closes the connections the handle owns. `Server:observe`
+--- takes a session handle and resolves to a `libtmux.Observation`, a
+--- control-mode view of that session whose watches report pane output,
+--- notifications and format values.
+---
+--- **Finding one thing.** Take one record from a `libtmux.Snapshot`, or from
+--- the rows of a query, with `libtmux.Selection:one`, which reports no match or
+--- several as errors, or `libtmux.Selection:one_or_nil`, which also accepts no
+--- match. Pass it, with its snapshot, to `Server:handle`: that binds the record
+--- to a live session, window, window link, pane, client or buffer handle of the
+--- same class, and returns it directly rather than as a request.
+---
+--- **Listing everything.** `Server:snapshot` lists sessions, windows, window
+--- links, panes, clients and buffers, and resolves to a `libtmux.Snapshot`
+--- whose collections are selections. The capture spans several tmux commands,
+--- so it is not an atomic view: observed races land in `libtmux.Snapshot.races`
+--- and clear `libtmux.Snapshot.complete`, and `libtmux.SnapshotOptions.strict`
+--- adds a verification pass.
+---
+--- **Querying things and getting around.** `Server:query` reads live state and
+--- resolves to the rows that match a criteria table, with the snapshot and plan
+--- behind them; `Server:query_panes` does the same for panes. `Server:explain`
+--- and `Server:explain_panes` return the plan without contacting tmux. On a
+--- snapshot already in hand, `libtmux.Selection:where` and
+--- `libtmux.Selection:filter` narrow a collection in memory, and
+--- `libtmux.Selection:first`, `libtmux.Selection:count` and
+--- `libtmux.Selection:exists` inspect it; the `libtmux.query` module does the
+--- same for ordinary Lua tables. Records lead to each other without another
+--- command: `libtmux.SnapshotSession.window_links`,
+--- `libtmux.SnapshotWindow.panes`, `libtmux.SnapshotPane.window`,
+--- `libtmux.SnapshotWindowLink.session` and
+--- `libtmux.SnapshotWindowLink.window`.
+---
+--- **Changing things.** `Server:new_session` creates a detached session and
+--- resolves to a `libtmux.Creation` holding handles for the session and the
+--- window, pane and window link it starts with. `Server:switch_client` points
+--- an attached client, selected by the name and TTY a snapshot reports, at a
+--- session handle, and `Server:detach_client` detaches it.
+---
+--- **Options and hooks.** `Server:get_option`, `Server:list_options`,
+--- `Server:set_option` and `Server:unset_option` address the server's own
+--- options; pass `scope = "global_session"` or `"global_window"` for tmux's
+--- global defaults. `Server:get_hook`, `Server:list_hooks`, `Server:set_hook`
+--- and `Server:unset_hook` need one of those two scopes spelled out. The global
+--- environment has `Server:get_environment`, `Server:list_environment` and
+--- `Server:set_environment`; `Server:unset_environment` deletes a name, while
+--- `Server:remove_environment` records a removal marker instead.
+---
+--- **Everything else tmux keeps.** Paste buffers, always by explicit name:
+--- `Server:set_buffer` stores bytes, `Server:show_buffer` reads them back and
+--- `Server:delete_buffer` removes the buffer. None infers the most recent
+--- buffer. Key bindings, configuration files, shell jobs and wait-for channels
+--- have no method here; reach them through `Server:command`.
+---
+--- **Things that need a terminal.** None. The luv and Neovim adapters do not
+--- own an interactive terminal, so `libtmux.Session:attach` returns
+--- `unsupported_tty`.
+---
+--- Anything tmux can do that is not here is reachable through `Server:command`,
+--- which runs one tmux command from literal arguments and resolves to its
+--- stdout, stderr, exit code and signal; a nonzero exit is reported in that
+--- result, not as a failure. `Server:group` sends several commands as one
+--- ordered group with a single aggregate result, and `Server:batch` runs
+--- independent commands and reports an outcome for each.
 ---@class libtmux.Server
 ---@field get_option fun(self:libtmux.Server,name:string,options?:libtmux.SettingGetOptions):
 --- libtmux.Request<libtmux.OptionRecord>
