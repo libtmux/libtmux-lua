@@ -21,6 +21,9 @@ REFUSED = {
     "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
     "3.3": "87fe00e8b44901240fc22d7120c1b31e4331f6f5",
 }
+# Releases and development builds without a tag of their own build from a
+# branch at the pinned commit.
+BRANCHES = {"3.7d": "release_3.7d", "next-3.9": "master"}
 LUALS = {
     ("Linux", "x86_64"): ("linux-x64", "e9235d2d72ef55bc41cf8c99cda2ed64777682024b4bb81f5dea425060c5cbb8"),
     ("Darwin", "arm64"): ("darwin-arm64", "0bc077f4447f076b4c92c14e9fd303f5b569eda2ec74b4dca2b55f75fae2e90c"),
@@ -36,7 +39,11 @@ def tmux(version):
     revision = revisions[version]
     source = CACHE / "source" / f"tmux-{version}"
     prefix = CACHE / "toolchains" / f"tmux-{version}"
-    if not source.exists():
+    if not source.exists() and version in BRANCHES:
+        subprocess.run(["git", "clone", "--no-checkout", f"--branch={BRANCHES[version]}", "--",
+                        "https://github.com/tmux/tmux.git", str(source)], check=True)
+        subprocess.run(["git", "-C", str(source), "checkout", "--detach", revision], check=True)
+    elif not source.exists():
         subprocess.run(["git", "clone", "--depth=1", f"--branch={version}", "--",
                         "https://github.com/tmux/tmux.git", str(source)], check=True)
     actual = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
