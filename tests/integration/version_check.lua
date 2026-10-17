@@ -28,7 +28,17 @@ local function work(runtime)
         assert(err.code == "unsupported_version" and err.effect == "not_sent", tostring(err))
         return "refuse passed"
     end
-    assert(mode == "admit", "unknown admission case")
+    if mode == "observe" then
+        assert(server, tostring(err))
+        local snapshot =
+            assert(server:snapshot({ fields = { sessions = { "id", "name" } } }):await())
+        local session = assert(server:handle(snapshot, assert(snapshot.sessions:first())))
+        local observer = assert(server:observe(session):await())
+        assert(observer:close():await())
+        assert(server:close():await())
+        return "observe passed"
+    end
+    assert(mode == "supported", "unknown version check case")
     assert(server, tostring(err))
     local created
     created, err = server:command({ "new-session", "-d", "-s", "supported", "/bin/cat" }):await()

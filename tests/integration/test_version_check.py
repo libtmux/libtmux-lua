@@ -71,6 +71,9 @@ class VersionCheckTests(unittest.TestCase):
                 armed = self.arm_hooks(fixture)
                 self.exercise(fixture, armed)
                 self.run_lua(fixture, mode, host)
+                if parsed >= (3, 7, ""):
+                    # The control attachment verifies its daemon with the same probe.
+                    self.run_lua(fixture, "observe", host)
                 self.assertFalse(self.fired(fixture, "@after-display"))
                 self.assertFalse(self.fired(fixture, "@command-error"))
                 sessions = sorted(fixture.run("list-sessions", "-F", "#{session_name}").stdout.split())

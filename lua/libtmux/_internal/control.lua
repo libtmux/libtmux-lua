@@ -1,12 +1,11 @@
 local errors = require("libtmux._internal.error")
 local metadata = require("libtmux._internal.metadata")
+local versions = require("libtmux._internal.support.versions")
 local parser = require("libtmux._internal.control_parser")
 local native = require("libtmux._internal.control_io")
 local M, Connection, Watch = {}, {}, {}
 local connections, watches =
     setmetatable({}, { __mode = "kv" }), setmetatable({}, { __mode = "kv" })
-local server_projection =
-    assert(metadata.projection("server", "3.3a", { "pid", "start_time", "version", "socket_path" }))
 local pane_projection = assert(metadata.projection("pane", "3.3a", { "id", "window_id" }))
 local defaults = { max_bytes = 4194304, max_pending = 128, max_watches = 128, timeout = 750 }
 local watch_defaults = { max_bytes = 1048576, max_events = 1024 }
@@ -391,11 +390,35 @@ local function event(state, item)
         return
     end
     if item.kind == "block" then
-        if item.phase == "bootstrap" then
+        -- A passed fence answers first with its own empty block; attach-session's
+        -- block follows and is the one that completes the bootstrap.
+        local attached = state.fence_passed and not state.booted and item.phase == "command"
+        if item.phase == "bootstrap" and state.fence and not state.fence_passed then
+            if item.ending == "end" and not state.booted then
+                state.fence_passed = true
+                return
+            end
+        end
+        if item.phase == "bootstrap" or attached then
             if state.booted or item.ending ~= "end" then
+                -- The attach command list starts with a version fence; tmux reports a
+                -- refused fence as the marker word and attaches nothing.
+                local refused = state.fence
+                    and item.ending == "error"
+                    and item.body:find("unknown command: " .. state.fence, 1, true)
                 terminate(
                     state,
-                    failure("protocol_error", "control attachment bootstrap failed", "unknown")
+                    refused
+                            and failure(
+                                "stale_generation",
+                                "control daemon evidence does not match the endpoint",
+                                "not_sent"
+                            )
+                        or failure(
+                            "protocol_error",
+                            "control attachment bootstrap failed",
+                            "unknown"
+                        )
                 )
                 return
             end
@@ -921,6 +944,19 @@ function M.open(runtime, bound, options)
             end,
         })
         local err
+        -- Attach only the daemon this endpoint checked: the fence and the attach
+        -- share one command list, so one daemon decides both.
+        state.fence = versions.marker(rt._driver.uv)
+        endpoint.fence = {
+            marker = state.fence,
+            condition = "#{&&:#{==:#{pid},"
+                .. evidence.pid
+                .. "},#{&&:#{==:#{start_time},"
+                .. evidence.started
+                .. "},#{==:#{version},"
+                .. evidence.version
+                .. "}}}",
+        }
         state.io, err = native.start(rt, endpoint, limits, function(data)
             consume(state, data)
         end, function(cause)
@@ -946,34 +982,6 @@ function M.open(runtime, bound, options)
         ready, err = bootstrap:await()
         if not ready then
             return nil, err
-        end
-        local body
-        body, err = housekeeping(
-            state,
-            { "display-message", "-p", assert(metadata.format(server_projection)) },
-            operation
-        ):await()
-        if not body then
-            return nil, err
-        end
-        local rows
-        rows, err = metadata.decode(body, server_projection, { max_rows = 1, max_bytes = 16384 })
-        local row = rows and rows[1]
-        if
-            not row
-            or #rows ~= 1
-            or string.format("%.0f", row.pid) ~= evidence.pid
-            or string.format("%.0f", row.start_time) ~= evidence.started
-            or row.version ~= evidence.version
-            or row.socket_path ~= evidence.socket
-        then
-            return nil,
-                failure(
-                    "stale_generation",
-                    "control daemon evidence does not match the endpoint",
-                    "completed",
-                    err
-                )
         end
         ready, err = coverage(state, operation)
         if not ready then
