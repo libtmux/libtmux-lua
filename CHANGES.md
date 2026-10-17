@@ -6,6 +6,26 @@
 - Docs: show the `Server:handle` description on `handle`, not on `command`.
 - Docs: describe `libtmux.Server` in the API reference, with its methods grouped
   by task.
+- Core: require tmux 3.3a, checked against the running tmux server rather
+  than the `tmux` executable. Connecting to an older server, including 3.3
+  without its patch letter, fails with `unsupported_version` before any
+  command runs; upgrade tmux and restart the server after saving its
+  sessions. A development build or release candidate is accepted when it
+  ranks at or above 3.3a. See the
+  [proposal](https://github.com/libtmux/libtmux-lua/issues/31). (#35)
+- Core: a server older than tmux 3.2, which cannot answer the version
+  probe, and a version report that names no release now fail with
+  `unsupported_version` and a message that says to upgrade tmux and restart
+  the server, or install the previous release; neither reads as a probe
+  failure or as "too old". (#35)
+- Core: reading the server's version no longer runs the user's tmux hooks,
+  and a control attachment no longer runs `display-message`. (#35)
+- Core: commands no longer start a version probe each. The version is read
+  once when the endpoint connects, and a server replaced afterwards fails
+  with `stale_generation` before any command runs. (#35)
+- Releases: support tmux 3.7d, 3.8 and the pinned next-3.9 development
+  build in option, buffer, topology and layout operations, including 3.8's
+  JSON layouts and the metadata escapes it adds. (#35)
 
 ## 0.1.0alpha2-1
 
