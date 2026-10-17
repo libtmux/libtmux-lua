@@ -104,8 +104,6 @@ end
 
 function M.test_paste_modes_are_literal_and_gated_by_exact_daemon_release()
     for _, version in ipairs({
-        "3.2a",
-        "3.3",
         "3.3a",
         "3.4",
         "3.5",
@@ -143,7 +141,7 @@ function M.test_paste_modes_are_literal_and_gated_by_exact_daemon_release()
 end
 
 function M.test_delete_refuses_releases_that_fall_back_to_another_buffer()
-    for _, version in ipairs({ "3.2a", "3.3", "3.3a" }) do
+    for _, version in ipairs({ "3.3a" }) do
         fixture(function(state, run)
             rejected(run("delete", "missing"), "unsupported")
             t.assertEquals(#state.calls, 0)

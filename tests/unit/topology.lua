@@ -226,7 +226,7 @@ function M.test_literal_rename_navigation_renumber_and_kill_use_private_stable_t
         t.assertEquals(state.calls[5].argv, { "move-window", "-t", "$2", "-r" })
         t.assertEquals(state.calls[6].argv, { "kill-session", "-t", "$2" })
     end)
-    fixture("window", "3.2a", function(state, run)
+    fixture("window", "3.3a", function(state, run)
         assert(run("rename", "window#{pane_id}"):await())
         assert(run("kill"):await())
         t.assertEquals(
@@ -271,7 +271,7 @@ function M.test_resize_and_layout_select_exactly_one_explicit_native_mode()
 end
 
 function M.test_custom_layout_header_is_validated_before_native_parser()
-    for _, version in ipairs({ "3.2a", "3.3", "3.3a", "3.7c" }) do
+    for _, version in ipairs({ "3.3a", "3.7c" }) do
         fixture("window", version, function(state, run)
             for _, value in ipairs({ "invalid-layout", "a", "1234", "1234,", "ffff:80x24" }) do
                 reject(run("layout", nil, { layout = value }), "invalid_layout")
@@ -358,8 +358,6 @@ end
 
 function M.test_layout_capabilities_are_exact_release_gates()
     for _, version in ipairs({
-        "3.2a",
-        "3.3",
         "3.3a",
         "3.4",
         "3.5",

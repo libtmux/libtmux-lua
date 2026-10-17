@@ -19,7 +19,7 @@ local function work(runtime)
     local name = "-buffer #{pid};λ;"
     if mode == "storage" then
         local version = must(server:snapshot():await()).capabilities.version
-        local unsafe_delete = version == "3.2a" or version == "3.3" or version == "3.3a"
+        local unsafe_delete = version == "3.3a"
         local pieces = {}
         for byte = 0, 255 do
             pieces[#pieces + 1] = string.char(byte)

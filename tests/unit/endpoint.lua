@@ -208,6 +208,96 @@ function M.test_only_the_exact_probe_report_is_daemon_evidence()
     end)
 end
 
+function M.test_daemon_release_is_checked_from_the_probe_not_the_client()
+    local supported = { "3.3a", "3.4", "3.7c", "3.10", "next-3.9", "3.8-rc2" }
+    local refused = { "3.2a", "3.3", "3.2", "next-3.3a", "3.3a-rc1", "master", "openbsd-7.6" }
+    for _, version in ipairs(supported) do
+        local f = fixture()
+        f.uv.daemon_version = version
+        f:start(function(rt)
+            local bound, err =
+                endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await()
+            t.assertNotNil(bound, version .. tostring(err))
+            t.assertEquals(assert(bound:evidence()).version, version)
+        end)
+    end
+    for _, version in ipairs(refused) do
+        local f = fixture()
+        f.uv.daemon_version = version
+        f:start(function(rt)
+            local bound, err =
+                endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await()
+            t.assertNil(bound, version)
+            t.assertEquals(assert(err).code, "unsupported_version", version)
+            t.assertEquals(err.effect, "not_sent", version)
+            t.assertStrContains(err.message, "restart the server", version)
+            -- Only the probe ran: no command reached the refused daemon.
+            t.assertEquals(#f.uv.spawned, 1, version)
+        end)
+        t.assertNil(f.uv.files[f.uv.alias], version)
+    end
+end
+
+function M.test_unrecognized_report_is_not_called_too_low()
+    local cases = {
+        { "master", "no release" },
+        { "openbsd-7.6", "no release" },
+        { "3.3a-dev", "no release" },
+        { "next-3.3a", "no release" },
+        { "3.2a", "older than 3.3a" },
+        { "next-3.3", "older than 3.3a" },
+    }
+    for _, case in ipairs(cases) do
+        local f = fixture()
+        f.uv.daemon_version = case[1]
+        f:start(function(rt)
+            local _, err =
+                endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await()
+            t.assertEquals(assert(err).code, "unsupported_version", case[1])
+            t.assertStrContains(err.message, case[2], case[1])
+            local other = case[2] == "no release" and "older than" or "no release"
+            t.assertNotStrContains(err.message, other, case[1])
+        end)
+    end
+end
+
+-- tmux before 3.2 lacks run-shell -C and the client's -N: it answers with
+-- usage text instead of the marker. That is a version refusal, not a probe fault.
+function M.test_daemons_before_3_2_are_refused_not_reported_as_probe_failures()
+    local replies = {
+        ["3.1c server usage"] = "usage: run-shell [-b] [-t target-pane] shell-command\n",
+        ["3.0a server too old for client"] = "server version is too old for client\n",
+        ["client without -N"] = "tmux: unknown option -- N\nusage: tmux [-2CluvV]\n",
+    }
+    for name, reply in pairs(replies) do
+        local f = fixture()
+        f.uv.probe_reply = function()
+            return reply
+        end
+        f:start(function(rt)
+            local bound, err =
+                endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await()
+            t.assertNil(bound, name)
+            t.assertEquals(assert(err).code, "unsupported_version", name)
+            t.assertEquals(err.effect, "not_sent", name)
+            t.assertStrContains(err.message, "older than 3.2", name)
+            t.assertStrContains(err.message, "restart the server", name)
+            t.assertEquals(#f.uv.spawned, 1, name)
+        end)
+    end
+    -- Control: the same usage text with a success exit or stdout is no age signal.
+    local f = fixture()
+    f.uv.probe_reply = function()
+        return "usage: run-shell [-b] [-t target-pane] shell-command\n"
+    end
+    f.uv.probe_stdout = "ran\n"
+    f:start(function(rt)
+        local _, err = endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await()
+        t.assertEquals(assert(err).code, "uncertain_generation")
+        t.assertEquals(err.effect, "not_sent")
+    end)
+end
+
 function M.test_probe_names_a_fresh_marker_and_never_runs_display_message()
     local f = fixture()
     f:start(function(rt)

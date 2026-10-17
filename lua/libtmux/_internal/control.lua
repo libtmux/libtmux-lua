@@ -6,8 +6,8 @@ local M, Connection, Watch = {}, {}, {}
 local connections, watches =
     setmetatable({}, { __mode = "kv" }), setmetatable({}, { __mode = "kv" })
 local server_projection =
-    assert(metadata.projection("server", "3.2a", { "pid", "start_time", "version", "socket_path" }))
-local pane_projection = assert(metadata.projection("pane", "3.2a", { "id", "window_id" }))
+    assert(metadata.projection("server", "3.3a", { "pid", "start_time", "version", "socket_path" }))
+local pane_projection = assert(metadata.projection("pane", "3.3a", { "id", "window_id" }))
 local defaults = { max_bytes = 4194304, max_pending = 128, max_watches = 128, timeout = 750 }
 local watch_defaults = { max_bytes = 1048576, max_events = 1024 }
 local terminate, pump, housekeeping

@@ -8,8 +8,6 @@ local MAX_BYTES, MAX_NAME = 1048576, 4096
 local commands =
     { set = "load-buffer", show = "show-buffer", delete = "delete-buffer", paste = "paste-buffer" }
 local versions = {
-    ["3.2a"] = 2,
-    ["3.3"] = 3,
     ["3.3a"] = 3,
     ["3.4"] = 4,
     ["3.5"] = 5,

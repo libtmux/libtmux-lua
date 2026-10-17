@@ -53,7 +53,7 @@ function M.test_whole_criteria_validate_before_empty_input_or_translation()
     end
     local value, err = planner.new("3.2a", { where = { dead_signal = "TERM" } })
     test.assertNil(value)
-    test.assertEquals(assert(err).code, "unsupported_field")
+    test.assertEquals(assert(err).code, "unsupported_version")
     local invalid = { { kind = "server" }, { pushdown = "sometimes" }, { extra = true } }
     for _, options in ipairs(invalid) do
         value, err = planner.new("3.7c", options)
