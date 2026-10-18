@@ -12,6 +12,10 @@
   every API its own linked heading and an example quoted from a program CI
   runs, and ends with what the package leaves out and its support and status.
   The install command now names `libtmux` 0.1.0alpha2-1.
+- Docs: check that each README opens with Quick start, closes with the
+  leaves-out and support sections, keeps paragraphs and list items short and
+  defines the link references it uses, and that a Lua block marked `excerpt`
+  is a run of consecutive lines from its example program.
 - Examples: add `examples/nvim_snapshot.lua`, which the integration suite runs
   in headless Neovim.
 

@@ -23,9 +23,19 @@ LOGO = """<!-- libtmux-logo -->
 <div align="center">
 
 """
+SECTIONS = """## What it leaves out
+
+- **A default server.** The caller names one.
+
+## Support and status
+
+- **Alpha.** Pin an exact version.
+"""
 ROOT_README = LOGO.format(alt="libtmux for Lua") + f"""# Root
 
 </div>
+
+## Quick start
 
 <!-- example: examples/hello.lua -->
 
@@ -42,10 +52,13 @@ connected
 {FENCE}
 
 [Core](https://github.com/libtmux/libtmux-lua/tree/master/lua/libtmux)
-"""
+
+{SECTIONS}"""
 PACKAGE_README = LOGO.format(alt="libtmux for Lua MCP") + f"""# Package
 
 </div>
+
+## Quick start
 
 {FENCE}console
 $ luarocks --local make \\
@@ -56,7 +69,8 @@ $ luarocks --local make \\
 $ lua -e 'print(require("libtmux_mcp")._VERSION)'
 scm
 {FENCE}
-"""
+
+{SECTIONS}"""
 FILES = {
     "README.md": ROOT_README,
     "lua/libtmux/README.md": ROOT_README.replace("# Root", "# Core"),
@@ -111,11 +125,67 @@ class ReadmeExamplesTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "example source is missing"):
             check_readmes(self.root)
 
-    def test_package_readmes_need_a_marker_on_every_lua_block(self):
-        unmarked = PACKAGE_README + f"\n{FENCE}lua\nprint(1)\n{FENCE}\n"
-        self.rejects("lacks an example marker", **{"packages/mcp/README.md": unmarked})
-        self.write({"README.md": ROOT_README + f"\n{FENCE}lua\nprint(1)\n{FENCE}\n"})
+    def test_every_readme_needs_a_marker_on_every_lua_block(self):
+        unmarked = f"\n{FENCE}lua\nprint(1)\n{FENCE}\n"
+        self.rejects("lacks an example or excerpt marker", **{
+            "packages/mcp/README.md": PACKAGE_README + unmarked,
+        })
         self.write({"packages/mcp/README.md": PACKAGE_README})
+        self.rejects("lacks an example or excerpt marker", **{"README.md": ROOT_README + unmarked})
+
+    def test_accepts_an_excerpt_indented_in_its_source(self):
+        source = 'local a = 1\nif a then\n    print("a")\n\n    print("b")\nend\n'
+        excerpt = f'\n<!-- excerpt: examples/long.lua -->\n\n{FENCE}lua\nprint("a")\n\nprint("b")\n{FENCE}\n'
+        self.write({"examples/long.lua": source, "README.md": ROOT_README + excerpt})
+        check_readmes(self.root)
+
+    def test_rejects_an_excerpt_that_drifted_or_skips_lines(self):
+        source = 'local a = 1\nprint("a")\nprint("b")\nprint("c")\n'
+        self.write({"examples/long.lua": source})
+        marker = "<!-- excerpt: examples/long.lua -->"
+        clean = f'\n{marker}\n\n{FENCE}lua\nprint("a")\nprint("b")\n{FENCE}\n'
+        self.write({"README.md": ROOT_README + clean})
+        check_readmes(self.root)
+        changed = clean.replace('print("b")', 'print("changed")')
+        skipped = f'\n{marker}\n\n{FENCE}lua\nprint("a")\nprint("c")\n{FENCE}\n'
+        for body in (changed, skipped):
+            with self.subTest(body=body):
+                self.rejects("not a run of lines from examples/long.lua", **{"README.md": ROOT_README + body})
+        self.write({"README.md": ROOT_README + clean})
+        (self.root / "examples/long.lua").unlink()
+        with self.assertRaisesRegex(ValueError, "excerpt source is missing"):
+            check_readmes(self.root)
+
+    def test_rejects_a_readme_without_the_expected_sections(self):
+        self.rejects("first section must be Quick start", **{
+            "README.md": ROOT_README.replace("## Quick start", "## Install"),
+        })
+        self.write({"README.md": ROOT_README})
+        for title in ("What it leaves out", "Support and status"):
+            with self.subTest(title=title):
+                self.rejects(f"missing the {title} section", **{
+                    "packages/mcp/README.md": PACKAGE_README.replace(f"## {title}", "## Elsewhere"),
+                })
+                self.write({"packages/mcp/README.md": PACKAGE_README})
+
+    def test_rejects_prose_that_reads_as_a_wall(self):
+        wall = " ".join(["word"] * 60)
+        self.rejects("reads as a wall", **{"README.md": ROOT_README + f"\n{wall}\n"})
+        self.write({"README.md": ROOT_README + f"\n- **Lead.** {wall}\n"})
+        with self.assertRaisesRegex(ValueError, "reads as a wall"):
+            check_readmes(self.root)
+        # Link targets, code and tables do not count toward the length.
+        target = "https://example.test/" + "x" * 300
+        table = "| " + " | ".join(["cell " * 20] * 3) + " |\n| --- | --- | --- |"
+        quiet = f"\n[short]({target}) and [`name`][ref]\n\n{table}\n\n[ref]: {target}\n"
+        self.write({"README.md": ROOT_README + quiet})
+        check_readmes(self.root)
+
+    def test_rejects_a_reference_link_without_a_definition(self):
+        self.rejects(r"link reference is not defined: \[ref-missing\]", **{
+            "README.md": ROOT_README + "\nSee [`Server`][ref-missing].\n",
+        })
+        self.write({"README.md": ROOT_README + "\nSee [`Server`][ref-server].\n\n[ref-server]: https://example.test/\n"})
         check_readmes(self.root)
 
     def test_rejects_a_command_naming_a_missing_file(self):
