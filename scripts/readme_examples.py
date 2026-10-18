@@ -1,10 +1,20 @@
 """Tie README examples, commands, and source links to files the gates exercise."""
 
+import hashlib
 import json
 from pathlib import Path
 import re
+import struct
 
 REPOSITORY = "https://github.com/libtmux/libtmux-lua"
+LOGO = re.compile(
+    r'\A<!-- libtmux-logo -->\n<div align="center">\n  <picture>\n'
+    r'    <source srcset="assets/logo\.svg" type="image/svg\+xml">\n'
+    r'    <img src="assets/logo\.png" width="128" height="128" alt="([^"]*)">\n'
+    r'  </picture>\n</div>\n<!-- /libtmux-logo -->\n\n<div align="center">\n\n# '
+)
+LOGO_ALT = {"packages/mcp": "libtmux for Lua MCP", "packages/workspace": "libtmux for Lua workspace"}
+PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 EXAMPLE = re.compile(r"<!-- example: (\S+) -->\n\n```lua\n(.*?)```", re.DOTALL)
 LUA_FENCE = re.compile(r"^```lua$", re.MULTILINE)
 CONSOLE = re.compile(r"```console\n(.*?)```", re.DOTALL)
@@ -18,6 +28,28 @@ VERSION = re.compile(r'^\s*(?:return\s*\{\s*)?_VERSION\s*=\s*"([^"]+)"', re.MULT
 def readmes(root):
     candidates = [root / "README.md", root / "lua/libtmux/README.md", *sorted(root.glob("packages/*/README.md"))]
     return [path for path in candidates if path.is_file()]
+
+
+def check_logo(root, readme, text, art, fail):
+    """Require the centered logo block and the package's own art beside the README."""
+    match = LOGO.match(text)
+    if not match:
+        fail("must open with the centered logo block, then a centered title")
+    expected = LOGO_ALT.get(readme.parent.relative_to(root).as_posix(), "libtmux for Lua")
+    if match.group(1) != expected:
+        fail(f'logo alt text must be "{expected}"')
+    svg, png = readme.parent / "assets/logo.svg", readme.parent / "assets/logo.png"
+    if not svg.is_file() or b"<svg" not in svg.read_bytes():
+        fail("assets/logo.svg is missing or is not SVG")
+    header = png.read_bytes()[:24] if png.is_file() else b""
+    if header[:8] != PNG_SIGNATURE or header[12:16] != b"IHDR" or struct.unpack(">II", header[16:24]) != (512, 512):
+        fail("assets/logo.png is missing or is not a 512 x 512 PNG")
+    # Art is keyed both ways: one product, one artwork, and no artwork shared across products.
+    digest = hashlib.sha256(svg.read_bytes()).hexdigest()
+    if art.setdefault(digest, expected) != expected:
+        fail(f'logo art belongs to "{art[digest]}"')
+    if art.setdefault(expected, digest) != digest:
+        fail(f'logo art differs from the other "{expected}" README')
 
 
 def console_steps(block):
@@ -50,6 +82,7 @@ def check_readmes(root):
     manifest = json.loads(manifest_path.read_text()) if manifest_path.is_file() else {"examples": []}
     outputs = {example["file"]: example["stdout"] for example in manifest["examples"]}
 
+    art = {}
     for readme in readmes(root):
         name = readme.relative_to(root).as_posix()
         text = readme.read_text()
@@ -57,6 +90,7 @@ def check_readmes(root):
         def fail(message):
             raise ValueError(f"Invalid README {name}: {message}")
 
+        check_logo(root, readme, text, art, fail)
         marked = EXAMPLE.findall(text)
         if name != "README.md" and len(LUA_FENCE.findall(text)) != len(marked):
             fail("a Lua block lacks an example marker, so nothing runs it")

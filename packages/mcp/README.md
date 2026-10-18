@@ -1,7 +1,20 @@
+<!-- libtmux-logo -->
+<div align="center">
+  <picture>
+    <source srcset="assets/logo.svg" type="image/svg+xml">
+    <img src="assets/logo.png" width="128" height="128" alt="libtmux for Lua MCP">
+  </picture>
+</div>
+<!-- /libtmux-logo -->
+
+<div align="center">
+
 # libtmux-mcp
 
 A development package for the planned libtmux MCP server in Lua. It is
 unpublished and serves nothing yet.
+
+</div>
 
 - It has no server, executable, tools, toolsets or prompts, so there is
   nothing to register with an MCP client and no tool to link.

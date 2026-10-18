@@ -1,7 +1,20 @@
+<!-- libtmux-logo -->
+<div align="center">
+  <picture>
+    <source srcset="assets/logo.svg" type="image/svg+xml">
+    <img src="assets/logo.png" width="128" height="128" alt="libtmux for Lua workspace">
+  </picture>
+</div>
+<!-- /libtmux-logo -->
+
+<div align="center">
+
 # libtmux-workspace
 
 A development package for planned libtmux workspace operations in Lua. It is
 unpublished and builds nothing yet.
+
+</div>
 
 - It has no loader, command or builder API, so there is no workspace file to
   load and no command to run.

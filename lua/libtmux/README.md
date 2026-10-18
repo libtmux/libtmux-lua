@@ -1,7 +1,22 @@
+<!-- libtmux-logo -->
+<div align="center">
+  <picture>
+    <source srcset="assets/logo.svg" type="image/svg+xml">
+    <img src="assets/logo.png" width="128" height="128" alt="libtmux for Lua">
+  </picture>
+</div>
+<!-- /libtmux-logo -->
+
+<div align="center">
+
 # libtmux for Lua: the core package
 
 The `libtmux` rock holds the Lua API for tmux [sessions, windows and
-panes][ref-concepts]. It is alpha software, published on
+panes][ref-concepts].
+
+</div>
+
+It is alpha software, published on
 [LuaRocks](https://luarocks.org/modules/tony/libtmux). The
 [root README](../../README.md#install) covers installation and a first
 program, and the [API reference](https://libtmux.org/en/lua/latest/reference/)

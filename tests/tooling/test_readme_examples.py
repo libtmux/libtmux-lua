@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+import struct
 import tempfile
 import unittest
 
@@ -9,7 +10,22 @@ from scripts.readme_examples import check_readmes, console_steps
 ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE = 'print("hello")\n'
 FENCE = "```"
-ROOT_README = f"""# Root
+PNG = b"\x89PNG\r\n\x1a\n" + struct.pack(">I", 13) + b"IHDR" + struct.pack(">II", 512, 512) + bytes(5)
+LOGO = """<!-- libtmux-logo -->
+<div align="center">
+  <picture>
+    <source srcset="assets/logo.svg" type="image/svg+xml">
+    <img src="assets/logo.png" width="128" height="128" alt="{alt}">
+  </picture>
+</div>
+<!-- /libtmux-logo -->
+
+<div align="center">
+
+"""
+ROOT_README = LOGO.format(alt="libtmux for Lua") + f"""# Root
+
+</div>
 
 <!-- example: examples/hello.lua -->
 
@@ -27,7 +43,9 @@ connected
 
 [Core](https://github.com/libtmux/libtmux-lua/tree/master/lua/libtmux)
 """
-PACKAGE_README = f"""# Package
+PACKAGE_README = LOGO.format(alt="libtmux for Lua MCP") + f"""# Package
+
+</div>
 
 {FENCE}console
 $ luarocks --local make \\
@@ -41,7 +59,14 @@ scm
 """
 FILES = {
     "README.md": ROOT_README,
+    "lua/libtmux/README.md": ROOT_README.replace("# Root", "# Core"),
     "packages/mcp/README.md": PACKAGE_README,
+    "assets/logo.svg": "<svg>library</svg>",
+    "assets/logo.png": PNG,
+    "lua/libtmux/assets/logo.svg": "<svg>library</svg>",
+    "lua/libtmux/assets/logo.png": PNG,
+    "packages/mcp/assets/logo.svg": "<svg>mcp</svg>",
+    "packages/mcp/assets/logo.png": PNG,
     "examples/hello.lua": EXAMPLE,
     "examples/api/run.sh": "#!/bin/sh\n",
     "examples/api/connect.lua": 'print("connected")\n',
@@ -65,7 +90,7 @@ class ReadmeExamplesTest(unittest.TestCase):
         for name, content in files.items():
             path = self.root / name
             path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(content)
+            path.write_bytes(content) if isinstance(content, bytes) else path.write_text(content)
 
     def rejects(self, pattern, **files):
         self.write(files)
@@ -115,6 +140,52 @@ class ReadmeExamplesTest(unittest.TestCase):
     def test_rejects_a_source_link_to_a_missing_path(self):
         self.rejects("missing path: packages/gone", **{
             "README.md": ROOT_README + "[Gone](https://github.com/libtmux/libtmux-lua/tree/master/packages/gone)\n",
+        })
+
+    def test_rejects_a_readme_that_does_not_open_with_the_logo_block(self):
+        body = PACKAGE_README.removeprefix(LOGO.format(alt="libtmux for Lua MCP"))
+        self.rejects("must open with the centered logo block", **{"packages/mcp/README.md": body})
+        self.rejects("must open with the centered logo block", **{
+            "packages/mcp/README.md": "# Title\n\n" + PACKAGE_README,
+        })
+
+    def test_rejects_a_paragraph_wrapper_and_a_changed_image_tag(self):
+        wrappers = [
+            ("div align", "p align"),
+            ("</div>\n<!-- /libtmux-logo", "</p>\n<!-- /libtmux-logo"),
+            ('width="128"', 'width="64"'),
+            ("assets/logo.png", "https://example.test/logo.png"),
+        ]
+        for old, new in wrappers:
+            with self.subTest(old=old):
+                self.rejects("must open with the centered logo block", **{
+                    "packages/mcp/README.md": PACKAGE_README.replace(old, new, 1),
+                })
+                self.write({"packages/mcp/README.md": PACKAGE_README})
+
+    def test_rejects_the_wrong_alt_text_for_a_product(self):
+        self.rejects('alt text must be "libtmux for Lua MCP"', **{
+            "packages/mcp/README.md": PACKAGE_README.replace("libtmux for Lua MCP", "libtmux for Lua"),
+        })
+
+    def test_rejects_missing_or_malformed_logo_assets(self):
+        broken = {
+            "assets/logo.svg is missing": {"packages/mcp/assets/logo.svg": "not vector art"},
+            "512 x 512": {"packages/mcp/assets/logo.png": PNG.replace(struct.pack(">I", 512), struct.pack(">I", 256), 1)},
+        }
+        for pattern, files in broken.items():
+            with self.subTest(pattern=pattern):
+                self.rejects(pattern, **files)
+                self.write(FILES)
+        (self.root / "packages/mcp/assets/logo.png").unlink()
+        with self.assertRaisesRegex(ValueError, "512 x 512"):
+            check_readmes(self.root)
+
+    def test_rejects_art_shared_across_products_or_split_within_one(self):
+        self.rejects('logo art belongs to "libtmux for Lua"', **{"packages/mcp/assets/logo.svg": "<svg>library</svg>"})
+        self.write(FILES)
+        self.rejects('differs from the other "libtmux for Lua" README', **{
+            "lua/libtmux/assets/logo.svg": "<svg>another</svg>",
         })
 
     def test_console_steps_join_continuations_and_keep_output(self):
