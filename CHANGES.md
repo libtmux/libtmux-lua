@@ -2,10 +2,8 @@
 
 ## Unreleased
 
-- Docs: add complete common API examples with private tmux setup and cleanup.
-- Docs: show the `Server:handle` description on `handle`, not on `command`.
-- Docs: describe `libtmux.Server` in the API reference, with its methods grouped
-  by task.
+## 0.1.0alpha2-1 (2026-10-18)
+
 - Core: require tmux 3.3a, checked against the running tmux server rather
   than the `tmux` executable. Connecting to an older server, including 3.3
   without its patch letter, fails with `unsupported_version` before any
@@ -26,15 +24,16 @@
 - Releases: support tmux 3.7d, 3.8 and the pinned next-3.9 development
   build in option, buffer, topology and layout operations, including 3.8's
   JSON layouts and the metadata escapes it adds. (#35)
-
-## 0.1.0alpha2-1
-
 - Types: declare `libtmux.Session`, `Window`, `WindowLink`, `Pane`, `Client`
   and `Buffer` handle classes. Each lists only the methods tmux accepts for
   that kind; `Server:handle` returns the class that matches the record.
 - Types: give each option, hook and environment operation its own options
   class, listing only the fields that operation accepts. `run_hook` takes
   `process` alone; `hidden` belongs to `set_environment`.
+- Docs: add complete common API examples with private tmux setup and cleanup.
+- Docs: show the `Server:handle` description on `handle`, not on `command`.
+- Docs: describe `libtmux.Server` in the API reference, with its methods grouped
+  by task.
 
 ## 0.1.0alpha1-1 (2026-09-20)
 
