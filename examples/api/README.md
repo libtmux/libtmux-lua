@@ -31,6 +31,7 @@ $ sh examples/api/run.sh examples/api/connect.lua
 | [query.lua](query.lua) | Select sessions by name | `matched: demo` |
 | [send_keys.lua](send_keys.lua) | Send text and press Enter | `lua input ready` |
 | [capture.lua](capture.lua) | Read a completed command's output | `lua capture ready` |
+| [unsupported_version.lua](unsupported_version.lua) | Handle a tmux below the minimum | `unsupported_version` and its message |
 
 The [manifest](manifest.json) attaches whole files to existing API symbols and
 records exact expected output. The native documentation export validates the

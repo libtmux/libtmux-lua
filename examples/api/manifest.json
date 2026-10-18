@@ -72,6 +72,16 @@
       "file": "examples/api/capture.lua",
       "description": "Capture a completed command's output from a pane.",
       "stdout": "lua capture ready\n"
+    },
+    {
+      "id": "unsupported_version",
+      "symbols": [
+        "libtmux.Error.code",
+        "libtmux.Error.message"
+      ],
+      "file": "examples/api/unsupported_version.lua",
+      "description": "Handle the refusal of a tmux older than the supported minimum by its code and message.",
+      "stdout": "unsupported_version\nthe tmux server is older than 3.2 and cannot be version-checked; upgrade tmux to 3.3a or newer and restart the server, or install the previous libtmux release\n"
     }
   ]
 }
