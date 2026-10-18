@@ -106,8 +106,8 @@ Run a focused inner suite:
 $ mise exec -- python scripts/check.py unit query
 ```
 
-Run unit suites, Lua51 formatting, lint, generated-field drift, links and
-whitespace checks:
+Run unit suites, Lua51 formatting, lint, generated-field drift, links, README
+examples and whitespace checks:
 
 ```console
 $ mise exec -- python scripts/check.py mid

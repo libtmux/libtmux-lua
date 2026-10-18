@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Docs: check that README Lua blocks match the example programs they quote,
+  and that README commands and source links name files that exist.
+
 ## 0.1.0alpha2-1 (2026-10-18)
 
 - Core: require tmux 3.3a, checked against the running tmux server rather
