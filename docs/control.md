@@ -5,8 +5,9 @@ Pass a session handle from that Server's snapshot or creation result. Concurrent
 leases for the same session share one owned persistent client. General commands
 use the [process command API](commands.md).
 
-Opening verifies the pinned daemon before spawning and checks daemon evidence
-again through the new connection. Every client
+Opening verifies the pinned daemon before spawning. The client's command
+list starts with a fence on the checked pid, start time and version, so a
+replaced daemon attaches nothing and reports `stale_generation`. Every client
 uses `-N`; a missing session fails without creating a session or linking a
 window. Each endpoint owns at most eight observation clients.
 

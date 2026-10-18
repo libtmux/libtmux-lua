@@ -13,7 +13,7 @@ TARGETS = {
     "libtmux.Runtime:connect", "libtmux.Server:snapshot", "libtmux.Snapshot.sessions",
     "libtmux.Snapshot.windows", "libtmux.Snapshot.panes", "libtmux.Server:new_session",
     "libtmux.Session:new_window", "libtmux.Server:query", "libtmux.Pane:send_text",
-    "libtmux.Pane:send_keys", "libtmux.Pane:capture",
+    "libtmux.Pane:send_keys", "libtmux.Pane:capture", "libtmux.Error.code", "libtmux.Error.message",
 }
 
 
@@ -29,15 +29,16 @@ class CompleteApiExamplesTest(unittest.TestCase):
     def save(self):
         self.path.write_text(json.dumps(self.manifest))
 
-    def test_seven_complete_programs_cover_eleven_existing_targets(self):
+    def test_complete_programs_cover_their_existing_targets(self):
         manifest = load_examples(self.root, TARGETS)
-        self.assertEqual(len(manifest["examples"]), 7)
+        self.assertEqual(len(manifest["examples"]), 8)
         self.assertEqual({symbol for example in manifest["examples"]
                           for symbol in example["symbols"]}, TARGETS)
         for example in manifest["examples"]:
             source = (self.root / example["file"]).read_text()
             self.assertIn('require("libtmux.runtime.luv")', source)
-            self.assertIn("server:close():await()", source)
+            if example["id"] != "unsupported_version":  # the refused connect opens no server
+                self.assertIn("server:close():await()", source)
             self.assertNotIn('require("tests.', source)
 
     def test_receiver_and_collection_identities_match_native_annotations(self):

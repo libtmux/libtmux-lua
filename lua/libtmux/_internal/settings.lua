@@ -184,9 +184,6 @@ local function prepare(state, owned, family, kind, name, value, options)
     elseif kind == "unset" then
         commands[1] = argv(verb, resolved, selected, "-u")
     elseif kind == "run" then
-        if def.user and state.version == "3.2a" then
-            fail("unsupported", "custom hook execution requires tmux 3.3 or newer")
-        end
         commands[1] = { "set-hook", "-R", "-t", resolved.target.id, "--", name }
     elseif kind == "set" then
         local encoded

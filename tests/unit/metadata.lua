@@ -20,14 +20,14 @@ end
 
 function M.test_projection_copies_names_and_returns_full_fresh_schema()
     local names = { "id", "active" }
-    local selected = projection(names, "3.2a")
+    local selected = projection(names, "3.3a")
     names[1] = "width"
     selected.names, selected.format, selected.schema = { "width" }, "injected", {}
     t.assertEquals(metadata.format(selected), "LQ1\r$a;#{q:pane_id};#{q:pane_active};.")
     local schema = assert(metadata.schema(selected))
     t.assertEquals(schema.fields.id.type, "string")
     t.assertEquals(schema.fields.width.type, "number")
-    t.assertFalse(schema.fields.dead_signal.supported)
+    t.assertTrue(schema.fields.dead_signal.supported)
     schema.fields.id.type = "number"
     schema.fields.width = nil
     local fresh = assert(metadata.schema(selected))
@@ -139,19 +139,19 @@ function M.test_projection_rejects_invalid_unknown_and_unsupported_fields()
         end,
     })
     for _, names in ipairs(cases) do
-        local result, err = metadata.projection("pane", "3.2a", names)
+        local result, err = metadata.projection("pane", "3.3a", names)
         t.assertNil(result)
         t.assertEquals(err and err.code, "invalid_projection")
     end
     t.assertFalse(touched)
     for _, name in ipairs({ "no_such_field", "#{pane_id}", "id};#{version}" }) do
-        local result, err = metadata.projection("pane", "3.2a", { name })
+        local result, err = metadata.projection("pane", "3.3a", { name })
         t.assertNil(result)
         t.assertEquals(err and err.code, "unknown_field")
     end
-    local result, err = metadata.projection("pane", "3.2a", { "dead_signal" })
+    local result, err = metadata.projection("pane", "3.2a", { "id" })
     t.assertNil(result)
-    t.assertEquals(err and err.code, "unsupported_field")
+    t.assertEquals(err and err.code, "unsupported_version")
 end
 
 function M.test_decode_propagates_framing_and_limits_and_rejects_forged_projection()

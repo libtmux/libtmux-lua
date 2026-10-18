@@ -6,7 +6,7 @@ No existing session is required. The connection closes without stopping the
 daemon; the launcher checks that its bootstrap session still exists before
 cleanup. A failed daemon shutdown keeps the socket directory and reports it.
 
-Use Lua 5.5.1, LuaRocks, Git, tmux 3.2a or newer, a C compiler, and CMake on
+Use Lua 5.5.1, LuaRocks, Git, tmux 3.3a or newer, a C compiler, and CMake on
 Linux. From the checked-out repository root, install the library and its
 standalone runtime dependency into a local tree:
 
@@ -31,6 +31,7 @@ $ sh examples/api/run.sh examples/api/connect.lua
 | [query.lua](query.lua) | Select sessions by name | `matched: demo` |
 | [send_keys.lua](send_keys.lua) | Send text and press Enter | `lua input ready` |
 | [capture.lua](capture.lua) | Read a completed command's output | `lua capture ready` |
+| [unsupported_version.lua](unsupported_version.lua) | Handle a tmux below the minimum | `unsupported_version` and its message |
 
 The [manifest](manifest.json) attaches whole files to existing API symbols and
 records exact expected output. The native documentation export validates the

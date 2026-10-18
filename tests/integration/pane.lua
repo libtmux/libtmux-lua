@@ -63,7 +63,7 @@ local function work(runtime)
         captured = must(pane:capture():await())
         assert(captured.bytes == command({ "capture-pane", "-p", "-t", id }))
         local version = command({ "display-message", "-p", "#{version}" })
-        local minor = tonumber(version:match("^3%.(%d+)"))
+        local minor = tonumber(version:gsub("^next%-", ""):match("^3%.(%d+)"))
         local trimmed, trim_error = pane:capture({ trim_empty_cells = true }):await()
         if minor >= 4 then
             assert(trimmed, tostring(trim_error))

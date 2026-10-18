@@ -34,20 +34,20 @@ negative offsets refer to history, `start_line = "-"` selects all retained
 history and `end_line = "-"` selects the visible screen's end. Explicit ranges
 cannot be combined with `history_lines`. tmux clamps ranges to available data.
 
-| Option | Native behavior | Availability |
-| --- | --- | --- |
-| `join_lines` | Join wrapped rows and preserve trailing spaces (`-J`). | 3.2a+ |
-| `preserve_spaces` | Preserve trailing spaces (`-N`). | 3.2a+ |
-| `escape_sequences` | Include text/background attribute sequences (`-e`). | 3.2a+ |
-| `escape_nonprintable` | Request native octal escaping (`-C`). | 3.2a+ |
-| `alternate_screen` | Select tmux's alternate grid (`-a`); missing grid errors. | 3.2a+ |
-| `trim_empty_cells` | Omit trailing empty cells (`-T`). | 3.4+ |
-| `mode_screen` | Capture the active mode screen when available (`-M`). | 3.6+ |
-| `ignore_missing_alternate` | With `alternate_screen`, return one newline if the grid is missing (`-q`). | 3.2a+ |
-| `pending_escape_sequences` | Capture incomplete input held by tmux's parser (`-P`). | 3.2a+ |
-| `hyperlinks_only` | List native hyperlink URLs instead of cell text (`-H`). | 3.7+ |
-| `line_numbers` | Prefix rows with offsets relative to the visible screen (`-L`). | 3.7+ |
-| `line_flags` | Prefix rows with native grid flags (`-F`). | 3.7+ |
+| Option | Native behavior |
+| --- | --- |
+| `join_lines` | Join wrapped rows and preserve trailing spaces (`-J`). |
+| `preserve_spaces` | Preserve trailing spaces (`-N`). |
+| `escape_sequences` | Include text/background attribute sequences (`-e`). |
+| `escape_nonprintable` | Request native octal escaping (`-C`). |
+| `alternate_screen` | Select tmux's alternate grid (`-a`); missing grid errors. |
+| `trim_empty_cells` | Omit trailing empty cells (`-T`); tmux 3.4 or later. |
+| `mode_screen` | Capture the active mode screen when available (`-M`); tmux 3.6 or later. |
+| `ignore_missing_alternate` | With `alternate_screen`, return one newline if the grid is missing (`-q`). |
+| `pending_escape_sequences` | Capture incomplete input held by tmux's parser (`-P`). |
+| `hyperlinks_only` | List native hyperlink URLs instead of cell text (`-H`); tmux 3.7 or later. |
+| `line_numbers` | Prefix rows with offsets relative to the visible screen (`-L`); tmux 3.7 or later. |
+| `line_flags` | Prefix rows with native grid flags (`-F`); tmux 3.7 or later. |
 
 `alternate_screen` cannot be combined with history, explicit ranges or
 `mode_screen`. Unsupported version flags fail before dispatch.

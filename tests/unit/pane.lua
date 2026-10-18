@@ -193,7 +193,7 @@ end
 
 function M.test_capture_capabilities_fail_before_dispatch_and_ranges_are_explicit()
     fixture(function(state, pane)
-        state.version = "3.2a"
+        state.version = "3.3a"
         for _, options in ipairs({
             { mode_screen = true },
             { trim_empty_cells = true },
@@ -335,6 +335,37 @@ function M.test_clear_history_is_scoped_and_checks_hyperlink_support_before_disp
         t.assertNil(value)
         t.assertEquals(assert(err).effect, "not_sent")
         t.assertEquals(#state.calls, 2)
+    end)
+end
+
+function M.test_hyperlink_clearing_ranks_candidates_below_the_release()
+    fixture(function(state, pane)
+        for version, accepted in pairs({
+            ["3.3a"] = false,
+            ["next-3.4"] = false,
+            ["3.4-rc"] = false,
+            ["3.4-rc2"] = false,
+            ["3.4"] = true,
+            ["3.4a"] = true,
+            ["3.10"] = true,
+            ["next-3.9"] = true,
+        }) do
+            state.version = version
+            local value, err = pane:clear_history({ clear_hyperlinks = true }):await()
+            if accepted then
+                t.assertNotNil(value, version)
+            else
+                t.assertNil(value, version)
+                t.assertEquals(assert(err).code, "unsupported", version)
+                t.assertEquals(err.effect, "not_sent", version)
+            end
+        end
+        for _, version in ipairs({ "next-3.6", "3.6-rc" }) do
+            state.version = version
+            local value, err = pane:capture({ mode_screen = true }):await()
+            t.assertNil(value, version)
+            t.assertEquals(assert(err).code, "unsupported", version)
+        end
     end)
 end
 

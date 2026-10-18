@@ -18,8 +18,6 @@ ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "data/tmux-options.json"
 
 PINS = {
-    "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
-    "3.3": "87fe00e8b44901240fc22d7120c1b31e4331f6f5",
     "3.3a": "0b355ae8114511e1ff6359272b164f1cdf718e80",
     "3.4": "9ae69c3795ab5ef6b4d760f6398cd9281151f632",
     "3.5": "ac44566c9c7e3e94d23be6def4c7ae83472543f5",
@@ -31,9 +29,15 @@ PINS = {
     "3.7a": "0e418b62d259ce8da8970f75732cc6632ee4c3a0",
     "3.7b": "e802909de06012a4df6209d55e86487c56223163",
     "3.7c": "e476c1230b958df0cb12977517d24b3dc931375b",
+    "3.7d": "0d7b9e87f45d51e96c4f6f26450bcbb2411f11c8",
+    "3.8": "7f2a35ad3321f9ba57a1062ca73b1f3ff26aca53",
+    # A development build reports next-X.Y; its row describes this one commit.
+    "next-3.9": "b17d3da7cd84114e4c58630637f0b80428c0aa34",
 }
+# Releases without a tag of their own are checked against a branch instead.
+BRANCHES = {"3.7d": "release_3.7d", "next-3.9": "upstream/master"}
 SCOPE = {"SERVER": 1, "SESSION": 2, "WINDOW": 4, "PANE": 8}
-FLAGS = {"IS_ARRAY": 1, "IS_HOOK": 2, "IS_STYLE": 4}
+FLAGS = {"IS_ARRAY": 1, "IS_HOOK": 2, "IS_STYLE": 4, "IS_COLOUR": 8}
 TYPES = {"STRING", "NUMBER", "KEY", "COLOUR", "FLAG", "CHOICE", "COMMAND"}
 # Supported Linux/macOS ABIs have 32-bit int and 16-bit short. Preserve the
 # symbolic expression as well as this explicit target-ABI interpretation.
@@ -124,8 +128,16 @@ def extract(source, header):
     for key, value in {**SCOPE, **FLAGS}.items():
         match = re.search(r'^#define OPTIONS_TABLE_' + key + r' (0x[0-9a-f]+)$',
                           header, re.M)
+        if key == "IS_COLOUR" and not match:
+            continue
         assert match and int(match[1], 16) == value
 
+    # utmp exists only in builds with utempter; the catalog describes the
+    # unconditional table. Blank lines keep every later source anchor.
+    source = re.sub(r"^#ifdef HAVE_UTEMPTER\n.*?^#endif\n",
+                    lambda match: "\n" * match[0].count("\n"), source,
+                    flags=re.M | re.S)
+    assert not re.search(r"^#\s*(?:if|elif|else)", source, re.M)
     marker = "const struct options_table_entry options_table[] = {"
     start = source.index(marker) + len(marker)
     body = source[start:]
@@ -135,12 +147,15 @@ def extract(source, header):
     entries = parts[:-1]
     macros = {}
     joined = source.replace("\\\n", "")
-    for match in re.finditer(r'^#define (OPTIONS_TABLE_(?:PANE_|WINDOW_)?HOOK)'
+    for match in re.finditer(r'^#define (OPTIONS_TABLE_(?:PANE_|WINDOW_|AFTER_)?HOOK)'
                              r'\(([^)]*)\)[ \t]*(.*)$', joined, re.M):
         macros[match[1]] = ([item.strip() for item in match[2].split(",")],
                             tokens(match[3]))
-    assert set(macros) == {"OPTIONS_TABLE_HOOK", "OPTIONS_TABLE_PANE_HOOK",
-                           "OPTIONS_TABLE_WINDOW_HOOK"}
+    # Releases from 3.8 generate the after-* hooks through a nested macro.
+    assert set(macros) in ({"OPTIONS_TABLE_HOOK", "OPTIONS_TABLE_PANE_HOOK",
+                            "OPTIONS_TABLE_WINDOW_HOOK"},
+                           {"OPTIONS_TABLE_HOOK", "OPTIONS_TABLE_PANE_HOOK",
+                            "OPTIONS_TABLE_WINDOW_HOOK", "OPTIONS_TABLE_AFTER_HOOK"})
     choices = {}
     for match in re.finditer(r'static const char \*(options_table_\w+_list)'
                              r'\[\] = \{([\s\S]*?)\};', source):
@@ -151,10 +166,10 @@ def extract(source, header):
     result, anchors = {}, {}
     for entry in entries:
         macro_name = None
-        if entry[0] != "{":
-            macro_name = entry[0]
-            assert macro_name in macros and entry[1] == "(" and entry[-1] == ")"
-            names, body_tokens = macros[macro_name]
+        while entry[0] != "{":
+            macro_name = macro_name or entry[0]
+            assert entry[0] in macros and entry[1] == "(" and entry[-1] == ")"
+            names, body_tokens = macros[entry[0]]
             values = groups(entry[2:-1])
             assert len(names) == len(values)
             substitutions = dict(zip(names, values, strict=True))
@@ -169,6 +184,11 @@ def extract(source, header):
         assert native_type in TYPES
         scope = bits(data["scope"], SCOPE)
         flags = bits(data["flags"], FLAGS) if "flags" in data else 0
+        # From 3.8 a colour is a string option flagged IS_COLOUR.
+        colour_flag = bool(flags & FLAGS["IS_COLOUR"])
+        if colour_flag:
+            assert native_type == "STRING"
+            native_type = "COLOUR"
         item = {"name": name, "native_type": native_type.lower(),
                 "scope_bits": scope,
                 "scopes": [key.lower() for key, bit in SCOPE.items() if scope & bit],
@@ -192,7 +212,10 @@ def extract(source, header):
             item["unit"] = string(data["unit"])
         if item["hook"]:
             assert native_type == "COMMAND" and item["array"] and item["separator"] == ""
-        expression = (re.escape(macro_name) + r'\("' + re.escape(name) + '"') if macro_name else (r'\.name\s*=\s*"' + re.escape(name) + '"')
+        if macro_name == "OPTIONS_TABLE_AFTER_HOOK":
+            expression = re.escape(macro_name) + r'\("' + re.escape(name.removeprefix("after-")) + '"'
+        else:
+            expression = (re.escape(macro_name) + r'\("' + re.escape(name) + '"') if macro_name else (r'\.name\s*=\s*"' + re.escape(name) + '"')
         matches = list(re.finditer(expression, source))
         assert len(matches) == 1
         anchors[name] = source.count("\n", 0, matches[0].start()) + 1
@@ -202,13 +225,15 @@ def extract(source, header):
     # or hook invocation even if it was not represented by the main parser.
     inventory = re.findall(r'\.name\s*=\s*"([^"]+)"', source[start:])
     inventory += re.findall(r'OPTIONS_TABLE_(?:PANE_|WINDOW_)?HOOK\("([^"]+)"', source[start:])
+    inventory += ["after-" + name for name in
+                  re.findall(r'OPTIONS_TABLE_AFTER_HOOK\("([^"]+)"', source[start:])]
     assert len(inventory) == len(result) and set(inventory) == set(result)
     return result, anchors
 
 
 def load_catalog():
     data = json.loads(CATALOG.read_text())
-    if data["schema_version"] != 1 or data["support_floor"] != "3.2a":
+    if data["schema_version"] != 1 or data["support_floor"] != "3.3a":
         raise ValueError("unsupported option catalog schema or floor")
     if set(data["releases"]) != set(PINS):
         raise ValueError("option catalog must describe every pinned release")
@@ -233,7 +258,9 @@ def load_catalog():
         for flag in ("array", "hook", "style"):
             if type(item[flag]) is not bool:
                 raise ValueError("option flags must be booleans")
-        if type(item["flags_bits"]) is not int or item["flags_bits"] != sum(
+        # Releases from 3.8 mark a colour with IS_COLOUR on a string option.
+        colour_bit = FLAGS["IS_COLOUR"] if item["native_type"] == "colour" and item["flags_bits"] & FLAGS["IS_COLOUR"] else 0
+        if type(item["flags_bits"]) is not int or item["flags_bits"] != colour_bit + sum(
                 FLAGS["IS_" + flag.upper()] for flag in ("array", "hook", "style") if item[flag]):
             raise ValueError("option flags disagree with native bits")
         if item["hook"] and (item["native_type"] != "command" or not item["array"]):
@@ -300,10 +327,15 @@ def load_catalog():
 def verify_source(data, checkout):
     for version, release in data["releases"].items():
         revision = release["revision"]
-        actual = subprocess.check_output(
-            ["git", "-C", str(checkout), "rev-parse", f"refs/tags/{version}^{{commit}}"], text=True).strip()
-        if actual != revision:
-            raise ValueError(f"{version}: release tag does not match the pinned commit")
+        if version in BRANCHES:
+            if subprocess.run(["git", "-C", str(checkout), "merge-base", "--is-ancestor",
+                               revision, BRANCHES[version]]).returncode:
+                raise ValueError(f"{version}: pinned commit is not on {BRANCHES[version]}")
+        else:
+            actual = subprocess.check_output(
+                ["git", "-C", str(checkout), "rev-parse", f"refs/tags/{version}^{{commit}}"], text=True).strip()
+            if actual != revision:
+                raise ValueError(f"{version}: release tag does not match the pinned commit")
         texts = {}
         for path, source in release["sources"].items():
             raw = subprocess.check_output(["git", "-C", str(checkout), "show", f"{revision}:{path}"])
@@ -443,7 +475,7 @@ def describe(item):
 def generate_docs(data):
     lines = ["# tmux option and hook reference", "",
              "This generated catalog records every canonical built-in option and hook",
-             "in the 13 released tmux versions listed below. It describes native types",
+             "in the supported tmux releases listed below. It describes native types",
              "and storage scopes; it does not establish runtime or platform compatibility.",
              "Edit [the catalog](../data/tmux-options.json), then regenerate:", "",
              "```console", "$ python scripts/generate_options.py", "```", "",

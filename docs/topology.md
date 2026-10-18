@@ -113,7 +113,7 @@ oracle. Resizing affects every link to the Window.
 - `next = true`, `previous = true` or `restore = true`.
 
 Malformed custom-layout headers return `invalid_layout` before dispatch.
-This avoids faulty error handling in tmux 3.3/3.3a and short-header reads in
+This avoids faulty error handling in tmux 3.3a and short-header reads in
 older native parsers. Use `named` for standard layout names.
 
 Layout operations unzoom before native checksum and body validation. A rejected

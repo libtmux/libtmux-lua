@@ -5,7 +5,7 @@ local identity = require("libtmux._internal.identity")
 local available, control = pcall(require, "libtmux._internal.control")
 local M = {}
 
-local function fixture(body, options, public_observation)
+local function fixture(body, options, public_observation, refuse_fence)
     t.assertTrue(available, "observation control connection is missing")
     local driver, uv = drivers.new(), { pipes = {}, lines = {}, replies = {}, number = 1 }
     local rt = runtimes.new(driver, options)
@@ -84,9 +84,9 @@ local function fixture(body, options, public_observation)
         end
         return pipe
     end
-    function uv.spawn(_, _, exited)
+    function uv.spawn(_, spec, exited)
         uv.spawns = (uv.spawns or 0) + 1
-        uv.exit = exited
+        uv.exit, uv.spawn_args = exited, spec.args
         local child = {}
         function child.close(_, done)
             driver.defer(done)
@@ -95,7 +95,25 @@ local function fixture(body, options, public_observation)
             return true
         end
         driver.defer(function()
-            uv.pipes[2].read(nil, "%begin 1 1 0\n%end 1 1 0\n%session-changed $0 fixture\n")
+            if refuse_fence then
+                for _, word in ipairs(uv.spawn_args) do
+                    if word:match("^libtmux%-version%-%x+%-$") then
+                        uv.pipes[2].read(
+                            nil,
+                            "%begin 1 1 0\nunknown command: " .. word .. "\n%error 1 1 0\n"
+                        )
+                    end
+                end
+                uv.pipes[2].read(nil, nil)
+                uv.pipes[3].read(nil, nil)
+                uv.exit(1, 0)
+                return
+            end
+            -- The fence answers with its own empty block, then attach-session with another.
+            uv.pipes[2].read(
+                nil,
+                "%begin 1 1 0\n%end 1 1 0\n%begin 1 1 0\n%end 1 1 0\n%session-changed $0 fixture\n"
+            )
         end)
         return child, 123
     end
@@ -117,6 +135,8 @@ local function fixture(body, options, public_observation)
                 generation = bound.token,
             }))
             f.observer = assert(observation.open(state, session):await())
+        elseif refuse_fence then
+            f.connection, f.open_error = control.open(runtime, bound, { session_id = "$0" }):await()
         else
             f.connection = assert(control.open(runtime, bound, { session_id = "$0" }):await())
         end
@@ -124,6 +144,36 @@ local function fixture(body, options, public_observation)
     end)
     driver:drain()
     return f
+end
+
+function M.test_attachment_is_fenced_on_the_checked_daemon_and_runs_no_display_message()
+    local f = fixture(function() end)
+    local args = f.uv.spawn_args
+    local at = 1
+    while args[at] ~= "-C" do
+        at = at + 1
+    end
+    t.assertEquals(args[at + 1], "if-shell")
+    t.assertEquals(args[at + 2], "-F")
+    t.assertEquals(
+        args[at + 3],
+        "#{&&:#{==:#{pid},123},#{&&:#{==:#{start_time},100},#{==:#{version},3.7c}}}"
+    )
+    t.assertEquals(args[at + 4], "")
+    t.assertNotNil(args[at + 5]:match("^libtmux%-version%-%x+%-$"))
+    t.assertEquals(args[at + 6], ";")
+    t.assertEquals(args[at + 7], "attach-session")
+    for _, line in ipairs(f.uv.lines) do
+        t.assertNil(line:find("display%-message"))
+    end
+end
+
+function M.test_refused_fence_reports_a_replaced_daemon_without_attaching()
+    local f = fixture(function() end, nil, false, true)
+    t.assertNil(f.connection)
+    t.assertEquals(assert(f.open_error).code, "stale_generation")
+    t.assertEquals(f.open_error.effect, "not_sent")
+    t.assertEquals(#f.uv.lines, 0)
 end
 
 function M.test_readiness_covers_requested_pane_and_bytes_arrive_without_process_slots()

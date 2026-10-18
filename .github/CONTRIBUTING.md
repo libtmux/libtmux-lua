@@ -201,15 +201,25 @@ dependency bootstrap:
 - Unit suites on every accepted PUC Lua version and standalone LuaJIT.
 - Full outer checks at Lua/tmux/Neovim floor and current versions, including
   format, lint, generated files, docs, installed rocks and LuaLS completion.
-- The full integration suite on every accepted tmux release, using current
-  Lua and Neovim.
+- The full integration suite on every accepted tmux release from 3.3a, using
+  current Lua and Neovim. This includes 3.7d, 3.8 and the pinned `next-3.9`
+  development build, which build from a branch commit when they have no tag.
+- A refusal lane for each release below the minimum (3.0a, 3.1c, 3.2a and the
+  unpatched 3.3). It runs only the version check tests, which assert the
+  refusal and that no command reached the daemon. The 3.0a and 3.1c lanes
+  use that release as the client, then repeat the check with a 3.3a client
+  in front of the old daemon (`TMUX_CLIENT_BIN`), which covers the 3.1 usage
+  error and the 3.0 "too old for client" answer. That run must refuse in
+  under half a second (`LIBTMUX_REFUSAL_MAX_MS`), because a pre-3.2 daemon
+  holds the client's output open and the probe timeout is 750 ms.
 
 Jobs retain tool identities, gate output and build diagnostics. Actions use
 pinned commits and read-only repository permissions. Setup failures fail the
 job; gates do not install missing dependencies. The job deadline includes
 bootstrap and does not replace the test-loop budgets below.
 
-CI builds tmux at the commit recorded in the option catalog, checks the
+CI builds tmux at the commit recorded in the option catalog (or, for a refused
+release, the pinned tag), checks the
 reported version and records the binary hash. To reproduce that setup:
 
 ```console

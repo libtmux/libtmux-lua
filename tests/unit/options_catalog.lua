@@ -10,8 +10,6 @@ end
 function tests.test_exact_release_maps_refuse_unknown_versions_and_abbreviations()
     local options = catalog()
     local counts = {
-        ["3.2a"] = 165,
-        ["3.3"] = 181,
         ["3.3a"] = 181,
         ["3.4"] = 186,
         ["3.5"] = 190,
@@ -23,6 +21,9 @@ function tests.test_exact_release_maps_refuse_unknown_versions_and_abbreviations
         ["3.7a"] = 221,
         ["3.7b"] = 221,
         ["3.7c"] = 221,
+        ["3.7d"] = 221,
+        ["3.8"] = 272,
+        ["next-3.9"] = 270,
     }
     for version, count in pairs(counts) do
         local names = assert(options.names(version))
@@ -36,10 +37,12 @@ function tests.test_exact_release_maps_refuse_unknown_versions_and_abbreviations
     end
     ---@type any[]
     local invalid_versions = {
+        "3.2a",
+        "3.3",
         "3.2",
         "3.2b",
-        "3.7d",
-        "3.8",
+        "3.9",
+        "3.8-rc2",
         "next-3.8",
         "3.7-rc",
         "tmux 3.7c",
@@ -70,12 +73,9 @@ end
 
 function tests.test_scope_migrations_preserve_exact_native_storage()
     local options = catalog()
-    test.assertEquals(assert(options.lookup("3.2a", "window-linked")).scopes, { "window" })
-    test.assertEquals(assert(options.lookup("3.3", "window-linked")).scopes, { "session" })
-    test.assertEquals(assert(options.lookup("3.2a", "window-unlinked")).scope_bits, 4)
+    test.assertEquals(assert(options.lookup("3.3a", "window-linked")).scopes, { "session" })
     test.assertEquals(assert(options.lookup("3.3a", "window-unlinked")).scope_bits, 2)
-    test.assertEquals(assert(options.lookup("3.2a", "pane-border-format")).scope_bits, 4)
-    test.assertEquals(assert(options.lookup("3.3", "pane-border-format")).scope_bits, 12)
+    test.assertEquals(assert(options.lookup("3.3a", "pane-border-format")).scope_bits, 12)
     test.assertEquals(assert(options.lookup("3.6b", "pane-border-style")).scopes, { "window" })
     test.assertEquals(
         assert(options.lookup("3.7", "pane-border-style")).scopes,
@@ -93,7 +93,7 @@ function tests.test_types_choices_and_bounds_are_selected_per_release()
         assert(options.lookup("3.4", "allow-passthrough")).choices,
         { "off", "on", "all" }
     )
-    test.assertEquals(assert(options.lookup("3.3", "destroy-unattached")).native_type, "flag")
+    test.assertEquals(assert(options.lookup("3.3a", "destroy-unattached")).native_type, "flag")
     test.assertEquals(
         assert(options.lookup("3.4", "destroy-unattached")).choices,
         { "off", "on", "keep-last", "keep-group" }
@@ -102,12 +102,12 @@ function tests.test_types_choices_and_bounds_are_selected_per_release()
     test.assertEquals(assert(options.lookup("3.6", "repeat-time")).maximum, 2000000)
     test.assertEquals(assert(options.lookup("3.7c", "input-buffer-size")).minimum, 1048576)
     test.assertEquals(assert(options.lookup("3.7c", "input-buffer-size")).maximum, 4294967295)
-    test.assertEquals(assert(options.lookup("3.2a", "clock-mode-style")).choices, { "12", "24" })
+    test.assertEquals(assert(options.lookup("3.3a", "clock-mode-style")).choices, { "12", "24" })
     test.assertEquals(
         assert(options.lookup("3.6", "clock-mode-style")).choices,
         { "12", "24", "12-with-seconds", "24-with-seconds" }
     )
-    local value, err = options.lookup("3.2a", "pane-colours")
+    local value, err = options.lookup("3.3a", "pane-scrollbars")
     test.assertNil(value)
     test.assertEquals(assert(err).code, "unknown_option")
 end

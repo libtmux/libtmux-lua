@@ -104,8 +104,6 @@ end
 
 function M.test_paste_modes_are_literal_and_gated_by_exact_daemon_release()
     for _, version in ipairs({
-        "3.2a",
-        "3.3",
         "3.3a",
         "3.4",
         "3.5",
@@ -117,6 +115,9 @@ function M.test_paste_modes_are_literal_and_gated_by_exact_daemon_release()
         "3.7a",
         "3.7b",
         "3.7c",
+        "3.7d",
+        "3.8",
+        "next-3.9",
     }) do
         fixture(function(state, run)
             t.assertTrue(run("paste", "A"):await())
@@ -127,7 +128,7 @@ function M.test_paste_modes_are_literal_and_gated_by_exact_daemon_release()
             options.bytes, options.delete_after = "native", false
             t.assertTrue(pending:await())
             local argv = { "paste-buffer", "-b", "literal#{pid};", "-t", "%3" }
-            if version:match("^3%.7") then
+            if version:match("^3%.[78]") or version == "next-3.9" then
                 argv[#argv + 1] = "-S"
             end
             argv[#argv + 1], argv[#argv + 2], argv[#argv + 3] = "-r", "-p", "-d"
@@ -139,11 +140,11 @@ function M.test_paste_modes_are_literal_and_gated_by_exact_daemon_release()
     fixture(function(state, run)
         rejected(run("paste", "A", nil, { bytes = "raw" }), "unsupported_version")
         t.assertEquals(#state.calls, 0)
-    end, "pane", "3.8")
+    end, "pane", "3.9")
 end
 
 function M.test_delete_refuses_releases_that_fall_back_to_another_buffer()
-    for _, version in ipairs({ "3.2a", "3.3", "3.3a" }) do
+    for _, version in ipairs({ "3.3a" }) do
         fixture(function(state, run)
             rejected(run("delete", "missing"), "unsupported")
             t.assertEquals(#state.calls, 0)
