@@ -57,16 +57,18 @@ and CMake. Neovim provides its own libuv binding.
 $ luarocks --local install luv 1.52.1-0
 ```
 
-Core and local queries require only Lua. Importing a module does not start
-tmux or an event loop. CI runs unit tests on Lua 5.1–5.5 and LuaJIT, plus live
-tests on tmux 3.3a or newer. The library refuses a daemon older than 3.3a
-before any command runs. See the [compatibility
+Core and [local queries][ref-query] require only Lua. Importing a module does
+not start tmux or an event loop. CI runs unit tests on Lua 5.1–5.5 and LuaJIT,
+plus live tests on tmux 3.3a or newer. The library refuses a daemon older than
+3.3a before any command runs. See the [compatibility
 matrix](docs/compatibility.md) for exact versions and remaining platform
 coverage.
 
 ## Read a server
 
-Connect to an existing server by its explicit socket path. This is the full
+Connect to an existing server by its explicit socket path with
+[`Runtime:connect`][ref-runtime-connect], then read it with
+[`Server:snapshot`][ref-server-snapshot]. This is the full
 [snapshot example](examples/snapshot.lua), which prints pane and window IDs:
 
 <!-- example: examples/snapshot.lua -->
@@ -97,9 +99,10 @@ must(adapter.run(function(runtime)
 end))
 ```
 
-Live operations return Requests; `:await()` yields inside the runtime body and
-returns `value, err`. The `must` helper propagates errors. Closing the connection
-leaves the tmux server and its sessions running.
+Live operations return [Requests][ref-request]; [`:await()`][ref-request-await]
+yields inside the [runtime][ref-runtime] body and returns `value, err`. The
+`must` helper propagates errors. Closing the connection leaves the tmux server
+and its sessions running.
 
 Set `TMUX_BIN` and `TMUX_SOCKET` to absolute paths for your server, then run:
 
@@ -135,8 +138,9 @@ SH
 
 ## Query captured state
 
-After capturing `snapshot` in the example above, filter its panes with
-structured criteria or an ordinary Lua function:
+After capturing [`snapshot`][ref-snapshot] in the example above, filter its
+panes with structured criteria through [`where`][ref-selection-where] or an
+ordinary Lua function through [`filter`][ref-selection-filter]:
 
 ```lua
 local editors = snapshot.panes:where({
@@ -152,9 +156,9 @@ for _, pane in ipairs(editors) do
 end
 ```
 
-Selections are dense, one-based Lua tables. Both queries read the snapshot
-without calling tmux. Capture again to refresh it; a snapshot spans multiple
-tmux commands and is not an atomic view.
+[Selections][ref-selection] are dense, one-based Lua tables. Both queries read
+the snapshot without calling tmux. Capture again to refresh it; a snapshot
+spans multiple tmux commands and is not an atomic view.
 
 See [criteria, relationships and live queries](docs/query.md), the
 [field reference](docs/fields.md), or run the
@@ -166,8 +170,10 @@ $ lua examples/native_query.lua
 
 ## Create sessions and panes
 
-Before closing `server` in that runtime body, create a session and split a
-window. These calls use the same `must` helper:
+Before closing [`server`][ref-server] in that runtime body, create a session
+with [`Server:new_session`][ref-server-new-session], add a window with
+[`Session:new_window`][ref-session-new-window] and split its pane with
+[`Pane:split`][ref-pane-split]. These calls use the same `must` helper:
 
 ```lua
 local work = must(server:new_session({ name = "work" }):await())
@@ -178,11 +184,13 @@ must(split.pane:send_text("printf '%s\\n' hello"):await())
 must(split.pane:send_keys({ "Enter" }):await())
 ```
 
-Creation returns a table with `session`, `window`, `pane` and `window_link`
-handles. These operations leave the new sessions and panes running. Sending
-keys confirms that tmux accepted input; it does not wait for a shell command
-to finish. See [creation](docs/creation.md) and [pane operations](docs/panes.md)
-for literal argv, capture, resize and cleanup.
+Creation returns a table with [`session`][ref-session], [`window`][ref-window],
+[`pane`][ref-pane] and [`window_link`][ref-windowlink] handles. These
+operations leave the new sessions and panes running. Sending keys with
+[`Pane:send_keys`][ref-pane-send-keys] confirms that tmux accepted input; it
+does not wait for a shell command to finish. See [creation](docs/creation.md)
+and [pane operations](docs/panes.md) for literal argv, capture, resize and
+cleanup.
 
 ## Neovim
 
@@ -193,7 +201,8 @@ $ nvim --cmd 'set runtimepath+=.'
 ```
 
 With `TMUX_SOCKET` set to an existing server's absolute socket path, run this
-Lua code. `start` uses the editor's loop and reports the result in a callback:
+Lua code. [`start`][ref-nvim-start] uses the editor's loop and reports the
+result in a callback:
 
 ```lua
 local adapter = require("libtmux.runtime.nvim")
@@ -349,3 +358,24 @@ Please use the following BibTeX template to cite libtmux-lua in scientific disco
    title = {libtmux-lua: Lua wrapper for tmux}
 }
 ```
+
+[ref-query]: https://libtmux.org/en/lua/latest/reference/libtmux-query/
+[ref-runtime-connect]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-connect/
+[ref-server-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-server-snapshot/
+[ref-request]: https://libtmux.org/en/lua/latest/reference/libtmux-request/
+[ref-request-await]: https://libtmux.org/en/lua/latest/reference/libtmux-request-await/
+[ref-runtime]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime/
+[ref-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-snapshot/
+[ref-selection-where]: https://libtmux.org/en/lua/latest/reference/libtmux-selection-where/
+[ref-selection-filter]: https://libtmux.org/en/lua/latest/reference/libtmux-selection-filter/
+[ref-selection]: https://libtmux.org/en/lua/latest/reference/libtmux-selection/
+[ref-server]: https://libtmux.org/en/lua/latest/reference/libtmux-server/
+[ref-server-new-session]: https://libtmux.org/en/lua/latest/reference/libtmux-server-new_session/
+[ref-session-new-window]: https://libtmux.org/en/lua/latest/reference/libtmux-session-new_window/
+[ref-pane-split]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-split/
+[ref-session]: https://libtmux.org/en/lua/latest/reference/libtmux-session/
+[ref-window]: https://libtmux.org/en/lua/latest/reference/libtmux-window/
+[ref-pane]: https://libtmux.org/en/lua/latest/reference/libtmux-pane/
+[ref-windowlink]: https://libtmux.org/en/lua/latest/reference/libtmux-windowlink/
+[ref-pane-send-keys]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-send_keys/
+[ref-nvim-start]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim-start/

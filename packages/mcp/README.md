@@ -11,8 +11,8 @@ unpublished and serves nothing yet.
 
 ## Build it from a checkout
 
-The rockspec depends on `libtmux`, `luv` and `lunajson`. Building `luv`
-needs a C compiler and CMake. From the repository root, install the core rock
+The rockspec depends on [`libtmux`][ref-libtmux], `luv` and `lunajson`.
+Building `luv` needs a C compiler and CMake. From the repository root, install the core rock
 first:
 
 ```console
@@ -41,3 +41,5 @@ scm
 The package check installs this rock into an empty tree and imports it
 without side effects. See [validation](../../.github/CONTRIBUTING.md#validation)
 for how to run it.
+
+[ref-libtmux]: https://libtmux.org/en/lua/latest/reference/

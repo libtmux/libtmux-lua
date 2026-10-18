@@ -1,7 +1,7 @@
 # libtmux for Lua: the core package
 
-The `libtmux` rock holds the Lua API for tmux sessions, windows and panes. It
-is alpha software, published on
+The `libtmux` rock holds the Lua API for tmux [sessions, windows and
+panes][ref-concepts]. It is alpha software, published on
 [LuaRocks](https://luarocks.org/modules/tony/libtmux). The
 [root README](../../README.md#install) covers installation and a first
 program, and the [API reference](https://libtmux.org/en/lua/latest/reference/)
@@ -14,14 +14,15 @@ the rock's `_VERSION`; the entry points are these modules.
 
 ### [`libtmux.runtime.luv`](https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/runtime/luv.lua): the standalone loop
 
-`run(body, limits)` drives a luv loop for a standalone Lua process and returns
-`value, err` after the work it owns has retired. Reference:
+[`run(body, limits)`][ref-luv-run] drives a luv loop for a standalone Lua
+process and returns `value, err` after the work it owns has retired. Reference:
 [`libtmux.runtime.luv`](https://libtmux.org/en/lua/latest/reference/libtmux-runtime-luv/)
 and [`libtmux.Server`](https://libtmux.org/en/lua/latest/reference/libtmux-server/).
 
 This is the complete [`new_session.lua`](../../examples/api/new_session.lua)
-program. It connects to a running tmux server, creates a session and reads it
-back:
+program. It connects with [`Runtime:connect`][ref-runtime-connect], creates a
+session with [`Server:new_session`][ref-server-new-session] and reads it back
+with [`Session:snapshot`][ref-session-snapshot]:
 
 <!-- example: examples/api/new_session.lua -->
 
@@ -68,8 +69,9 @@ session: demo
 
 ### [`libtmux.runtime.nvim`](https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/runtime/nvim.lua): Neovim's loop
 
-`start(body, on_done, limits)` returns at once, borrows the editor's loop, and
-calls `on_done(value, err)` after the work it owns has retired. Handles it did
+[`start(body, on_done, limits)`][ref-nvim-start] returns at once, borrows the
+editor's loop, and calls `on_done(value, err)` after the work it owns has
+retired. Handles it did
 not create stay open. Reference:
 [`libtmux.runtime.nvim`](https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim/).
 The root README shows [a snapshot from Neovim](../../README.md#neovim), and CI
@@ -77,8 +79,10 @@ runs the integration suite inside Neovim 0.10.0 and 0.12.5.
 
 ### [`libtmux.query`](https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/query.lua): tables without tmux
 
-Selects records from a list of Lua tables by criteria or by a function. It
-needs neither tmux nor luv. Reference:
+[`select`][ref-query-select] wraps a list of Lua tables in a
+[`Selection`][ref-selection] that [`where`][ref-selection-where] narrows by
+criteria and [`filter`][ref-selection-filter] narrows by a function. It needs
+neither tmux nor luv. Reference:
 [`libtmux.query`](https://libtmux.org/en/lua/latest/reference/libtmux-query/).
 
 This is the complete [`native_query.lua`](../../examples/native_query.lua)
@@ -135,3 +139,14 @@ builder yet.
 
 A development package for the planned MCP server. It has no server, tools or
 prompts yet.
+
+[ref-concepts]: https://libtmux.org/en/lua/latest/concepts/server-session-window-pane/
+[ref-luv-run]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-luv-run/
+[ref-runtime-connect]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-connect/
+[ref-server-new-session]: https://libtmux.org/en/lua/latest/reference/libtmux-server-new_session/
+[ref-session-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-session-snapshot/
+[ref-nvim-start]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim-start/
+[ref-query-select]: https://libtmux.org/en/lua/latest/reference/libtmux-query-select/
+[ref-selection]: https://libtmux.org/en/lua/latest/reference/libtmux-selection/
+[ref-selection-where]: https://libtmux.org/en/lua/latest/reference/libtmux-selection-where/
+[ref-selection-filter]: https://libtmux.org/en/lua/latest/reference/libtmux-selection-filter/

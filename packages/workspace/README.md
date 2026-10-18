@@ -13,8 +13,8 @@ unpublished and builds nothing yet.
 
 ## Build it from a checkout
 
-The rockspec depends on `libtmux`, `luv`, `lunajson` and `lyaml`. Building
-`luv` needs a C compiler and CMake. `lyaml` builds against LibYAML, so install
+The rockspec depends on [`libtmux`][ref-libtmux], `luv`, `lunajson` and
+`lyaml`. Building `luv` needs a C compiler and CMake. `lyaml` builds against LibYAML, so install
 its development files first, or add `YAML_DIR=<prefix>` to the workspace
 command below. From the repository root, install the core rock:
 
@@ -44,3 +44,5 @@ scm
 The package check installs this rock into an empty tree and imports it
 without side effects. See [validation](../../.github/CONTRIBUTING.md#validation)
 for how to run it.
+
+[ref-libtmux]: https://libtmux.org/en/lua/latest/reference/
