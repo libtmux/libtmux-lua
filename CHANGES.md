@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Docs: list the packages in the README under linked headings, each with
+  reference links and a tested example, and add READMEs for the core package
+  and the unpublished MCP and workspace scaffolds.
 - Docs: check that README Lua blocks match the example programs they quote,
   and that README commands and source links name files that exist.
 

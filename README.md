@@ -22,7 +22,7 @@ workspace packages are unpublished scaffolds.
 
 [Install](#install) · [Read a server](#read-a-server) ·
 [Query](#query-captured-state) · [Create panes](#create-sessions-and-panes) ·
-[Neovim](#neovim) · [Guides](#guides) ·
+[Neovim](#neovim) · [Packages](#packages) · [Guides](#guides) ·
 [CI](https://github.com/libtmux/libtmux-lua/actions/workflows/ci.yml) ·
 [MIT license](LICENSE)
 
@@ -68,6 +68,8 @@ coverage.
 
 Connect to an existing server by its explicit socket path. This is the full
 [snapshot example](examples/snapshot.lua), which prints pane and window IDs:
+
+<!-- example: examples/snapshot.lua -->
 
 ```lua
 local adapter = require("libtmux.runtime.luv")
@@ -216,6 +218,108 @@ end)
 
 The runtime closes its connections when the body finishes and leaves the tmux
 server running. See [runtime ownership and cancellation](docs/runtime.md).
+
+## Packages
+
+Each heading links to its directory on GitHub, which LuaRocks does not show.
+Only `libtmux` is published. `libtmux-workspace` and `libtmux-mcp` are
+unpublished scaffolds with no public API.
+
+### [`libtmux`](https://github.com/libtmux/libtmux-lua/tree/master/lua/libtmux): the library
+
+Create sessions, windows and panes, capture pane output, query server state
+and watch pane output, on luv or Neovim's event loop. Reference:
+[LuaRocks](https://luarocks.org/modules/tony/libtmux) and
+[libtmux.org](https://libtmux.org/en/lua/latest/reference/), including
+[`libtmux.Server`](https://libtmux.org/en/lua/latest/reference/libtmux-server/),
+[`libtmux.runtime.luv`](https://libtmux.org/en/lua/latest/reference/libtmux-runtime-luv/),
+[`libtmux.runtime.nvim`](https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim/)
+and [`libtmux.query`](https://libtmux.org/en/lua/latest/reference/libtmux-query/).
+
+`libtmux.query` selects records from a list of Lua tables by criteria or by
+a function. It needs neither tmux nor luv. This is the complete
+[`native_query.lua`](examples/native_query.lua):
+
+<!-- example: examples/native_query.lua -->
+
+```lua
+local query = require("libtmux.query")
+
+local schema = {
+    fields = {
+        id = { type = "string" },
+        active = { type = "boolean" },
+        current_command = { type = "string" },
+    },
+}
+local rows = {
+    { id = "%1", active = true, current_command = "nvim" },
+    { id = "%2", active = false, current_command = "sh" },
+    { id = "%3", active = false, current_command = "vim" },
+}
+local panes = query.select(rows, schema)
+local editors = panes:where({ current_command = { one_of = { "nvim", "vim" } } })
+assert(#editors == 2 and editors[1] == rows[1] and editors[2] == rows[3])
+
+local inactive = panes:filter(function(pane)
+    return not pane.active
+end)
+assert(#inactive == 2 and inactive[1].id == "%2")
+for _, pane in ipairs(editors) do
+    print(pane.id, pane.current_command)
+end
+```
+
+With the rock installed, run it from the checkout. It prints the two panes
+whose command is `nvim` or `vim`:
+
+```console
+$ lua examples/native_query.lua
+```
+
+The [core README](lua/libtmux/README.md) covers each module, including a
+complete program that creates a session on a running tmux server.
+
+### [`libtmux-workspace`](https://github.com/libtmux/libtmux-lua/tree/master/packages/workspace): workspace scaffold
+
+A development package for planned workspace operations. It has no loader,
+command or builder API yet, and its module returns only a version.
+[libtmux.org](https://libtmux.org/en/lua/latest/workspace/) records that it
+is unpublished. After installing `libtmux`, build it from the checkout:
+
+```console
+$ luarocks --local make rockspecs/libtmux-workspace-scm-1.rockspec
+```
+
+With the local rocks tree on Lua's module paths, print its version:
+
+```console
+$ lua -e 'print(require("libtmux_workspace")._VERSION)'
+scm
+```
+
+The [package README](packages/workspace/README.md) lists the prerequisites,
+including LibYAML for `lyaml`.
+
+### [`libtmux-mcp`](https://github.com/libtmux/libtmux-lua/tree/master/packages/mcp): MCP scaffold
+
+A development package for the planned MCP server. It has no server,
+executable, tools or prompts yet, so there is nothing to register with an MCP
+client. [libtmux.org](https://libtmux.org/en/lua/latest/mcp/) records that it
+is unpublished. After installing `libtmux`, build it from the checkout:
+
+```console
+$ luarocks --local make rockspecs/libtmux-mcp-scm-1.rockspec
+```
+
+With the local rocks tree on Lua's module paths, print its version:
+
+```console
+$ lua -e 'print(require("libtmux_mcp")._VERSION)'
+scm
+```
+
+The [package README](packages/mcp/README.md) has the full build steps.
 
 ## Guides
 
