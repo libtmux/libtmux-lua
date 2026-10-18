@@ -10,5 +10,8 @@ The source libtmux and tmuxp artwork belongs to the project owner. The MCP
 symbol comes from the [upstream logo](https://github.com/modelcontextprotocol/modelcontextprotocol/blob/088176704a4e8f20e7f1d237de1de8484aa412fd/docs/logo/light.svg).
 
 Package-specific artwork sits beside its README where the package format
-supports it. `.github/social-preview.png` is the cog sharing card, ready to
-upload under the repository's **Settings → Social preview**.
+supports it: `lua/libtmux/assets`, `packages/mcp/assets` and
+`packages/workspace/assets`. The README check requires each README to open
+with the centered logo block and rejects art that belongs to another product.
+`.github/social-preview.png` is the cog sharing card, ready to upload under the
+repository's **Settings → Social preview**.

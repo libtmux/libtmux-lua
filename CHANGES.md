@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Docs: list the packages in the README under linked headings, each with
+  reference links and a tested example, and add READMEs for the core package
+  and the unpublished MCP and workspace scaffolds.
+- Docs: check that README Lua blocks match the example programs they quote,
+  that README commands and source links name files that exist, and that each
+  README opens with the centered logo of its own package.
+
 ## 0.1.0alpha2-1 (2026-10-18)
 
 - Core: require tmux 3.3a, checked against the running tmux server rather

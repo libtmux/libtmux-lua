@@ -12,8 +12,10 @@ import time
 from urllib.parse import unquote
 
 if __package__:
+    from .readme_examples import check_readmes
     from .runtime_config import clean_environment, executable_path, identify
 else:
+    from readme_examples import check_readmes
     from runtime_config import clean_environment, executable_path, identify
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -56,8 +58,8 @@ def lua_environment(lua):
 
 
 def docs():
-    files = [ROOT / "AGENTS.md", *ROOT.glob("README*.md"),
-             *ROOT.glob(".github/*.md"), *ROOT.glob("docs/**/*.md")]
+    files = [ROOT / "AGENTS.md", *ROOT.glob("README*.md"), *ROOT.glob("lua/*/README.md"),
+             *ROOT.glob("packages/*/README.md"), *ROOT.glob(".github/*.md"), *ROOT.glob("docs/**/*.md")]
     files = [path for path in files if "_build" not in path.parts]
     anchors = {}
 
@@ -88,6 +90,10 @@ def docs():
                 fragment = unquote(target.split("#", 1)[1])
                 if fragment and fragment not in markdown_anchors(destination):
                     raise SystemExit(f"Broken anchor in {path.relative_to(ROOT)}: {target}")
+    try:
+        check_readmes(ROOT)
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
     if not (ROOT / "CLAUDE.md").is_symlink() or os.readlink(ROOT / "CLAUDE.md") != "AGENTS.md":
         raise SystemExit("CLAUDE.md must remain a relative symlink to AGENTS.md")
     run(["git", "diff", "--check"], timeout=5)
