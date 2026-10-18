@@ -113,6 +113,11 @@ examples and whitespace checks:
 $ mise exec -- python scripts/check.py mid
 ```
 
+Each README must open with Quick start and close with What it leaves out and
+Support and status. Keep each paragraph and list item to about three lines.
+Mark every Lua block with the example program it quotes: `<!-- example: path -->`
+for a whole file, or `<!-- excerpt: path -->` for consecutive lines of it.
+
 Run the current outer gates: mid checks, owned-tmux integration, independent
 artifact builds/imports, LuaLS diagnostics and actual editor completion:
 
