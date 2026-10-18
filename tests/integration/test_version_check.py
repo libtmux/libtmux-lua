@@ -50,7 +50,10 @@ def refusal_wording(version):
     at_32 = ranks(version, "3.2")[0]
     if at_32 is None:
         return "no release"
-    return "older than 3.2" if not at_32 else "older than 3.3a"
+    if at_32:
+        return "older than 3.3a"
+    # Before 3.2 the client that is too old rejects -N; a newer client reports the server.
+    return f"tmux {'server' if os.environ.get('TMUX_CLIENT_BIN') else 'client'} is older than 3.2"
 
 
 class VersionCheckTests(unittest.TestCase):
@@ -95,6 +98,10 @@ class VersionCheckTests(unittest.TestCase):
         env = dict(fixture.env, TMUX_BIN=shutil.which(fixture.binary),
                    TMUX_SOCKET=str(fixture.socket), LIBTMUX_VERSION_CHECK_CASE=mode,
                    LIBTMUX_EXPECT_REFUSAL=refusal_wording(version), **extra)
+        # A newer client in front of an older daemon: the lane builds both.
+        for name in ("TMUX_CLIENT_BIN", "LIBTMUX_REFUSAL_MAX_MS"):
+            if os.environ.get(name):
+                env[name] = os.environ[name]
         if host == "luv":
             command = [env.get("LIBTMUX_TEST_LUA") or shutil.which("lua"),
                        "tests/integration/version_check.lua"]
@@ -141,7 +148,7 @@ class VersionCheckTests(unittest.TestCase):
         self.assertIsNone(ranks("3.4-master", "3.3a")[0])
         self.assertIsNone(ranks("3.4-dev", "3.3a")[0])
         self.assertEqual(refusal_wording("3.4-dev"), "no release")
-        self.assertEqual(refusal_wording("3.1c"), "older than 3.2")
+        self.assertIn("is older than 3.2", refusal_wording("3.1c"))
         self.assertEqual(refusal_wording("3.3"), "older than 3.3a")
 
     def test_control_fence_refuses_another_daemon_and_attaches_nothing(self):

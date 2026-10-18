@@ -82,9 +82,16 @@ local function work(runtime)
         assert(bound:close():await())
         return mode .. " passed"
     end
+    local uv = runtime._driver.uv
+    local started = uv.hrtime()
     local server, err = runtime:connect(options):await()
+    local elapsed_ms = (uv.hrtime() - started) / 1e6
     if mode == "refuse" then
         assert(server == nil, "a daemon below the floor was accepted")
+        -- A pre-3.2 daemon holds the client's stdout open; the refusal must
+        -- not wait for the probe timeout to learn that.
+        local limit = tonumber(os.getenv("LIBTMUX_REFUSAL_MAX_MS"))
+        assert(not limit or elapsed_ms < limit, string.format("refusal took %.0f ms", elapsed_ms))
         assert(err.code == "unsupported_version" and err.effect == "not_sent", tostring(err))
         assert(err.message:find("restart the server", 1, true), "the refusal names no remedy")
         local phrase = assert(os.getenv("LIBTMUX_EXPECT_REFUSAL"))
