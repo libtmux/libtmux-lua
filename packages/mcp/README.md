@@ -18,15 +18,22 @@ unpublished and serves nothing yet.
 
 - It has no server, executable, tools, toolsets or prompts, so there is
   nothing to register with an MCP client and no tool to link.
-- `require("libtmux_mcp")` returns a table whose only field is `_VERSION`.
+- [`require("libtmux_mcp")`](https://github.com/libtmux/libtmux-lua/blob/master/packages/mcp/lua/libtmux_mcp/init.lua)
+  returns a table whose only field is `_VERSION`.
 - The rock is not on LuaRocks. [libtmux.org](https://libtmux.org/en/lua/latest/mcp/)
   records the same availability and has no tool reference for Lua.
 
-## Build it from a checkout
+**Contents** — [Quick start](#quick-start) ·
+[Tmux from Lua today](#drive-tmux-from-lua-today) ·
+[Leaves out](#what-it-leaves-out) · [Support](#support-and-status)
 
-The rockspec depends on [`libtmux`][ref-libtmux], `luv` and `lunajson`.
-Building `luv` needs a C compiler and CMake. From the repository root, install the core rock
-first:
+## Quick start
+
+Build the package from a checkout and print its version. The rockspec depends
+on [`libtmux`][ref-libtmux], [`luv`][luv] and [`lunajson`][lunajson]. Building
+`luv` needs a C compiler and CMake.
+
+From the repository root, install the core rock first:
 
 ```console
 $ luarocks --local make rockspecs/libtmux-scm-1.rockspec
@@ -51,8 +58,41 @@ $ lua -e 'print(require("libtmux_mcp")._VERSION)'
 scm
 ```
 
-The package check installs this rock into an empty tree and imports it
-without side effects. See [validation](../../.github/CONTRIBUTING.md#validation)
+`scm` marks a development build. Loading the module starts neither tmux nor an
+event loop: the package check installs the rock into an empty tree, imports
+it, and asserts both. See
+[validation](https://github.com/libtmux/libtmux-lua/blob/master/.github/CONTRIBUTING.md#validation)
 for how to run it.
 
+## Drive tmux from Lua today
+
+The core library already reads and types into panes.
+[`Server:snapshot`][ref-server-snapshot] lists them,
+[`Pane:send_keys`][ref-pane-send-keys] types into one and
+[`Pane:capture`][ref-pane-capture] reads its screen.
+
+The
+[root README](https://github.com/libtmux/libtmux-lua/blob/master/README.md#quick-start)
+runs each with a tested example.
+
+## What it leaves out
+
+- **Tools and prompts.** None exist, so libtmux.org has no Lua tool pages.
+  The tool pages of another port describe that port's server.
+- **Any function.** The module exports `_VERSION` and nothing else. Reach
+  tmux through [`libtmux`][ref-libtmux].
+
+## Support and status
+
+- **Unpublished development scaffold.** Build it from a checkout, as above.
+- **Lua 5.1 to 5.5.** The rockspec asks for `luv` 1.52.1 or newer and
+  `lunajson` 1.2.3 or newer.
+- **Linux, including WSL.** CI runs the package check on Ubuntu 24.04, on Lua
+  5.1.5 and 5.5.1. No CI job runs on macOS, so macOS is untested.
+
 [ref-libtmux]: https://libtmux.org/en/lua/latest/reference/
+[ref-server-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-server-snapshot/
+[ref-pane-send-keys]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-send_keys/
+[ref-pane-capture]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-capture/
+[luv]: https://github.com/luvit/luv
+[lunajson]: https://luarocks.org/modules/grafi/lunajson

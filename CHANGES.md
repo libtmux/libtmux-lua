@@ -8,6 +8,10 @@
 - Docs: check that README Lua blocks match the example programs they quote,
   that README commands and source links name files that exist, and that each
   README opens with the centered logo of its own package.
+- Docs: rebuild the READMEs by task. Each opens with a Quick start, gives
+  every API its own linked heading and an example quoted from a program CI
+  runs, and ends with what the package leaves out and its support and status.
+  The install command now names `libtmux` 0.1.0alpha2-1.
 - Examples: add `examples/nvim_snapshot.lua`, which the integration suite runs
   in headless Neovim.
 
