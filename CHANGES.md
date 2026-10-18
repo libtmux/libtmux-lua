@@ -8,6 +8,8 @@
 - Docs: check that README Lua blocks match the example programs they quote,
   that README commands and source links name files that exist, and that each
   README opens with the centered logo of its own package.
+- Examples: add `examples/nvim_snapshot.lua`, which the integration suite runs
+  in headless Neovim.
 
 ## 0.1.0alpha2-1 (2026-10-18)
 
