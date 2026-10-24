@@ -6,6 +6,13 @@
   the tmux 3.7 requirement for pane-output watches and control observation in
   the README, and link the optional-feature table and `capabilities.json`
   there. (#49)
+- Docs: document the limit on commands nested in another command, with
+  the releases and failures it affects and the advice for `break-pane` on
+  tmux 3.7, and link it from the README Support list. (#52)
+- Docs: name 0.1.0alpha1-1 as the last release that supports tmux 3.2a.
+  (#52)
+- Docs: list the `luv` build prerequisites per platform in the README quick
+  start. (#52)
 
 ## 0.1.0alpha3-1 (2026-10-24)
 
