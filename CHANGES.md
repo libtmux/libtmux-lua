@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Docs: state the released support promise in the compatibility page, name
+  the tmux 3.7 requirement for pane-output watches and control observation in
+  the README, and link the optional-feature table and `capabilities.json`
+  there. (#49)
+
 ## 0.1.0alpha3-1 (2026-10-24)
 
 - Commands: refuse literal commands that are unsafe on the connected release
@@ -32,7 +37,7 @@
 - Docs: rebuild the READMEs by task. Each opens with a Quick start, gives
   every API its own linked heading and an example quoted from a program CI
   runs, and ends with what the package leaves out and its support and status.
-  The install command now names `libtmux` 0.1.0alpha2-1.
+  The install command names `libtmux` 0.1.0alpha3-1.
 - Docs: check that each README opens with Quick start, closes with the
   leaves-out and support sections, keeps paragraphs and list items short and
   defines the link references it uses, and that a Lua block marked `excerpt`
