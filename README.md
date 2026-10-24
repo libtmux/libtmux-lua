@@ -492,6 +492,13 @@ The [package README](packages/mcp/README.md) has the full build steps.
   [`unsupported_version`](docs/compatibility.md#minimum-tmux-release) before
   any command runs. CI runs the integration suite on every tmux release from
   3.3a, listed in the [compatibility matrix](docs/compatibility.md).
+- **Pane-output watches and control observation need tmux 3.7 or newer.**
+  `observe` returns `unsupported` on an older server; poll
+  [`Pane:capture`][ref-pane-capture] there. See [control](docs/control.md).
+- **Optional features.** Some commands and options need a newer release than
+  3.3a. The [optional-feature table](docs/compatibility.md#optional-features)
+  lists each, and [`capabilities.json`](capabilities.json) holds the same
+  data for tools.
 - **Neovim.** CI runs the Neovim tests on 0.10.0 and 0.12.5.
 - **Linux, including WSL.** CI runs on Ubuntu 24.04 and local checks run under
   WSL2. No CI job runs on macOS, so macOS is untested.
