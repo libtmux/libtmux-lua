@@ -63,6 +63,16 @@ function M.test_commands_nested_in_another_command_are_not_inspected()
     refused("3.7", { "break-pane" })
 end
 
+function M.test_nested_break_pane_passes_the_guard_on_exactly_3_7_with_a_direct_control()
+    -- tmux 3.7 stops its server on this nested form; 3.7a survives it. The
+    -- limit is documented in docs/commands.md.
+    allowed("3.7", { "if-shell", "-F", "1", "break-pane -d" })
+    allowed("3.7a", { "if-shell", "-F", "1", "break-pane -d" })
+    allowed("3.7", { "run-shell", "-C", "break-pane -d" })
+    refused("3.7", { "break-pane", "-d" }, "3.7a")
+    allowed("3.7a", { "break-pane", "-d" })
+end
+
 function M.test_split_window_percent_is_refused_only_on_3_4()
     refused("3.4", { "split-window", "-p", "30" })
     -- The daemon already is 3.4, so there is no release to ask for.

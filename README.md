@@ -495,6 +495,9 @@ The [package README](packages/mcp/README.md) has the full build steps.
 - **Pane-output watches and control observation need tmux 3.7 or newer.**
   `observe` returns `unsupported` on an older server; poll
   [`Pane:capture`][ref-pane-capture] there. See [control](docs/control.md).
+- **Nested commands are not checked.** A refused command inside another,
+  such as `if-shell -F 1 'break-pane -d'`, reaches tmux and can stop the
+  server on exactly 3.7. See the [limit and its advice](docs/commands.md).
 - **Optional features.** Some commands and options need a newer release than
   3.3a. The [optional-feature table](docs/compatibility.md#optional-features)
   lists each, and [`capabilities.json`](capabilities.json) holds the same
