@@ -34,8 +34,20 @@ workspace packages are unpublished scaffolds.
 
 ## Quick start
 
-Install the core alpha, then `luv`, the event loop standalone scripts run
-on. Building `luv` needs a C compiler and CMake:
+Standalone scripts run on `luv`, the event loop. Building `luv` needs a C
+compiler, make and CMake. Install them first:
+
+- Debian and Ubuntu: `build-essential` and `cmake`.
+- Fedora: `gcc`, `make` and `cmake`.
+- macOS (not a CI platform): the Xcode command line tools
+  (`xcode-select --install`) and `cmake`.
+
+If the `luv` build fails, use a system package where one exists, such as
+`lua-luv` on Debian and Ubuntu. It serves only the distribution's own Lua,
+not one built elsewhere.
+
+Install the core alpha, then `luv`, skipping `luv` if you installed the
+system package:
 
 ```console
 $ luarocks --local install libtmux 0.1.0alpha3-1
