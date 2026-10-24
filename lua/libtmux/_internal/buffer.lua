@@ -1,4 +1,6 @@
 local errors = require("libtmux._internal.error")
+local fields = require("libtmux._internal.fields")
+local registry = require("libtmux._internal.support.capabilities")
 local execution = require("libtmux._internal.execution")
 local identity = require("libtmux._internal.identity")
 local process = require("libtmux._internal.process")
@@ -123,7 +125,10 @@ local function prepare(state, ref, kind, name, bytes, options)
     elseif bytes ~= nil then
         invalid("invalid_argument", "only buffer set accepts a value")
     end
-    if kind == "delete" and version < 4 then
+    if
+        kind == "delete"
+        and not fields.at_least(state.version, registry.since("buffer-delete-named"))
+    then
         invalid(
             "unsupported",
             "named buffer deletion requires tmux 3.4+; older releases can delete another buffer"

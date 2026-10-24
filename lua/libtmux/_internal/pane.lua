@@ -6,6 +6,7 @@ local identity = require("libtmux._internal.identity")
 local process = require("libtmux._internal.process")
 local domain = require("libtmux._internal.domain")
 local buffer = require("libtmux._internal.buffer")
+local registry = require("libtmux._internal.support.capabilities")
 local M, Capture = {}, {}
 local commands = {
     capture = "capture-pane",
@@ -353,12 +354,12 @@ local function prepare(state, ref, kind, data, options, inspect)
             { "escape_nonprintable", "-C" },
             { "alternate_screen", "-a" },
             { "mode_screen", "-M", "3.6" },
-            { "trim_empty_cells", "-T", "3.4" },
+            { "trim_empty_cells", "-T", registry.since("capture-trim-blank-cells") },
             { "pending_escape_sequences", "-P" },
             { "ignore_missing_alternate", "-q" },
             { "hyperlinks_only", "-H", "3.7" },
             { "line_numbers", "-L", "3.7" },
-            { "line_flags", "-F", "3.7" },
+            { "line_flags", "-F", registry.since("capture-line-flags") },
         }) do
             boolean(item[1], item[2], item[3])
         end

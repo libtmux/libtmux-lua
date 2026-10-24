@@ -1,5 +1,6 @@
 local errors = require("libtmux._internal.error")
 local fields = require("libtmux._internal.fields")
+local registry = require("libtmux._internal.support.capabilities")
 local execution = require("libtmux._internal.execution")
 local identity = require("libtmux._internal.identity")
 local process = require("libtmux._internal.process")
@@ -84,14 +85,15 @@ local targets = {
     },
     pane = { move_to = "join-pane", break_out = "break-pane" },
 }
+-- A name maps to true, or to the capability whose release it needs.
 local layouts = {
-    ["even-horizontal"] = 2,
-    ["even-vertical"] = 2,
-    ["main-horizontal"] = 2,
-    ["main-vertical"] = 2,
-    tiled = 2,
-    ["main-horizontal-mirrored"] = 5,
-    ["main-vertical-mirrored"] = 5,
+    ["even-horizontal"] = true,
+    ["even-vertical"] = true,
+    ["main-horizontal"] = true,
+    ["main-vertical"] = true,
+    tiled = true,
+    ["main-horizontal-mirrored"] = "layout-mirrored-main",
+    ["main-vertical-mirrored"] = "layout-mirrored-main",
 }
 
 local function operation(ref, kind)
@@ -521,10 +523,10 @@ local function prepare(state, ref, kind, input, options, inspect)
             invalid("layout requires exactly one of named, layout, next, previous or restore")
         end
         if options.named ~= nil then
-            local minimum = type(options.named) == "string" and layouts[options.named]
-            if not minimum then
+            local gate = type(options.named) == "string" and layouts[options.named]
+            if not gate then
                 invalid("named layout must use a full canonical name", "invalid_argument")
-            elseif version < minimum then
+            elseif gate ~= true and not fields.at_least(state.version, registry.since(gate)) then
                 invalid("named layout is unavailable on this tmux release", "unsupported")
             end
             flag("--", options.named)
@@ -534,7 +536,7 @@ local function prepare(state, ref, kind, input, options, inspect)
             -- leaves the error cause unset when the checksum header is absent.
             -- A non-control client exports layouts as a JSON object from 3.8-rc2,
             -- the earliest build measured; 3.3a exits on one.
-            local json = fields.at_least(state.version, "3.8-rc2") == true
+            local json = fields.at_least(state.version, registry.since("layout-json")) == true
                 and layout:match("^{.") ~= nil
             if not json and not layout:match("^%x%x%x%x,.") then
                 invalid(

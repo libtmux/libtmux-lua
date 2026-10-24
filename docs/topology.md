@@ -180,7 +180,9 @@ naming: a singleton retains its existing Window name and options; a newly
 created Window takes the native default name and inherited options. An
 explicit name disables automatic rename for the resulting Window.
 
-Exact tmux 3.7 has a native multi-pane naming defect. The library supplies a
+Exact tmux 3.7 has a native multi-pane naming defect, so a literal
+`break-pane` through `server:command` is refused there (see
+[commands](commands.md)). The typed operation keeps its repair: it supplies a
 placeholder when no name is requested, avoiding the faulty native null-name
 path. For a named multi-pane break, it follows the break with a rename of the
 same Pane's Window. This repair fires native rename notifications and

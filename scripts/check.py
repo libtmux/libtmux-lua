@@ -136,6 +136,7 @@ def main():
         elif gate == "generated":
             run([sys.executable, "scripts/generate_fields.py", "--check"], env=env, timeout=5)
             run([sys.executable, "scripts/generate_options.py", "--check"], env=env, timeout=5)
+            run([sys.executable, "scripts/emit_capabilities.py", "--check"], env=env, timeout=5)
             run([sys.executable, "scripts/release.py", "prepare", "--check"], timeout=5)
         elif gate == "integration":
             run([sys.executable, "tests/run_integration.py"], env=env)
