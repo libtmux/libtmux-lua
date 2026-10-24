@@ -38,7 +38,7 @@ Install the core alpha, then `luv`, the event loop standalone scripts run
 on. Building `luv` needs a C compiler and CMake:
 
 ```console
-$ luarocks --local install libtmux 0.1.0alpha2-1
+$ luarocks --local install libtmux 0.1.0alpha3-1
 ```
 
 ```console

@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.0alpha3-1 (2026-10-24)
+
 - Commands: refuse literal commands that are unsafe on the connected release
   before dispatch, with `unsupported` and effect `not_sent`: named buffer
   deletion and rename below 3.4, custom layouts without a checksum below 3.4,
@@ -21,9 +23,6 @@
   publish it as `capabilities.json` for the documentation site. The registry
   also lists JSON layouts and the capture `trim_empty_cells` and `line_flags`
   options, and their release floors are read from it. (#36)
-
-## 0.1.0alpha3-1
-
 - Docs: list the packages in the README under linked headings, each with
   reference links and a tested example, and add READMEs for the core package
   and the unpublished MCP and workspace scaffolds.
