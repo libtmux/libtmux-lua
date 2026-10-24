@@ -125,6 +125,17 @@ M.capabilities = {
         apis = { "libtmux.Pane:capture", "libtmux.Pane:capture_to_buffer" },
         commands = { { command = "capture-pane", flags = { "-F" } } },
     },
+    {
+        id = "clipboard-query",
+        name = "Clipboard query",
+        summary = "Ask an attached client's terminal for its clipboard with refresh-client -l.",
+        since = "3.6a",
+        except = {},
+        handling = "refuse",
+        error = REFUSAL,
+        apis = RAW,
+        commands = { { command = "refresh-client", flags = { "-l" } } },
+    },
 }
 
 -- Release defects the library works around; they are not capabilities.

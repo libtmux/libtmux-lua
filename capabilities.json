@@ -82,6 +82,16 @@
       "error": "libtmux.Error",
       "apis": ["libtmux.Pane:capture", "libtmux.Pane:capture_to_buffer"],
       "commands": [{"command": "capture-pane", "flags": ["-F"]}]
+    },
+    {
+      "id": "clipboard-query",
+      "name": "Clipboard query",
+      "summary": "Ask an attached client's terminal for its clipboard with refresh-client -l.",
+      "since": "3.6a",
+      "handling": "refuse",
+      "error": "libtmux.Error",
+      "apis": ["libtmux.Server:command", "libtmux.Server:batch", "libtmux.Server:group"],
+      "commands": [{"command": "refresh-client", "flags": ["-l"]}]
     }
   ],
   "workarounds": [

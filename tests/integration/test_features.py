@@ -85,6 +85,11 @@ class FeatureTests(unittest.TestCase):
                     ("split percent", ("split-window", "-d", "-t", "@0", "-p", "40",
                                        "exec /bin/cat"), version == "3.4"),
                     ("break pane", ("break-pane", "-d", "-s", "%1"), version == "3.7"),
+                    # With an attached xterm-256color client, 3.3a stops on -l, and
+                    # 3.4 through 3.6 stop when that client leaves unanswered. The
+                    # releases are written out so moving the registry fails this.
+                    ("clipboard query", ("refresh-client", "-l"),
+                     version in ("3.3a", "3.4", "3.5", "3.5a", "3.6")),
                     ("dotted session", ("new-session", "-d", "-s", "dot.name", "exec /bin/cat"),
                      version == "3.7"),
                 )

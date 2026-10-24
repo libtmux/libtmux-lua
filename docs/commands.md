@@ -22,6 +22,7 @@ nothing. The refused forms are:
 | `delete-buffer -b`, `set-buffer -n` | below 3.4 | A missing buffer name acts on another buffer. |
 | `select-layout` with a custom layout that has no checksum header | below 3.4 | tmux 3.3a crashes on an invalid layout. |
 | `split-window -p` | 3.4 | The percentage flag is broken; use `-l N%`. |
+| `refresh-client -l` | below 3.6a | tmux 3.3a can stop when it asks an attached terminal for its clipboard, and 3.4 through 3.6 when that client leaves before answering. |
 | `break-pane` | exactly 3.7 | tmux 3.7 misnames windows; use `Pane:break_out`. |
 | `new-session -s/-n`, `new-window -n`, `rename-session`, `rename-window` with `:` or `.` in the name | exactly 3.7 | tmux 3.7 rejects those names. |
 

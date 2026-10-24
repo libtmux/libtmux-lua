@@ -144,6 +144,7 @@ local value_flags = {
     ["new-window"] = "ceFnt",
     ["rename-session"] = "t",
     ["rename-window"] = "t",
+    ["refresh-client"] = "ABCFft",
 }
 local presets = { "even-horizontal", "even-vertical", "main-horizontal", "main-vertical", "tiled" }
 
@@ -260,6 +261,7 @@ function M.command(version, argv)
     local delete_floor = registry.since("buffer-delete-named")
     local rename_floor = registry.since("buffer-rename")
     local layout_floor = registry.since("layout-without-checksum")
+    local clipboard_floor = registry.since("clipboard-query")
     if name == "break-pane" and fields.exactly(version, break_pane.releases[1]) then
         return refuse(
             version,
@@ -304,6 +306,16 @@ function M.command(version, argv)
             version,
             rename_floor,
             "buffer rename requires tmux 3.4; older releases can rename another buffer"
+        )
+    elseif
+        name == "refresh-client"
+        and below(version, clipboard_floor)
+        and has_flag(flags, "l")
+    then
+        return refuse(
+            version,
+            clipboard_floor,
+            "refresh-client -l requires tmux 3.6a; older tmux can stop on a clipboard query"
         )
     elseif fields.exactly(version, separators.releases[1]) then
         local bad = (name == "new-session" and (misnamed(flags.s) or misnamed(flags.n)))

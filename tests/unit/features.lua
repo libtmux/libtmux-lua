@@ -124,6 +124,25 @@ function M.test_named_buffer_deletion_and_rename_need_3_4()
     end
 end
 
+function M.test_clipboard_query_needs_3_6a()
+    for _, argv in ipairs({
+        { "refresh-client", "-l" },
+        { "refresh", "-l" },
+        { "refresh-c", "-t", "/dev/pts/1", "-l" },
+        { "refresh-client", "-Sl" },
+        { "refresh-client", "-l%1" },
+    }) do
+        for _, version in ipairs({ "3.3a", "3.4", "3.5", "3.5a", "3.6" }) do
+            refused(version, argv, "3.6a")
+        end
+        for _, version in ipairs({ "3.6a", "3.6b", "3.7c", "3.8", "next-3.9" }) do
+            allowed(version, argv)
+        end
+    end
+    allowed("3.3a", { "refresh-client", "-S" })
+    allowed("3.3a", { "refresh-client", "-t", "-l" })
+end
+
 function M.test_exact_3_7_names_reject_dots_and_colons_before_dispatch()
     refused("3.7", { "new-session", "-d", "-s", "a.b" }, "3.7a")
     refused("3.7", { "new", "-ds", "a:b" })
