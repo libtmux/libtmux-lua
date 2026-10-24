@@ -1,12 +1,13 @@
 # Compatibility targets
 
-libtmux 0.1.0alpha3-1 is an alpha. It supports tmux 3.3a and newer, and CI
-runs the integration suite on each listed tmux release. The table below lists
-the versions CI exercises; a version outside it is untested. A source
+This alpha supports tmux 3.3a and newer, and CI runs the integration suite on
+each listed tmux release. The table below lists the versions CI exercises. A
+release outside it is expected to work but is untested, and option operations
+refuse it (see [minimum tmux release](#minimum-tmux-release)). A source
 declaration, successful import, or sibling-port result does not establish live
 compatibility. Features that need a newer release than the minimum are listed
-under [optional features](#optional-features), and the same data is published
-as [`capabilities.json`](../capabilities.json).
+under [optional features](#optional-features), and the same data is published as
+[`capabilities.json`](../capabilities.json).
 
 | Component | Versions CI covers |
 | --- | --- |
@@ -59,7 +60,8 @@ answers the probe with a usage error (3.1) or is turned away by a newer
 client (3.0), and an executable that old rejects `-N`. All three raise
 `unsupported_version` too. The message states the remedy: upgrade tmux to
 3.3a or newer and restart the server, or install the previous libtmux
-release (0.1.0alpha2-1, which supports 3.2a).
+release. 0.1.0alpha1-1 is the last release that supports tmux 3.2a;
+0.1.0alpha2-1 raised the minimum to 3.3a.
 
 The listed releases include 3.7d, the current stable release, and 3.8. 3.7d
 shares 3.7c's option table and decoders. 3.8 changes the option table, the

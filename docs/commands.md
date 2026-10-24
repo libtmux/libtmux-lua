@@ -26,12 +26,39 @@ nothing. The refused forms are:
 | `break-pane` | exactly 3.7 | tmux 3.7 misnames windows; use `Pane:break_out`. |
 | `new-session -s/-n`, `new-window -n`, `rename-session`, `rename-window` with `:` or `.` in the name | exactly 3.7 | tmux 3.7 rejects those names. |
 
-The check does not look inside a tmux command string nested in another
-command, such as the argument of `if-shell`, `run-shell -C` or a brace block,
-and it does not look inside the contents of configured command aliases. Do not
-nest a command from the table above: the nested copy reaches tmux unchecked and
-can crash a daemon on the releases listed. Shell text that a command runs, such
-as the body of `run-shell`, keeps native semantics.
+The check reads only the command a literal item starts with. It does not look
+inside a tmux command string nested in another command, such as the argument
+of `if-shell` or `run-shell -C`, inside a brace block, inside the contents of
+configured command aliases, or inside a key binding or hook, which tmux runs
+without the library seeing the text. A refused form written that way reaches
+tmux unchecked. Shell text that a command runs, such as the body of
+`run-shell`, keeps native semantics.
+
+What the nested copy does depends on the form in the table above:
+
+| Nested form | Releases | Failure class |
+| --- | --- | --- |
+| `break-pane` without `-n` | exactly 3.7 | The server exits ([source][break-pane-3-7]); the next command returns `stale_generation`. |
+| `select-layout` with an invalid layout string | 3.3a | The server exits. |
+| `refresh-client -l` | 3.3a when the attached client's terminal does not answer; 3.4 through 3.6 when the attached client leaves before answering | The server can exit. 3.6a fixes the second case ([changes][clipboard-query]). |
+| `delete-buffer -b NAME`, `set-buffer -b NAME -n NEW`, with no buffer called `NAME` | below 3.4 | The newest buffer is deleted or renamed instead. |
+| `split-window -p` | 3.4 | tmux answers with its own error and nothing changes. |
+| `:` or `.` in a session or window name | exactly 3.7 | tmux answers with its own error and nothing changes. |
+
+On exactly tmux 3.7, `if-shell -F 1 'break-pane -d'` passes the check and
+stops the server, while a plain `break-pane -d` is refused. Where the nested
+text is written by hand or bound to a key (the default `prefix !` binding runs
+`break-pane`, [source][prefix-bang]), name the new window with `-n`, or
+upgrade to tmux 3.7a, which fixes the crash
+([changes][changes-3-7a]). Exactly 3.7 ignores the `-n` name and gives the
+window its default name: `-n` avoids the crash and nothing more. Do not use a plain `break-pane` in nested text
+there. Called directly, every literal `break-pane` is refused on exactly 3.7,
+with or without `-n`; use `Pane:break_out`.
+
+[break-pane-3-7]: https://github.com/tmux/tmux/blob/3.7/cmd-break-pane.c#L117-L124
+[prefix-bang]: https://github.com/tmux/tmux/blob/3.7/key-bindings.c#L358
+[changes-3-7a]: https://github.com/tmux/tmux/blob/3.7a/CHANGES#L3
+[clipboard-query]: https://github.com/tmux/tmux/blob/3.6a/CHANGES#L21
 
 Native command aliases apply even to full built-in names, including commands
 used by typed domain methods. Hooks can run additional commands and affect
