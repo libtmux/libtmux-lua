@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Docs: state the released support promise in the compatibility page, name
+  the tmux 3.7 requirement for pane-output watches and control observation in
+  the README, and link the optional-feature table and `capabilities.json`
+  there. (#49)
+
 ## 0.1.0alpha3-1 (2026-10-24)
 
 - Commands: refuse literal commands that are unsafe on the connected release
