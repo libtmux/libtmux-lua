@@ -53,7 +53,7 @@ Install the core rock, then `luv`, skipping `luv` if you installed the
 system package:
 
 ```console
-$ luarocks --local install libtmux 0.1.0alpha4-1
+$ luarocks --local install libtmux
 ```
 
 ```console
