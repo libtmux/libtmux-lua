@@ -1,1 +1,1 @@
-return { _VERSION = "0.1.0alpha4" }
+return { _VERSION = "0.1.0" }
