@@ -86,6 +86,64 @@ ESC followed by `[` is stored as `"\027["`, whereas `capture()` returns
 Process output limits bound client output, not storage inside the tmux daemon;
 use a capture range to limit the selected rows.
 
+## Wait for text
+
+`wait_for_text(text, options)` returns a Request that resolves with
+`{ text, matched_at_entry }` once the visible screen contains `text`. The
+search is a plain literal match, not a pattern. Wrapped rows are joined, so a
+needle that straddles the pane width still matches. Only the visible screen is
+read: rows that scrolled into history are not searched.
+
+```lua
+local found = must(pane:wait_for_text("build ok", { timeout = 5000 }):await())
+```
+
+Options:
+
+- `interval`: milliseconds between reads, from 1; defaults to 100.
+- `timeout`: milliseconds from the call. Expiry cancels the Request with
+  `deadline_exceeded`.
+- `deadline`: an absolute time on the runtime driver clock, as for any other
+  Request.
+
+With neither `timeout` nor `deadline` the wait runs until it matches, the pane
+or server ends, or you call `:cancel(reason)`. An unknown option, empty or
+non-string text, a non-plain options table, an `interval` below 1, or a
+`timeout` or `deadline` more than 2,147,483,647 ms away returns
+`invalid_argument`.
+
+The first read comes before the first pause. Text already on screen resolves
+at once with `matched_at_entry = true`. There is no count of new occurrences:
+a command that printed before the wait started is already on screen. To wait
+only for new output, print a token the command produces after it ran, such as
+`printf '%s%s' NEE''DLE`. The shell echoes what you type, so a command that
+contains the contiguous needle matches its own echo.
+
+Each read is one tmux invocation, `capture-pane -p -J` followed by
+`run-shell -C` with a marker that reports the pane id and whether the pane is
+dead. It works on every supported release and never uses control mode. The
+marker is a deliberate parse error, so the invocation exits 1 on success;
+the wait ignores the exit code. Because the capture is an ordinary command,
+the owner's `after-capture-pane` hook runs on every read, and on tmux 3.5a and
+later a hook that prints joins the captured text. `run-shell -C` runs no hook
+of its own.
+
+The wait ends with one of these:
+
+- Success: the result table.
+- `deadline_exceeded` or the code passed to `:cancel(reason)`. Both carry the
+  latest screen in `err.partial.text` when one was read, including when the
+  deadline falls during a read.
+- `pane_died` with `err.reason`: `pane_exited` when the program ended and the
+  pane remains (`remain-on-exit`), `pane_gone` when the pane no longer exists,
+  and `server_gone` when the tmux server ended, whether the daemon refused the
+  connection or reported that it exited. `err.partial.text` holds the text
+  seen so far. A match on the last read wins over the verdict.
+- `output_limit` if a read exceeds the process output limit, surfaced as is.
+
+After the server ends, the `Server` handle is stale and later calls return
+`stale_generation`; connect again.
+
 ## Clear history
 
 `clear_history()` clears the pane's retained history and exits all its modes,

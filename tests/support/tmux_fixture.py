@@ -130,6 +130,8 @@ class TmuxFixture:
 
     def _record_panes(self, output):
         for line in output.splitlines():
+            if len(line.split()) != 2:
+                continue  # a dead pane reports no pid (tmux 3.8)
             server_pid, pane_pid = map(int, line.split())
             self.server_pid = server_pid
             if pane_pid not in self.pane_pids:

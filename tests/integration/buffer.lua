@@ -66,7 +66,7 @@ local function work(runtime)
             local value, err = server:show_buffer(name):await()
             assert(value == nil and err and err.code == "exit_failed")
         else
-            local output = require("tests.support.pane_output").open(server, created.session, pane)
+            local output = require("tests.support.pane_output").open(pane)
             must(pane:respawn({
                 kill = true,
                 argv = {

@@ -88,6 +88,7 @@ when the guard is removed; a feature without such a test is unverified.
 | Commands, typed operations, snapshots, captures | 3.3a to 3.8, 3.7d and the pinned next-3.9 build | Qualified where the CI integration suite passes at that release |
 | Control observation (`observe`, watches, subscriptions) | below 3.7 | Non-operative: refused with `unsupported` before any attachment |
 | Control observation | 3.7 to 3.8 | Qualified for idle attachment, watches and subscriptions; concurrent acquisition from several processes is unverified |
+| Waiting for pane text (`Pane:wait_for_text`) | 3.3a to 3.8 | Qualified where the CI integration suite passes at that release; it polls and never uses control mode |
 | Named buffer deletion (typed and literal) | below 3.4 | Non-operative: refused |
 | Named paste with `delete_after` | 3.3a and later | Qualified: tmux looks the buffer up exactly |
 | `run-shell` output | 3.3a to 3.4 | Raw client output only: tmux sends job output to pane view mode, so nothing is captured; later releases write it to the client |

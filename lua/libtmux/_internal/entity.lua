@@ -180,6 +180,11 @@ function Entity:capture(options)
     return pane.run(stored.server, stored.identity, "capture", nil, options)
 end
 
+function Entity:wait_for_text(text, options)
+    local stored = handles[self]
+    return pane.wait_for_text(stored.server, stored.identity, text, options)
+end
+
 function Entity:clear_history(options)
     local stored = handles[self]
     return pane.run(stored.server, stored.identity, "clear_history", nil, options)
@@ -475,6 +480,8 @@ end
 --- libtmux.Request<boolean> Sends literal text.
 ---@field capture fun(self:libtmux.Pane,options?:libtmux.CaptureOptions):
 --- libtmux.Request<libtmux.Capture> Captures the screen, and history on request.
+---@field wait_for_text fun(self:libtmux.Pane,text:string,options?:libtmux.WaitTextOptions):
+--- libtmux.Request<libtmux.TextWait> Polls the visible screen until it contains the literal text.
 ---@field split fun(self:libtmux.Pane,options?:libtmux.SplitOptions):
 --- libtmux.Request<libtmux.Creation> Splits this pane.
 ---@field kill fun(self:libtmux.Pane,options?:libtmux.PaneOptions):

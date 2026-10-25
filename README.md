@@ -351,6 +351,34 @@ A capture holds the cells tmux rendered, so it cannot say whether a command
 finished. [Pane operations](docs/panes.md) lists the capture options, from
 joined lines to escape sequences.
 
+### [`Pane:wait_for_text`][ref-pane-wait-for-text]: wait for text on screen
+
+[`Pane:wait_for_text`][ref-pane-wait-for-text] polls the visible screen on
+every supported tmux release until it holds the literal text.
+
+The result has the matching screen and `matched_at_entry`, true when the
+first read already matched. Pass `timeout` or `deadline` to bound the wait.
+
+<!-- excerpt: examples/api/wait_for_text.lua -->
+
+```lua
+-- The shell echoes what is typed, so print the needle from two pieces.
+must(pane:send_text("printf '%s%s\\n' 'lua wait ' 'ready'"):await())
+must(pane:send_keys({ "Enter" }):await())
+local found = must(pane:wait_for_text("lua wait ready", { timeout = 5000 }):await())
+assert(found.text:find("lua wait ready", 1, true))
+print("lua wait ready")
+```
+
+```console
+$ sh examples/api/run.sh examples/api/wait_for_text.lua
+lua wait ready
+```
+
+If the pane exits first, the wait ends with `pane_died` and the text seen so
+far. See [waiting for pane text](docs/panes.md#wait-for-text) for the read,
+the hooks it runs and every end state.
+
 ## Use it from Neovim
 
 ### [`runtime.nvim.start`][ref-nvim-start]: borrow the editor's loop
@@ -486,8 +514,8 @@ The [package README](packages/mcp/README.md) has the full build steps.
 - **Live records.** A [snapshot][ref-snapshot] holds what tmux said when it
   was read. Capture again to see a change.
 - **Proof that a command finished.** [`Pane:send_keys`][ref-pane-send-keys]
-  succeeds when tmux accepts the input. Wait on a `wait-for` channel, then
-  read the pane.
+  succeeds when tmux accepts the input. Wait on a `wait-for` channel, or print
+  a token and [wait for it][ref-pane-wait-for-text].
 - **An interactive terminal.** The luv and Neovim adapters own no terminal, so
   [`Session:attach`][ref-session-attach] returns `unsupported_tty`.
 - **Your tmux configuration.** The library does not change a borrowed
@@ -505,8 +533,11 @@ The [package README](packages/mcp/README.md) has the full build steps.
   any command runs. CI runs the integration suite on every tmux release from
   3.3a, listed in the [compatibility matrix](docs/compatibility.md).
 - **Pane-output watches and control observation need tmux 3.7 or newer.**
-  `observe` returns `unsupported` on an older server; poll
-  [`Pane:capture`][ref-pane-capture] there. See [control](docs/control.md).
+  `observe` returns `unsupported` on an older server. See
+  [control](docs/control.md).
+- **Waiting for text polls the visible screen.**
+  [`Pane:wait_for_text`][ref-pane-wait-for-text] works on every release. Each
+  read runs the `after-capture-pane` hook and never searches scrollback.
 - **Nested commands are not checked.** A refused command inside another,
   such as `if-shell -F 1 'break-pane -d'`, reaches tmux and can stop the
   server on exactly 3.7. See the [limit and its advice](docs/commands.md).
@@ -582,6 +613,7 @@ MIT. See [`LICENSE`](LICENSE).
 [ref-pane-send-text]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-send_text/
 [ref-pane-send-keys]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-send_keys/
 [ref-server-command]: https://libtmux.org/en/lua/latest/reference/libtmux-server-command/
+[ref-pane-wait-for-text]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-wait_for_text/
 [ref-capture-text]: https://libtmux.org/en/lua/latest/reference/libtmux-capture-text/
 [ref-session-attach]: https://libtmux.org/en/lua/latest/reference/libtmux-session-attach/
 [ref-nvim-start]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim-start/

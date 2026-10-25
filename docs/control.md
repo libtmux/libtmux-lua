@@ -10,8 +10,8 @@ Observation needs a daemon at tmux 3.7 or newer. On an older daemon,
 `effect = "not_sent"` before any lease, process or client exists, because a
 short-lived control attach can crash servers that lack the 3.7 initialization
 fixes. Ordinary commands, typed operations, snapshots and polling captures
-stay available from tmux 3.3a; use `pane:capture` to poll output on an older
-daemon.
+stay available from tmux 3.3a; use [`pane:wait_for_text`](panes.md#wait-for-text)
+to poll the visible screen on any release.
 
 Opening verifies the pinned daemon before spawning. The client's command
 list starts with a fence on the checked pid, start time and version, so a

@@ -45,6 +45,19 @@ function M.test_the_committed_manifest_is_the_registry()
     t.assertEquals(committed, expected, "capabilities.json differs from the registry")
 end
 
+function M.test_the_raw_break_pane_is_refused_and_only_break_out_repairs()
+    local raw = registry.workaround("break-pane-misnames-windows")
+    t.assertEquals(raw.handling, "refuse")
+    t.assertItemsEquals(raw.apis, {
+        "libtmux.Server:command",
+        "libtmux.Server:batch",
+        "libtmux.Server:group",
+    })
+    local repair = registry.workaround("break-out-rename-repair")
+    t.assertEquals(repair.handling, "repair")
+    t.assertEquals(repair.apis, { "libtmux.Pane:break_out" })
+end
+
 function M.test_lookup_rejects_an_unknown_id()
     t.assertEquals(registry.since("control-mode"), "3.7")
     t.assertError(registry.since, "no-such-capability")

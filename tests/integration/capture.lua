@@ -36,7 +36,7 @@ local function work(runtime)
         return result.stdout
     end
     command({ "wait-for", "capture-input-ready" })
-    local output = require("tests.support.pane_output").open(server, created.session, pane)
+    local output = require("tests.support.pane_output").open(pane)
     must(pane:send_text("x"):await())
     local pending_case = case == "pending" or case == "buffer_pending"
     if pending_case then

@@ -35,7 +35,7 @@ local function work(runtime)
     end
     if mode == "io" then
         command({ "wait-for", "pane-input-ready" })
-        local output = require("tests.support.pane_output").open(server, created.session, pane)
+        local output = require("tests.support.pane_output").open(pane)
         local function output_until(marker)
             return output.until_text(marker)
         end

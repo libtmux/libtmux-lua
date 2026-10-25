@@ -595,6 +595,15 @@ end
 ---@field target libtmux.Reference
 ---@field text fun(self:libtmux.Capture):string?,libtmux.Error? Strict UTF-8; no normalization.
 
+---@class libtmux.WaitTextOptions
+---@field interval? number Milliseconds between reads, from 1; defaults to 100.
+---@field timeout? number Milliseconds from the call; expiry returns `deadline_exceeded`.
+---@field deadline? number Absolute time on the runtime driver clock.
+
+---@class libtmux.TextWait
+---@field text string The visible screen that matched.
+---@field matched_at_entry boolean True when the first read matched.
+
 ---@class libtmux.PaneOptions
 ---@field process? libtmux.CreationProcessOptions
 
@@ -638,5 +647,319 @@ end
 
 ---@class libtmux.SwapPaneOptions: libtmux.SelectPaneOptions
 ---@field select? boolean Defaults to false (native -d); active selection can still change.
+
+local WAIT_INTERVAL = 100
+local WAIT_OPTIONS = { interval = true, timeout = true, deadline = true }
+local MAX_DELAY = 2147483647
+local GONE = { "no server running", "error connecting to", "server exited unexpectedly" }
+
+local marker_count = 0
+
+-- A fresh marker per read keeps pane output from forging the state line.
+-- Without /dev/urandom the bytes mix clock, address and a counter instead of
+-- the caller's math.random state, which this must not reseed.
+local function wait_marker()
+    local bytes
+    local urandom = io.open("/dev/urandom", "rb")
+    if urandom then
+        bytes = urandom:read(8)
+        urandom:close()
+    end
+    if not bytes or #bytes ~= 8 then
+        marker_count = marker_count + 1
+        local state = os.time() * 1000003 + math.floor(os.clock() * 1e6) + marker_count
+        for digit in tostring({}):gmatch("%x") do
+            state = (state * 31 + tonumber(digit, 16)) % 2147483629
+        end
+        local out = {}
+        for index = 1, 8 do
+            state = (state * 1103515245 + 12345) % 2147483648
+            out[index] = string.char(math.floor(state / 65536) % 256)
+        end
+        bytes = table.concat(out)
+    end
+    local parts = {}
+    for index = 1, 8 do
+        parts[index] = string.format("%02x", bytes:byte(index))
+    end
+    return "libtmux-pane-" .. table.concat(parts) .. "-"
+end
+
+local function finite(value)
+    return type(value) == "number" and value == value and math.abs(value) ~= math.huge
+end
+
+local function wait_arguments(text, options)
+    local function invalid(message)
+        return nil, failure("invalid_argument", message, "wait_for_text")
+    end
+    if type(text) ~= "string" or text == "" then
+        return invalid("wait_for_text needs a non-empty string")
+    end
+    if options == nil then
+        options = {}
+    end
+    if not plain(options) then
+        return invalid("wait options must be a plain table")
+    end
+    for key in next, options do
+        if not WAIT_OPTIONS[key] then
+            return invalid("unknown wait option")
+        end
+    end
+    local interval = options.interval == nil and WAIT_INTERVAL or options.interval
+    if not finite(interval) or interval < 1 or interval > MAX_DELAY then
+        return invalid("interval must be a number of milliseconds from 1")
+    end
+    if
+        options.timeout ~= nil
+        and (not finite(options.timeout) or options.timeout < 0 or options.timeout > MAX_DELAY)
+    then
+        return invalid("timeout must be from 0 to 2147483647 milliseconds")
+    end
+    if options.deadline ~= nil and not finite(options.deadline) then
+        return invalid("deadline must be a finite driver-clock time in milliseconds")
+    end
+    return {
+        text = text,
+        interval = interval,
+        timeout = options.timeout,
+        deadline = options.deadline,
+    }
+end
+
+local function server_gone(stderr)
+    for _, phrase in ipairs(GONE) do
+        if stderr:find(phrase, 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
+local function pane_missing(stderr)
+    for line in stderr:gmatch("[^\n]+") do
+        for _, kind in ipairs({ "pane", "window", "session" }) do
+            if line:sub(1, #kind + 11) == "can't find " .. kind then
+                return true
+            end
+        end
+    end
+    return false
+end
+
+-- The marker is a deliberate parse error, so it arrives on stderr as
+-- "unknown command: <marker><pane id>-<pane_dead>|".
+local function read_marker(stderr, marker)
+    local start = stderr:find(marker, 1, true)
+    if not start then
+        return nil
+    end
+    return stderr:match("^([^|\n]-)%-([^|\n]*)|", start + #marker)
+end
+
+--- Poll the visible screen for literal text until it matches, the pane or
+--- server ends, or the request is cancelled or reaches its deadline.
+function M.wait_for_text(state, owned, text, options)
+    local kind = "wait_for_text"
+    local rt = state.runtime
+    local function rejected(err)
+        return rt:_operation(function()
+            return nil, err
+        end, { operation = "pane." .. kind, effect = "not_sent" })
+    end
+    local arguments, argument_error = wait_arguments(text, options)
+    if not arguments then
+        return rejected(argument_error)
+    end
+    local ref, current_error = current(state, owned, kind)
+    if not ref then
+        return rejected(current_error)
+    end
+    local driver = rt._driver
+    local deadline = arguments.deadline
+    if arguments.timeout ~= nil then
+        deadline = driver.now() + arguments.timeout
+    end
+    if deadline ~= nil and deadline - driver.now() > MAX_DELAY then
+        return rejected(
+            failure("invalid_argument", "deadline is more than 2147483647 ms away", kind)
+        )
+    end
+    local function ended(reason, message, seen)
+        local details = { operation = "pane." .. kind, effect = "not_sent", reason = reason }
+        if seen ~= nil then
+            details.partial = { text = seen }
+        end
+        return errors.new("pane_died", message, details)
+    end
+    return rt:_logical_request({
+        deadline = deadline,
+        operation = "pane." .. kind,
+        effect = "not_sent",
+        start = function(settle, retire, request)
+            local done, seen, reads = false, nil, 0
+            local cancel_pause, inflight
+            local read_once, pause
+            local function finish(value, err)
+                if done then
+                    return
+                end
+                done = true
+                if err and rawget(err, "partial") == nil and seen ~= nil then
+                    err.partial = { text = seen }
+                end
+                settle(value, err)
+                retire()
+            end
+            local function expired()
+                return deadline ~= nil and driver.now() >= deadline
+            end
+            local function expire()
+                finish(nil, errors.new("deadline_exceeded", "request deadline expired"))
+            end
+            local function gone()
+                finish(
+                    nil,
+                    ended("server_gone", "tmux server ended before the text appeared", seen)
+                )
+            end
+            -- One read: a verdict ends the wait, anything else pauses.
+            local function judge(marker, result, err)
+                local output = result
+                if err then
+                    local cause = rawget(err, "cause")
+                    local stderr = type(cause) == "table"
+                        and type(rawget(cause, "partial")) == "table"
+                        and rawget(cause, "partial").stderr
+                    if err.code == "deadline_exceeded" then
+                        return expire()
+                    elseif err.code == "stale_generation" then
+                        -- kill-server poisons the handle; its stderr names the cause.
+                        if type(stderr) ~= "string" or server_gone(stderr) then
+                            return gone()
+                        end
+                    elseif
+                        err.code == "exit_failed" and type(rawget(err, "partial")) == "table"
+                    then
+                        output = err.partial
+                    end
+                    if output == nil then
+                        return finish(nil, err)
+                    end
+                end
+                local stdout, stderr = output.stdout, output.stderr
+                if type(stdout) ~= "string" or type(stderr) ~= "string" then
+                    return finish(
+                        nil,
+                        err or errors.new("unexpected_output", "tmux read had no output")
+                    )
+                end
+                local complete = stdout:sub(-1) == "\n"
+                if complete then
+                    seen = stdout
+                    request:_set_partial({ text = seen })
+                    if seen:find(arguments.text, 1, true) then
+                        if expired() then
+                            return expire()
+                        end
+                        return finish({ text = seen, matched_at_entry = reads == 1 })
+                    end
+                end
+                if expired() then
+                    return expire()
+                end
+                local id, dead = read_marker(stderr, marker)
+                if id ~= nil then
+                    if id ~= ref.id then
+                        return finish(nil, ended("pane_gone", "pane no longer exists", seen))
+                    elseif dead == "1" then
+                        return finish(nil, ended("pane_exited", "pane program exited", seen))
+                    elseif dead == "0" and complete then
+                        return pause()
+                    end
+                elseif pane_missing(stderr) then
+                    return finish(nil, ended("pane_gone", "pane no longer exists", seen))
+                elseif server_gone(stderr) then
+                    return gone()
+                end
+                return finish(
+                    nil,
+                    errors.new("unexpected_output", "tmux read did not report the pane state", {
+                        operation = "pane." .. kind,
+                        effect = "not_sent",
+                        partial = { text = seen, stderr = stderr },
+                    })
+                )
+            end
+            function read_once()
+                if done or request:is_settled() then
+                    return
+                end
+                if expired() then
+                    return expire()
+                end
+                local marker = wait_marker()
+                local process_options
+                if deadline ~= nil then
+                    process_options = { timeout = deadline - driver.now() }
+                end
+                reads = reads + 1
+                local call = execution.group(rt, state.bound, {
+                    { "capture-pane", "-p", "-J", "-t", ref.id },
+                    {
+                        "run-shell",
+                        "-C",
+                        "-t",
+                        ref.id,
+                        marker .. "#{q:pane_id}-#{q:pane_dead}|",
+                    },
+                }, process_options)
+                inflight = call
+                call:on_complete(function(result, err)
+                    if done or inflight ~= call then
+                        return
+                    end
+                    inflight = nil
+                    local ok, cause = pcall(judge, marker, result, err)
+                    if not ok then
+                        finish(nil, errors.wrap(cause, "wait_failed"))
+                    end
+                end)
+            end
+            -- The pause is one one-shot timer, cancelled with the request.
+            function pause()
+                local delay = arguments.interval
+                if deadline ~= nil then
+                    delay = math.min(delay, deadline - driver.now())
+                end
+                if delay <= 0 then
+                    return expire()
+                end
+                local ok, cancel = pcall(driver.timer, delay, function()
+                    cancel_pause = nil
+                    read_once()
+                end)
+                if not ok then
+                    return finish(nil, errors.wrap(cancel, "host_error"))
+                end
+                cancel_pause = cancel
+            end
+            read_once()
+            return function()
+                done = true
+                if cancel_pause then
+                    pcall(cancel_pause)
+                    cancel_pause = nil
+                end
+                if inflight then
+                    inflight:cancel(errors.new("cancelled", "wait cancelled"))
+                    inflight = nil
+                end
+                retire()
+            end
+        end,
+    })
+end
 
 return M
