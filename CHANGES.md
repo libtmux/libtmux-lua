@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.1.0alpha4-1
+
+- Wait: add `Pane:wait_for_text`, which polls the visible screen on every
+  supported tmux release and ends with `pane_died`, carrying the text seen so
+  far, when the pane or server goes first. (#53)
+- Support: `capabilities.json` marks the raw `break-pane` command as refused
+  on exactly 3.7 and keeps `repair` for `Pane:break_out` only. (#53)
 - Docs: state the released support promise in the compatibility page, name
   the tmux 3.7 requirement for pane-output watches and control observation in
   the README, and link the optional-feature table and `capabilities.json`
