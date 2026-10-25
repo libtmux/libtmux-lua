@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Versions: releases are numbered `0.1.N` from here on, starting with
+  `0.1.0`, and carry no alpha or other prerelease tag. The API is still not
+  settled, so pin an exact version; the changelog marks each break. The
+  contributor guide describes cutting a `0.1.N` release.
+
 ## 0.1.0alpha4-1 (2026-10-25)
 
 - Wait: add `Pane:wait_for_text`, which polls the visible screen on every

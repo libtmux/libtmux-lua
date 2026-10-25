@@ -1,6 +1,6 @@
 # Compatibility targets
 
-This alpha supports tmux 3.3a and newer, and CI runs the integration suite on
+This release line supports tmux 3.3a and newer, and CI runs the integration suite on
 each listed tmux release. The table below lists the versions CI exercises. A
 release outside it is expected to work but is untested, and option operations
 refuse it (see [minimum tmux release](#minimum-tmux-release)). A source
