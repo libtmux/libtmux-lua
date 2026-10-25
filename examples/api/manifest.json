@@ -74,6 +74,15 @@
       "stdout": "lua capture ready\n"
     },
     {
+      "id": "wait_for_text",
+      "symbols": [
+        "libtmux.Pane:wait_for_text"
+      ],
+      "file": "examples/api/wait_for_text.lua",
+      "description": "Wait for a command's output to appear on the visible screen.",
+      "stdout": "lua wait ready\n"
+    },
+    {
       "id": "unsupported_version",
       "symbols": [
         "libtmux.Error.code",

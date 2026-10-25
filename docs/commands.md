@@ -22,7 +22,7 @@ nothing. The refused forms are:
 | `delete-buffer -b`, `set-buffer -n` | below 3.4 | A missing buffer name acts on another buffer. |
 | `select-layout` with a custom layout that has no checksum header | below 3.4 | tmux 3.3a crashes on an invalid layout. |
 | `split-window -p` | 3.4 | The percentage flag is broken; use `-l N%`. |
-| `refresh-client -l` | below 3.6a | tmux 3.3a can stop when it asks an attached terminal for its clipboard, and 3.4 through 3.6 when that client leaves before answering. |
+| `refresh-client -l` | below 3.6a | tmux 3.3a exits at once when the attached client's `TERM` is `xterm-256color` or `tmux-256color`, and 3.4 through 3.6 can exit when that client leaves before its terminal answers. |
 | `break-pane` | exactly 3.7 | tmux 3.7 misnames windows; use `Pane:break_out`. |
 | `new-session -s/-n`, `new-window -n`, `rename-session`, `rename-window` with `:` or `.` in the name | exactly 3.7 | tmux 3.7 rejects those names. |
 
@@ -40,7 +40,7 @@ What the nested copy does depends on the form in the table above:
 | --- | --- | --- |
 | `break-pane` without `-n` | exactly 3.7 | The server exits ([source][break-pane-3-7]); the next command returns `stale_generation`. |
 | `select-layout` with an invalid layout string | 3.3a | The server exits. |
-| `refresh-client -l` | 3.3a when the attached client's terminal does not answer; 3.4 through 3.6 when the attached client leaves before answering | The server can exit. 3.6a fixes the second case ([changes][clipboard-query]). |
+| `refresh-client -l` | 3.3a when the attached client's `TERM` is `xterm-256color` or `tmux-256color` (it survives `screen` and `vt100`); 3.4 through 3.6 when the attached client leaves before its terminal answers | The server can exit. 3.6a fixes the second case ([changes][clipboard-query]). |
 | `delete-buffer -b NAME`, `set-buffer -b NAME -n NEW`, with no buffer called `NAME` | below 3.4 | The newest buffer is deleted or renamed instead. |
 | `split-window -p` | 3.4 | tmux answers with its own error and nothing changes. |
 | `:` or `.` in a session or window name | exactly 3.7 | tmux answers with its own error and nothing changes. |
