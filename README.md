@@ -50,7 +50,7 @@ Install the core alpha, then `luv`, skipping `luv` if you installed the
 system package:
 
 ```console
-$ luarocks --local install libtmux 0.1.0alpha3-1
+$ luarocks --local install libtmux 0.1.0alpha4-1
 ```
 
 ```console

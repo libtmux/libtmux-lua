@@ -32,7 +32,7 @@ public symbol.
 Install the rock and add the local rocks tree to Lua's module paths:
 
 ```console
-$ luarocks --local install libtmux 0.1.0alpha3-1
+$ luarocks --local install libtmux 0.1.0alpha4-1
 ```
 
 ```console

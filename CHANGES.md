@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-## 0.1.0alpha4-1
+## 0.1.0alpha4-1 (2026-10-25)
 
 - Wait: add `Pane:wait_for_text`, which polls the visible screen on every
   supported tmux release and ends with `pane_died`, carrying the text seen so
