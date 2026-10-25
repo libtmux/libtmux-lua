@@ -147,7 +147,18 @@ M.workarounds = {
         id = "break-pane-misnames-windows",
         name = "break-pane window naming",
         summary = "break-pane misnames the new window on exactly tmux 3.7; "
-            .. "Pane:break_out repairs it.",
+            .. "the raw command is refused, use Pane:break_out.",
+        releases = { "3.7" },
+        required = "3.7a",
+        handling = "refuse",
+        apis = RAW,
+        commands = { { command = "break-pane" } },
+    },
+    {
+        id = "break-out-rename-repair",
+        name = "Pane:break_out window naming",
+        summary = "Pane:break_out names the new window itself, which repairs "
+            .. "break-pane's misnaming on exactly tmux 3.7.",
         releases = { "3.7" },
         required = "3.7a",
         handling = "repair",
