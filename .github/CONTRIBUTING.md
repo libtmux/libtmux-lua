@@ -281,10 +281,13 @@ when observable behavior changes.
 
 ## Releases
 
-Only `libtmux` is prepared for the initial `0.1.0alpha1-1` release.
-`libtmux-mcp` and `libtmux-workspace` remain unpublished development scaffolds;
-their independent package checks continue to run. The alpha covers the
-implemented core, with changing APIs and the limits recorded in the
+Only `libtmux` is released. `libtmux-mcp` and `libtmux-workspace` remain
+unpublished development scaffolds; their independent package checks continue
+to run. Releases are numbered `0.1.N`: `0.1.0`, then `0.1.1`, `0.1.2` and so
+on, with no alpha or other prerelease tag unless the maintainer asks for one.
+The API is not settled, so a release may change or remove exported
+identifiers; the changelog marks each break. The release covers the
+implemented core, with the limits recorded in the
 [compatibility matrix](../docs/compatibility.md).
 
 ### Prepare a version
@@ -293,7 +296,7 @@ Add user-visible changes under `Unreleased` in [CHANGES.md](../CHANGES.md),
 then run this from the repository root:
 
 ```console
-$ mise exec -- python scripts/release.py prepare 0.1.0alpha1-1
+$ mise exec -- python scripts/release.py prepare 0.1.1-1
 ```
 
 The command uses [LuaRocks new_version](https://github.com/luarocks/luarocks/blob/v3.13.0/src/luarocks/cmd/new_version.lua)
@@ -309,10 +312,10 @@ Check those files without changing them:
 $ mise exec -- python scripts/release.py prepare --check
 ```
 
-`0.1.0alpha1` is the source/runtime version; `-1` is the rockspec revision.
-Source changes advance the source version, for example to `0.1.0alpha2-1`.
-Packaging-only fixes advance the revision to `0.1.0alpha1-2`, keeping the
-source tag `v0.1.0alpha1`. These follow the
+`0.1.N` is the source/runtime version; `-R` is the rockspec revision.
+Source changes advance the source version, for example from `0.1.0-1` to
+`0.1.1-1`. Packaging-only fixes advance the revision to `0.1.0-2`, keeping the
+source tag `v0.1.0`. These follow the
 [LuaRocks version rules](https://github.com/luarocks/luarocks/blob/main/docs/rockspec_format.md).
 
 Run the timed mid and outer gates documented above. To retain the candidate
@@ -353,29 +356,30 @@ A manual `Publish` run only validates; it never uploads.
 
 ### Publish after the preparation PR merges
 
-Start from clean, updated `master`, with its CI passing. The initial release
-uses the lightweight source tag `v0.1.0alpha1`; create it at the reviewed
-release commit:
+Start from clean, updated `master`, with its CI passing. Each release
+uses the lightweight source tag `v0.1.N`, such as `v0.1.1`; create it at the
+reviewed release commit:
 
 ```console
-$ git tag v0.1.0alpha1
+$ git tag v0.1.1
 ```
 
 Push that tag to the public repository to start [Publish](workflows/publish.yml):
 
 ```console
-$ git push origin refs/tags/v0.1.0alpha1
+$ git push origin refs/tags/v0.1.1
 ```
 
 The workflow reruns CI at that commit, validates the public source tag and
 packs its source rock. It checks the installed artifact, then verifies its
 checksums again in the protected upload job. That job uploads the same
 rockspec and source rock to LuaRocks, then creates a GitHub release with
-generated notes, artifacts, checksums and provenance. Alpha, beta and rc
-versions are marked as prereleases. No package is rebuilt during upload.
+generated notes, artifacts, checksums and provenance. A version with an
+alpha, beta or rc suffix would be marked as a prerelease; `0.1.N` releases
+are not. No package is rebuilt during upload.
 
 For packaging revisions, use a separate release tag such as
-`rocks/0.1.0alpha1-2` at the reviewed packaging commit. Keep the original source
+`rocks/0.1.1-2` at the reviewed packaging commit. Keep the original source
 tag unchanged and the Lua sources identical to it. The publishing guard
 checks both tag identities. If Lua code changed, prepare a new source version.
 
@@ -386,7 +390,7 @@ After publication, install the exact version in a fresh tree:
 ```console
 $ luarocks install \
     --tree .cache/release-install \
-    libtmux 0.1.0alpha1-1
+    libtmux 0.1.1-1
 ```
 
 Download the release assets and verify their checksums:
@@ -398,7 +402,7 @@ $ sha256sum --check SHA256SUMS
 Verify the source rock's GitHub provenance:
 
 ```console
-$ gh attestation verify libtmux-0.1.0alpha1-1.src.rock \
+$ gh attestation verify libtmux-0.1.1-1.src.rock \
     --repo libtmux/libtmux-lua
 ```
 

@@ -16,9 +16,13 @@ panes][ref-concepts].
 
 </div>
 
-It is alpha software, published on
-[LuaRocks](https://luarocks.org/modules/tony/libtmux). The
-[root README](https://github.com/libtmux/libtmux-lua/blob/master/README.md#quick-start)
+It is published on
+[LuaRocks](https://luarocks.org/modules/tony/libtmux).
+Releases are numbered `0.1.N`, and each release increments `N`. The API is not
+settled: any release may change or remove exported identifiers, and the
+changelog marks each break. Pin an exact version to avoid one.
+
+The [root README](https://github.com/libtmux/libtmux-lua/blob/master/README.md#quick-start)
 shows a first tmux program, and the
 [API reference](https://libtmux.org/en/lua/latest/reference/) lists every
 public symbol.
@@ -229,7 +233,10 @@ prompts yet.
 
 ## Support and status
 
-- **Alpha.** The API is not settled. Pin an exact version.
+- **Versions.** Releases are numbered `0.1.N`, and each release increments
+  `N`. The API is not settled: any release may change or remove exported
+  identifiers, and the changelog marks each break. Pin an exact version to
+  avoid one.
 - **Lua 5.1 to 5.5, and LuaJIT.** CI runs the unit suites on each.
 - **tmux 3.3a or newer.** An older server is refused with `unsupported_version`
   before any command runs.

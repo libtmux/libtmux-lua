@@ -29,7 +29,7 @@ SECTIONS = """## What it leaves out
 
 ## Support and status
 
-- **Alpha.** Pin an exact version.
+- **Versions.** Pin an exact version.
 """
 ROOT_README = LOGO.format(alt="libtmux for Lua") + f"""# Root
 

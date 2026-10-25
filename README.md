@@ -19,8 +19,11 @@ Neovim's event loop.
 
 </div>
 
-**Alpha software.** The core API is still changing. The separate MCP and
-workspace packages are unpublished scaffolds.
+Releases are numbered `0.1.N`, and each release increments `N`. The API is not
+settled: any release may change or remove exported identifiers, and the
+changelog marks each break. Pin an exact version to avoid one.
+
+The separate MCP and workspace packages are unpublished scaffolds.
 
 **Contents** — [Quick start](#quick-start) ·
 [Read tmux](#read-what-tmux-has-now) ·
@@ -46,7 +49,7 @@ If the `luv` build fails, use a system package where one exists, such as
 `lua-luv` on Debian and Ubuntu. It serves only the distribution's own Lua,
 not one built elsewhere.
 
-Install the core alpha, then `luv`, skipping `luv` if you installed the
+Install the core rock, then `luv`, skipping `luv` if you installed the
 system package:
 
 ```console
@@ -526,7 +529,10 @@ The [package README](packages/mcp/README.md) has the full build steps.
 
 ## Support and status
 
-- **Alpha.** The API is not settled. Pin an exact version.
+- **Versions.** Releases are numbered `0.1.N`, and each release increments
+  `N`. The API is not settled: any release may change or remove exported
+  identifiers, and the changelog marks each break. Pin an exact version to
+  avoid one.
 - **Lua 5.1 to 5.5, and LuaJIT.** CI runs the unit suites on each.
 - **tmux 3.3a or newer.** An older server is refused with
   [`unsupported_version`](docs/compatibility.md#minimum-tmux-release) before
