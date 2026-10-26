@@ -17,6 +17,9 @@ Script tmux from Lua: [create sessions and panes][ref-server-new-session],
 [watch pane output][ref-observation-watch-pane]. Use standalone Lua with luv or
 Neovim's event loop.
 
+[![libtmux.org](https://img.shields.io/badge/docs-libtmux.org-0b7285)](https://libtmux.org/en/lua/)
+[![libtmux](https://img.shields.io/luarocks/v/tony/libtmux)](https://luarocks.org/modules/tony/libtmux)
+
 </div>
 
 Releases are numbered `0.1.N`, and each release increments `N`. The API is not

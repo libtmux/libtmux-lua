@@ -14,6 +14,8 @@
 A development package for the planned libtmux MCP server in Lua. It is
 unpublished and serves nothing yet.
 
+[![libtmux.org](https://img.shields.io/badge/docs-libtmux.org-0b7285)](https://libtmux.org/en/lua/)
+
 </div>
 
 - It has no server, executable, tools, toolsets or prompts, so there is
