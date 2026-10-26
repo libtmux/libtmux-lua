@@ -14,7 +14,7 @@
 A development package for planned libtmux workspace operations in Lua. It is
 unpublished and builds nothing yet.
 
-[![libtmux.org](https://img.shields.io/badge/docs-libtmux.org-0b7285)](https://libtmux.org/en/lua/)
+[![libtmux.org](https://img.shields.io/badge/docs-libtmux.org-0b7285)](https://libtmux.org/en/lua/latest/workspace/)
 
 </div>
 
