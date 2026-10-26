@@ -15,7 +15,7 @@ The `libtmux` rock holds the Lua API for tmux [sessions, windows and
 panes][ref-concepts].
 
 [![libtmux.org](https://img.shields.io/badge/docs-libtmux.org-0b7285)](https://libtmux.org/en/lua/)
-[![libtmux](https://img.shields.io/luarocks/v/tony/libtmux)](https://luarocks.org/modules/tony/libtmux)
+[![libtmux](https://img.shields.io/luarocks/v/tony/libtmux?label=libtmux)](https://luarocks.org/modules/tony/libtmux)
 
 </div>
 

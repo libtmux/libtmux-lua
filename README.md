@@ -17,8 +17,10 @@ Script tmux from Lua: [create sessions and panes][ref-server-new-session],
 [watch pane output][ref-observation-watch-pane]. Use standalone Lua with luv or
 Neovim's event loop.
 
+[![CI](https://github.com/libtmux/libtmux-lua/actions/workflows/ci.yml/badge.svg)](https://github.com/libtmux/libtmux-lua/actions/workflows/ci.yml)
+[![libtmux](https://img.shields.io/luarocks/v/tony/libtmux?label=libtmux)](https://luarocks.org/modules/tony/libtmux)
 [![libtmux.org](https://img.shields.io/badge/docs-libtmux.org-0b7285)](https://libtmux.org/en/lua/)
-[![libtmux](https://img.shields.io/luarocks/v/tony/libtmux)](https://luarocks.org/modules/tony/libtmux)
+[![license](https://img.shields.io/badge/license-MIT-blue)](https://github.com/libtmux/libtmux-lua/blob/master/LICENSE)
 
 </div>
 
