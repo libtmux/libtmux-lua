@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- Layouts: a JSON layout needs tmux 3.8 or newer, the first release that
+  accepts one. Below 3.8, `Window:layout` refuses it with `invalid_layout`
+  before any command is sent. Installed releases behave as before. (#64)
+
 ## 0.1.0-1 (2026-10-25)
 
 - Versions: releases are numbered `0.1.N` from here on, starting with
