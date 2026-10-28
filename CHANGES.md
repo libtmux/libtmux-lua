@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.1.1-1
+
 - Layouts: a JSON layout needs tmux 3.8 or newer, the first release that
   accepts one. Below 3.8, `Window:layout` refuses it with `invalid_layout`,
   and a literal `select-layout` with a JSON layout is now refused as
