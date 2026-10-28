@@ -26,7 +26,7 @@ failure tests. Client/daemon version mismatches must report protocol failures
 truthfully instead of inferring daemon capabilities from the client executable.
 
 macOS and native Windows transport are outside the platform
-matrix. Results from builds outside the matrix, such as release candidates,
+matrix. Results from builds outside the matrix, such as unreleased builds,
 are diagnostic evidence and cannot replace released-version checks. Neovim's
 LuaJIT results do not prove stock PUC Lua 5.1 yield behavior. A Neovim build
 using PUC Lua is a separate host gate.
@@ -36,10 +36,10 @@ using PUC Lua is a separate host gate.
 The supported minimum is tmux 3.3a, compared as a complete release: 3.3 is
 below it. A development build (`next-X.Y`) or release candidate (`X.Y-rc`,
 `X.Y-rcN`) ranks just below the release it names and is accepted when it
-ranks at or above 3.3a: `next-3.9` and `3.8-rc2` clear the minimum, while
+ranks at or above 3.3a: `next-3.9` and `3.9-rc2` clear the minimum, while
 `next-3.3` and `3.3-rc` do not. Clearing the minimum does not qualify a
 release: subsystems that key on exact releases refuse versions they do not
-list, such as 3.9 or `3.8-rc2`.
+list, such as 3.9 or `3.9-rc2`.
 
 The library checks the connected daemon's own `#{version}`, never the client
 executable's `-V`, so a newer client cannot pass for an older daemon. The
@@ -63,7 +63,7 @@ client (3.0), and an executable that old rejects `-N`. All three raise
 release. 0.1.0alpha1-1 is the last release that supports tmux 3.2a;
 0.1.0alpha2-1 raised the minimum to 3.3a.
 
-The listed releases include 3.7d, the current stable release, and 3.8. 3.7d
+The listed releases include 3.7d and 3.8, the current stable release. 3.7d
 shares 3.7c's option table and decoders. 3.8 changes the option table, the
 layout export (JSON for non-control clients) and paste sanitization, and the
 catalog and layout check cover those. `next-3.9` is a development build: its
@@ -93,6 +93,8 @@ when the guard is removed; a feature without such a test is unverified.
 | Named paste with `delete_after` | 3.3a and later | Qualified: tmux looks the buffer up exactly |
 | `run-shell` output | 3.3a to 3.4 | Raw client output only: tmux sends job output to pane view mode, so nothing is captured; later releases write it to the client |
 | Custom layout strings | below 3.4 | Operative with validation: a checksum header is required |
+| JSON layout strings | 3.8 and later | Accepted |
+| JSON layout strings | below 3.8 | Refused before dispatch with `invalid_layout` |
 | Percentage splits | 3.4 | Typed splits encode `-l N%`; literal `-p` is refused |
 | Window breaks | exactly 3.7 | Typed `break_out` is operative with a rename repair; literal `break-pane` is refused |
 | Session and window names with `:` or `.` | exactly 3.7 | Refused before dispatch |

@@ -108,13 +108,19 @@ oracle. Resizing affects every link to the Window.
 
 - `named`: `even-horizontal`, `even-vertical`, `main-horizontal`,
   `main-vertical` or `tiled`. The mirrored main layouts require tmux 3.5+.
-- `layout`: an exported native layout string with a four-digit hexadecimal
-  checksum, comma and body, bounded at 65,536 bytes.
+- `layout`: an exported native layout string, bounded at 65,536 bytes: the
+  checksum form (four hexadecimal digits, comma and body), or on tmux 3.8 and
+  later the JSON form.
 - `next = true`, `previous = true` or `restore = true`.
 
 Malformed custom-layout headers return `invalid_layout` before dispatch.
 This avoids faulty error handling in tmux 3.3a and short-header reads in
-older native parsers. Use `named` for standard layout names.
+older native parsers. Use `named` for standard layout names. A JSON layout
+also returns `invalid_layout` on tmux older than 3.8, the first release that
+accepts one (see [compatibility](compatibility.md)). tmux 3.8 exports
+`window_layout` as JSON, except to a control-mode client that has not set the
+`new-layouts` flag, which still receives the checksum form
+([tmux 3.8 CHANGES](https://github.com/tmux/tmux/blob/7f2a35ad3321f9ba57a1062ca73b1f3ff26aca53/CHANGES#L38-L40)).
 
 Layout operations unzoom before native checksum and body validation. A rejected
 layout can therefore change zoom state. A nonzero native exit carries its receipt
