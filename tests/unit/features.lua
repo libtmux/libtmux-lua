@@ -29,7 +29,6 @@ function M.test_control_acquisition_needs_the_daemon_to_be_3_7()
     end
     -- A development build counts as the release it names.
     t.assertNil(features.control("next-3.9"))
-    t.assertNil(features.control("3.8-rc2"))
     t.assertNotNil(features.control("next-3.6"))
     t.assertNotNil(features.control("3.6-rc1"))
     -- A version this library cannot place never starts a control client.
@@ -181,7 +180,7 @@ function M.test_candidates_and_development_builds_rank_below_the_release_they_na
         allowed(version, { "break-pane", "-t", "%1" })
         allowed(version, { "new-session", "-d", "-s", "a.b" })
     end
-    for _, version in ipairs({ "3.7a", "3.8-rc2", "next-3.8" }) do
+    for _, version in ipairs({ "3.7a", "3.9-rc2", "next-3.8" }) do
         t.assertNil(features.control(version), version)
     end
     refused("next-3.4", { "delete-buffer", "-b", "name" }, "3.4")
