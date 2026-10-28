@@ -95,6 +95,7 @@ when the guard is removed; a feature without such a test is unverified.
 | Custom layout strings | below 3.4 | Operative with validation: a checksum header is required |
 | JSON layout strings | 3.8 and later | Accepted |
 | JSON layout strings | below 3.8 | Refused before dispatch with `invalid_layout` |
+| Literal `select-layout` with a JSON layout | below 3.8 | Refused before dispatch with `unsupported` |
 | Percentage splits | 3.4 | Typed splits encode `-l N%`; literal `-p` is refused |
 | Window breaks | exactly 3.7 | Typed `break_out` is operative with a rename repair; literal `break-pane` is refused |
 | Session and window names with `:` or `.` | exactly 3.7 | Refused before dispatch |

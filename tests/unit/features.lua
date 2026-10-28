@@ -117,6 +117,22 @@ function M.test_layouts_below_3_4_need_a_checksum_or_a_unique_preset()
     end
 end
 
+function M.test_a_literal_json_layout_needs_the_layout_json_floor()
+    local json = '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"%0"}}'
+    for _, version in ipairs({ "3.4", "3.7c", "3.7d" }) do
+        refused(version, { "select-layout", "-t", "@1", json }, "3.8")
+        refused(version, { "selectl", "--", json }, "3.8")
+        allowed(version, { "select-layout", "-t", "@1", "even-horizontal" })
+        allowed(version, { "select-layout", "-n" })
+        allowed(version, { "select-layout", "-E", "-t", "@1" })
+    end
+    -- Below 3.4 the checksum guard answers first, so the refusal names 3.4.
+    refused("3.3a", { "select-layout", "-t", "@1", json }, "3.4")
+    for _, version in ipairs({ "3.8", "next-3.9" }) do
+        allowed(version, { "select-layout", "-t", "@1", json })
+    end
+end
+
 function M.test_named_buffer_deletion_and_rename_need_3_4()
     refused("3.3a", { "delete-buffer", "-b", "name" }, "3.4")
     refused("3.3a", { "deleteb", "-bname" }, "3.4")
