@@ -127,8 +127,20 @@ local function work(runtime)
         local saved = field(wid, "window_layout"):sub(1, -2)
         must(window:layout({ named = "even-horizontal" }):await())
         assert(field(wid, "window_layout") ~= saved .. "\n")
+        -- On tmux 3.8 the saved layout is JSON, so this round trip is the
+        -- acceptance check for the JSON layout floor.
         must(window:layout({ layout = saved }):await())
         assert(field(wid, "window_layout") == saved .. "\n")
+        local version = field(sid, "version"):sub(1, -2)
+        local floor = require("libtmux._internal.support.capabilities").since("layout-json")
+        if require("libtmux._internal.fields").at_least(version, floor) ~= true then
+            local json = '{"V":2,"L":{"t":"p","w":90,"h":30,"x":0,"y":0,"i":0,"I":"%0"}}'
+            local refused, refusal = window:layout({ layout = json }):await()
+            assert(refused == nil and refusal and refusal.code == "invalid_layout")
+            assert(refusal.effect == "not_sent")
+        else
+            assert(saved:sub(1, 1) == "{", "tmux at the JSON layout floor exports JSON")
+        end
         command({ "resize-pane", "-t", pid, "-Z" })
         local value, err = window:layout({ layout = "invalid-layout" }):await()
         assert(value == nil and err and err.code == "invalid_layout" and err.effect == "not_sent")

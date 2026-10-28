@@ -21,6 +21,7 @@ nothing. The refused forms are:
 | --- | --- | --- |
 | `delete-buffer -b`, `set-buffer -n` | below 3.4 | A missing buffer name acts on another buffer. |
 | `select-layout` with a custom layout that has no checksum header | below 3.4 | tmux 3.3a crashes on an invalid layout. |
+| `select-layout` with a JSON layout | below 3.8 | Releases below 3.8 do not read JSON layouts. |
 | `split-window -p` | 3.4 | The percentage flag is broken; use `-l N%`. |
 | `refresh-client -l` | below 3.6a | tmux 3.3a exits at once when the attached client's `TERM` is `xterm-256color` or `tmux-256color`, and 3.4 through 3.6 can exit when that client leaves before its terminal answers. |
 | `break-pane` | exactly 3.7 | tmux 3.7 misnames windows; use `Pane:break_out`. |
@@ -43,6 +44,7 @@ What the nested copy does depends on the form in the table above:
 | `refresh-client -l` | 3.3a when the attached client's `TERM` is `xterm-256color` or `tmux-256color` (it survives `screen` and `vt100`); 3.4 through 3.6 when the attached client leaves before its terminal answers | The server can exit. 3.6a fixes the second case ([changes][clipboard-query]). |
 | `delete-buffer -b NAME`, `set-buffer -b NAME -n NEW`, with no buffer called `NAME` | below 3.4 | The newest buffer is deleted or renamed instead. |
 | `split-window -p` | 3.4 | tmux answers with its own error and nothing changes. |
+| `select-layout` with a JSON layout | 3.4 and later, below 3.8 | tmux answers with its own error and nothing changes. |
 | `:` or `.` in a session or window name | exactly 3.7 | tmux answers with its own error and nothing changes. |
 
 On exactly tmux 3.7, `if-shell -F 1 'break-pane -d'` passes the check and

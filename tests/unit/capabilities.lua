@@ -58,6 +58,10 @@ function M.test_the_raw_break_pane_is_refused_and_only_break_out_repairs()
     t.assertEquals(repair.apis, { "libtmux.Pane:break_out" })
 end
 
+function M.test_json_layout_floor_is_the_3_8_release()
+    t.assertEquals(registry.since("layout-json"), "3.8")
+end
+
 function M.test_lookup_rejects_an_unknown_id()
     t.assertEquals(registry.since("control-mode"), "3.7")
     t.assertError(registry.since, "no-such-capability")

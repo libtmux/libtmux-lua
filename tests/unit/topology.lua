@@ -301,7 +301,10 @@ function M.test_json_layouts_are_accepted_only_from_tmux_3_8()
     end
     for _, version in ipairs({ "3.3a", "3.7c", "3.7d" }) do
         fixture("window", version, function(state, run)
-            reject(run("layout", nil, { layout = json }), "invalid_layout")
+            local _, err = run("layout", nil, { layout = json }):await()
+            t.assertEquals(err.code, "invalid_layout")
+            t.assertEquals(err.effect, "not_sent")
+            t.assertStrContains(err.message, "JSON from tmux 3.8")
             t.assertEquals(#state.calls, 0)
         end)
     end

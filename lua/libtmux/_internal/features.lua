@@ -261,6 +261,7 @@ function M.command(version, argv)
     local delete_floor = registry.since("buffer-delete-named")
     local rename_floor = registry.since("buffer-rename")
     local layout_floor = registry.since("layout-without-checksum")
+    local json_floor = registry.since("layout-json")
     local clipboard_floor = registry.since("clipboard-query")
     if name == "break-pane" and fields.exactly(version, break_pane.releases[1]) then
         return refuse(
@@ -295,6 +296,16 @@ function M.command(version, argv)
                 )
             end
         end
+    elseif
+        name == "select-layout"
+        and below(version, json_floor)
+        and positional[1] ~= nil
+        and positional[1]:match("^{.") ~= nil
+        and not has_flag(flags, "n")
+        and not has_flag(flags, "p")
+        and not has_flag(flags, "E")
+    then
+        return refuse(version, json_floor, "a JSON layout needs tmux " .. json_floor)
     elseif name == "delete-buffer" and below(version, delete_floor) and has_flag(flags, "b") then
         return refuse(
             version,

@@ -29,7 +29,6 @@ function M.test_control_acquisition_needs_the_daemon_to_be_3_7()
     end
     -- A development build counts as the release it names.
     t.assertNil(features.control("next-3.9"))
-    t.assertNil(features.control("3.8-rc2"))
     t.assertNotNil(features.control("next-3.6"))
     t.assertNotNil(features.control("3.6-rc1"))
     -- A version this library cannot place never starts a control client.
@@ -118,6 +117,22 @@ function M.test_layouts_below_3_4_need_a_checksum_or_a_unique_preset()
     end
 end
 
+function M.test_a_literal_json_layout_needs_the_layout_json_floor()
+    local json = '{"V":2,"L":{"t":"p","w":80,"h":24,"x":0,"y":0,"i":0,"I":"%0"}}'
+    for _, version in ipairs({ "3.4", "3.7c", "3.7d" }) do
+        refused(version, { "select-layout", "-t", "@1", json }, "3.8")
+        refused(version, { "selectl", "--", json }, "3.8")
+        allowed(version, { "select-layout", "-t", "@1", "even-horizontal" })
+        allowed(version, { "select-layout", "-n" })
+        allowed(version, { "select-layout", "-E", "-t", "@1" })
+    end
+    -- Below 3.4 the checksum guard answers first, so the refusal names 3.4.
+    refused("3.3a", { "select-layout", "-t", "@1", json }, "3.4")
+    for _, version in ipairs({ "3.8", "next-3.9" }) do
+        allowed(version, { "select-layout", "-t", "@1", json })
+    end
+end
+
 function M.test_named_buffer_deletion_and_rename_need_3_4()
     refused("3.3a", { "delete-buffer", "-b", "name" }, "3.4")
     refused("3.3a", { "deleteb", "-bname" }, "3.4")
@@ -181,7 +196,7 @@ function M.test_candidates_and_development_builds_rank_below_the_release_they_na
         allowed(version, { "break-pane", "-t", "%1" })
         allowed(version, { "new-session", "-d", "-s", "a.b" })
     end
-    for _, version in ipairs({ "3.7a", "3.8-rc2", "next-3.8" }) do
+    for _, version in ipairs({ "3.7a", "3.9-rc2", "next-3.8" }) do
         t.assertNil(features.control(version), version)
     end
     refused("next-3.4", { "delete-buffer", "-b", "name" }, "3.4")
