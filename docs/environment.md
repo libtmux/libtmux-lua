@@ -4,6 +4,9 @@ Server methods address tmux's global environment store. Session methods address
 that session's local store. Each method returns a Request; reads never evaluate
 shell text. Window and Pane handles reject these operations with `invalid_scope`.
 
+Use a disposable daemon with at least one session at `/tmp/example-tmux.sock`.
+This example changes `APP_MODE` in its global and session stores.
+
 ```lua
 local adapter = require("libtmux.runtime.luv")
 local result, err = adapter.run(function(runtime)
@@ -76,9 +79,10 @@ creating client.
 ## Consistency and bounds
 
 Reads use literal `show-environment -s` arguments and a bounded decoder, never a
-shell evaluator. The decoder recognizes the catalog releases from
-3.3a through 3.7c. It reverses the 3.4–3.5a printer escapes and the additional
-3.4 variable-like dollar escape. Unsupported releases fail explicitly.
+shell evaluator. The decoder accepts only the releases in its
+[dialect table](../lua/libtmux/_internal/environment_codec.lua), including 3.7d,
+3.8 and `next-3.9`. It reverses the 3.4–3.5a printer escapes and the additional
+3.4 variable-like dollar escape. Unlisted releases fail explicitly.
 
 A listing of a nonportable removal name can resemble several portable removal
 rows. Before returning a list, the library verifies each parsed removal through

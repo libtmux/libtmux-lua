@@ -24,9 +24,10 @@ Git checkout and verifies every pinned format mapping and source anchor.
 `Since` means the first release supported by this catalog for that field,
 not necessarily the release that introduced it. The floor is tmux 3.3a.
 Source inspection establishes format availability; it does not establish
-complete runtime or platform compatibility. Later release strings retain
-known fields; development and prerelease strings require explicit capability
-evidence and are rejected by the schema helper.
+complete runtime or platform compatibility. The schema helper accepts recognized
+final, release-candidate and `next-X.Y` reports that rank at or above the floor.
+Field availability is checked against that rank. Unrecognized reports and
+versions below the floor are rejected.
 
 Record names are Lua aliases for literal tmux format names. IDs retain their
 `$`, `@`, and `%` prefixes. `number` fields represent integers; consumers must
