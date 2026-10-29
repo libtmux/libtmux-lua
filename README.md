@@ -543,6 +543,10 @@ The [package README](packages/mcp/README.md) has the full build steps.
   [`unsupported_version`](docs/compatibility.md#minimum-tmux-release) before
   any command runs. CI runs the integration suite on every tmux release from
   3.3a, listed in the [compatibility matrix](docs/compatibility.md).
+- **tmux release candidates are not supported.** A feature can require one
+  only until its release ships, and a candidate such as `X.Y-rcN` ranks below
+  `X.Y`, so one below the floor is refused.
+  See [Release candidates](https://libtmux.org/en/tmux/guides/tmux-support/#release-candidates).
 - **Pane-output watches and control observation need tmux 3.7 or newer.**
   `observe` returns `unsupported` on an older server. See
   [control](docs/control.md).

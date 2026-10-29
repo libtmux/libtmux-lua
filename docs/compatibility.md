@@ -36,10 +36,16 @@ using PUC Lua is a separate host gate.
 The supported minimum is tmux 3.3a, compared as a complete release: 3.3 is
 below it. A development build (`next-X.Y`) or release candidate (`X.Y-rc`,
 `X.Y-rcN`) ranks just below the release it names and is accepted when it
-ranks at or above 3.3a: `next-3.9` and `3.9-rc2` clear the minimum, while
-`next-3.3` and `3.3-rc` do not. Clearing the minimum does not qualify a
-release: subsystems that key on exact releases refuse versions they do not
-list, such as 3.9 or `3.9-rc2`.
+ranks at or above 3.3a: `next-3.9` clears the minimum, while `next-3.3` and
+a candidate of 3.3 do not. A candidate with a patch letter, such as
+`X.Ya-rcN`, names no release and is refused. Clearing the minimum does not
+qualify a release: subsystems that key on exact releases refuse versions
+they do not list, such as 3.9 or a candidate of it.
+
+tmux release candidates are not supported: a feature can require one only
+until its release ships, and a candidate such as `X.Y-rcN` ranks below
+`X.Y`. See
+[Release candidates](https://libtmux.org/en/tmux/guides/tmux-support/#release-candidates).
 
 The library checks the connected daemon's own `#{version}`, never the client
 executable's `-V`, so a newer client cannot pass for an older daemon. The
@@ -99,7 +105,7 @@ when the guard is removed; a feature without such a test is unverified.
 | Percentage splits | 3.4 | Typed splits encode `-l N%`; literal `-p` is refused |
 | Window breaks | exactly 3.7 | Typed `break_out` is operative with a rename repair; literal `break-pane` is refused |
 | Session and window names with `:` or `.` | exactly 3.7 | Refused before dispatch |
-| Development builds | `next-3.9` | Qualified only for the master commit pinned in the option catalog; other development builds and `-rc` builds are supported but their option table is unlisted, so option operations refuse them |
+| Development builds | `next-3.9` | Qualified only for the master commit pinned in the option catalog; other development builds and `X.Y-rcN` candidates have no listed option table, so option operations refuse them |
 
 Named buffer deletion requires tmux 3.4 or later. The typed API refuses older
 releases because a missing target can delete another buffer. The older-release
