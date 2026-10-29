@@ -4,6 +4,8 @@
 
 - Docs: describe the field helper's ranked development and release-candidate
   reports, and the environment decoder's exact release table.
+- Docs: distinguish connection probes from refused caller operations, and
+  describe implemented APIs and Linux CI coverage through the owning guides.
 
 ## 0.1.1-1
 

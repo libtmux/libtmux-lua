@@ -2,8 +2,8 @@
 
 The runtime schedules asynchronous requests and owns their cleanup.
 Use its [connection and snapshot API](snapshots.md) for explicit capture.
-[Literal command execution](commands.md) shares that connection. Named domain
-operations and observation are still being integrated.
+[Command execution](commands.md), [creation](creation.md) and
+[session observation](control.md) use the same runtime.
 
 Select `libtmux.runtime.luv` for a standalone Lua process. Its
 `run(body, limits)` function drives a quiescent top-level loop and returns
