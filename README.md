@@ -539,10 +539,10 @@ The [package README](packages/mcp/README.md) has the full build steps.
   identifiers, and the changelog marks each break. Pin an exact version to
   avoid one.
 - **Lua 5.1 to 5.5, and LuaJIT.** CI runs the unit suites on each.
-- **tmux 3.3a or newer.** An older server is refused with
-  [`unsupported_version`](docs/compatibility.md#minimum-tmux-release) before
-  any command runs. CI runs the integration suite on every tmux release from
-  3.3a, listed in the [compatibility matrix](docs/compatibility.md).
+- **tmux 3.3a or newer.** Connection setup may probe the daemon's release,
+  then refuse an older server with
+  [`unsupported_version`](docs/compatibility.md#minimum-tmux-release).
+  The [compatibility matrix](docs/compatibility.md) lists CI's integration releases.
 - **Pane-output watches and control observation need tmux 3.7 or newer.**
   `observe` returns `unsupported` on an older server. See
   [control](docs/control.md).
