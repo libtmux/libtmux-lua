@@ -781,7 +781,7 @@ function M.at_least(reported, required)
 end
 
 ---Whether a report is exactly one final release: "3.7" matches neither
----"3.7a" nor a "3.7-rc" candidate or a next-3.7 development build.
+---"3.7a", a release candidate or a next-3.7 development build.
 ---@param reported string
 ---@param release string
 ---@return boolean
