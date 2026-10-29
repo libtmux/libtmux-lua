@@ -103,6 +103,5 @@ operation; pinned endpoint evidence uses a separate bounded check. Output
 limits and runtime byte admission remain distinct. Excess batch output is
 reported with byte counts and truncation metadata; it is not silently kept.
 
-The raw API is an escape hatch. Named domain operations, owned command
-completion and observation APIs are still under development. A successful
-`send-keys` process does not report the exit of a pane application.
+The raw API is an escape hatch. A successful `send-keys` process does not
+report the exit of a pane application.

@@ -242,7 +242,7 @@ prompts yet.
   avoid one.
 - **Lua 5.1 to 5.5, and LuaJIT.** CI runs the unit suites on each.
 - **tmux 3.3a or newer.** An older server is refused with `unsupported_version`
-  before any command runs.
+  before caller operations run. Connection setup may probe the daemon's release.
 - **Neovim.** CI runs the Neovim tests on 0.10.0 and 0.12.5.
 - **Linux, including WSL.** CI runs on Ubuntu 24.04. No CI job runs on macOS,
   so macOS is untested.
