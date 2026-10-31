@@ -8,7 +8,9 @@ which is 1 when unset.
 
 FAKE_TMUX_SERVER makes the file at the -S path stand for a server. With
 "answers", kill-server removes it; with "slow", a moment after it returns;
-with "stuck", never.
+with "stuck", never. "deaf" is "stuck" for a server that never answers its
+client: kill-server writes its pid to FAKE_TMUX_ROOT/client and waits until it
+is killed.
 """
 
 import os
@@ -51,6 +53,7 @@ if [ -n "${FAKE_TMUX_SERVER-}" ] && [ -n "$target" ]; then
       case "$FAKE_TMUX_SERVER" in
         answers) rm -f -- "${target:?}" ;;
         slow) (sleep 0.2; rm -f -- "${target:?}") >/dev/null 2>&1 </dev/null & ;;
+        deaf) echo "$$" > "$FAKE_TMUX_ROOT/client"; exec tail -f /dev/null ;;
       esac ;;
   esac
 fi

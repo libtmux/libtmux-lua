@@ -124,7 +124,7 @@ $ git clone https://github.com/libtmux/libtmux-lua.git && cd libtmux-lua
 ```
 
 Its launcher starts a tmux server on a private socket, runs the program, and
-stops the server:
+stops the server. It needs `perl` to confirm the stop:
 
 ```console
 $ sh examples/api/run.sh examples/api/new_session.lua

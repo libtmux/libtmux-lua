@@ -6,8 +6,8 @@ No existing session is required. The connection closes without stopping the
 daemon; the launcher checks that its bootstrap session still exists before
 cleanup. A failed daemon shutdown keeps the socket directory and reports it.
 
-Use Lua 5.5.1, LuaRocks, Git, tmux 3.3a or newer, a C compiler, and CMake on
-Linux. From the checked-out repository root, install the library and its
+Use Lua 5.5.1, LuaRocks, Git, tmux 3.3a or newer, a C compiler, CMake, and
+perl, which the launcher uses to confirm that the daemon stopped, on Linux. From the checked-out repository root, install the library and its
 standalone runtime dependency into a local tree:
 
 ```console
