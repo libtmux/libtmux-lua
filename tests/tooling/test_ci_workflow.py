@@ -95,6 +95,11 @@ def problems(ci, publish):
     for line in ci.splitlines():
         if "inputs." in line and not re.fullmatch(r"\s+[A-Z_]+: \$\{\{ inputs\.[a-z-]+ \}\}", line):
             found.append("an input may reach a step only through env")
+    group = re.search(r"(?m)^concurrency:\n  group: (.*)\n  cancel-in-progress: (.*)$", ci)
+    if not group or "github.event_name == 'workflow_dispatch' && github.run_id ||" not in group[1]:
+        found.append("a dispatch run must have its own concurrency group")
+    if not group or "github.event.pull_request.number || github.ref" not in group[1] or group[2] != "true":
+        found.append("a push and a pull request must still cancel the run they supersede")
     call = re.search(r"(?ms)^  workflow_call:\n    inputs:\n      scope:\n(.*?)^\S", ci + "\n_")
     if not call or "required: true" not in call[1]:
         found.append("the workflow_call scope input must be required")
@@ -149,6 +154,15 @@ MUTATIONS = [
     ("an input is used inline in a script", lambda ci, pub: (replaced(
         ci, '            --lua "$LUA" \\\n', '            --lua "${{ inputs.lua }}" \\\n'), pub),
      "only through env"),
+    ("a dispatch shares its group with the push", lambda ci, pub: (replaced(
+        ci, "github.event_name == 'workflow_dispatch' && github.run_id || ", ""), pub),
+     "a dispatch run must have its own concurrency group"),
+    ("a push no longer cancels its predecessor", lambda ci, pub: (replaced(
+        ci, "cancel-in-progress: true", "cancel-in-progress: false"), pub),
+     "must still cancel the run they supersede"),
+    ("a pull request shares one group with every other", lambda ci, pub: (replaced(
+        ci, "github.event.pull_request.number || github.ref", "github.ref"), pub),
+     "must still cancel the run they supersede"),
     ("the workflow_call scope is optional", lambda ci, pub: (replaced(
         ci, "        required: true\n", "        required: false\n"), pub), "scope input must be required"),
     ("the release stops calling ci.yml", lambda ci, pub: (ci, replaced(
