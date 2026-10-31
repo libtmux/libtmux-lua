@@ -4,20 +4,24 @@ A tmux command that names no socket goes to the server an inherited TMUX
 names, and otherwise to the default socket under TMUX_TMPDIR. Every test here
 passes -S, so none should reach either. Entering the sandbox removes what
 selects a server and points TMUX_TMPDIR at a directory this run owns: a test
-that forgets -S finds nothing, and the run fails when it finds a socket there.
+that forgets -S finds nothing, and the run fails when it finds a socket anywhere
+in the sandbox.
 
 Findings name variables and never print their values: a TMUX value names a
 server, and an environment can hold secrets.
 """
 
 import atexit
+from collections import namedtuple
 import os
 from pathlib import Path
 import shutil
+import socket
 import stat
 import subprocess
 import sys
 import tempfile
+import time
 
 MARKER = "LIBTMUX_TEST_SANDBOX"
 PREFIX = "libtmux-lua-sb-"
@@ -26,6 +30,13 @@ PREFIX = "libtmux-lua-sb-"
 MAX_BYTES = 60
 # tempfile.mkdtemp appends eight characters to the prefix.
 NAME_BYTES = len(PREFIX) + 8
+# How long kill-server may take before a socket that still accepts a
+# connection counts as a server that was not stopped.
+STOP_SECONDS = 3
+
+# leaked: every socket found under the sandbox, relative to it.
+# answering: those that still accepted a connection after the stop.
+Release = namedtuple("Release", "leaked answering")
 
 
 class Refused(Exception):
@@ -129,38 +140,96 @@ def prepare(env, roots=None):
 
 
 def leaks(directory):
-    """Sockets and files tmux put under tmux-<uid> for a command that named none."""
-    return sorted(str(path.relative_to(directory)) for path in Path(directory).glob("tmux-*/*"))
+    """Every socket under the directory, at any depth, relative to it.
+
+    Each test here puts its own server on a socket in a directory of its own,
+    so a socket anywhere in the sandbox, whether tmux chose it or a test named
+    it with -S, is a server no test stopped. A link is not followed: its
+    target is a socket in some other tree.
+    """
+    found = []
+    for folder, folders, files in os.walk(directory):
+        for name in folders + files:
+            path = os.path.join(folder, name)
+            try:
+                if stat.S_ISSOCK(os.lstat(path).st_mode):
+                    found.append(os.path.relpath(path, directory))
+            except OSError:
+                pass
+    return sorted(found)
 
 
-def _stop(socket):
-    if not stat.S_ISSOCK(os.lstat(socket).st_mode):
-        return
+def _answering(target):
+    """Whether a connection to the socket succeeds.
+
+    Only a refusal or a missing path shows that no server is behind it. Any
+    other outcome, a full backlog or a path too long to connect to, leaves the
+    server unproven gone.
+    """
+    client = socket.socket(socket.AF_UNIX)
+    try:
+        client.setblocking(False)
+        client.connect(os.fsdecode(target))
+    except (FileNotFoundError, ConnectionRefusedError, NotADirectoryError):
+        return False
+    except (OSError, ValueError):
+        return True
+    finally:
+        client.close()
+    return True
+
+
+def _stop(target, tmux, wait):
+    """Run kill-server on a socket and return whether nothing answers there.
+
+    A server leaves a moment after kill-server returns, so the connection is
+    retried until it fails or the wait runs out.
+    """
     try:
         subprocess.run(
-            [os.environ.get("TMUX_BIN", "tmux"), "-N", "-S", str(socket), "kill-server"],
+            [tmux, "-N", "-S", str(target), "kill-server"],
             env=scrub(os.environ), stdin=subprocess.DEVNULL, capture_output=True, timeout=5,
         )
     except (OSError, subprocess.SubprocessError):
         pass
+    deadline = time.monotonic() + wait
+    while _answering(target):
+        if time.monotonic() >= deadline:
+            return False
+        time.sleep(0.02)
+    return True
 
 
-def release(directory):
-    """Stop any server on a leaked socket, remove the directory, return the leaks."""
+def release(directory, tmux=None, wait=None):
+    """Stop the server behind each socket and remove the directory.
+
+    The directory stays while a server still answers. Returns a Release that
+    names what was found.
+    """
+    tmux = tmux or os.environ.get("TMUX_BIN", "tmux")
+    wait = STOP_SECONDS if wait is None else wait
     found = leaks(directory)
-    for path in found:
-        _stop(Path(directory) / path)
-    _remove(directory)
-    return found
+    answering = [path for path in found if not _stop(Path(directory) / path, tmux, wait)]
+    if not answering:
+        _remove(directory)
+    return Release(found, answering)
+
+
+def describe(released, directory):
+    """The failure for a release that found sockets: names, never values."""
+    text = "libtmux-lua tests left sockets in the sandbox: " + ", ".join(released.leaked)
+    if released.answering:
+        text += (f"; a server still answers at {', '.join(released.answering)}, "
+                 f"so {os.path.basename(directory.rstrip('/'))} was kept")
+    return text
 
 
 def _finish(directory, owner):
     if os.getpid() != owner:
         return
-    found = release(directory)
-    if found:
-        print("libtmux-lua tests started tmux without -S; it chose " + ", ".join(found)
-              + " in the sandbox", file=sys.stderr, flush=True)
+    released = release(directory)
+    if released.leaked:
+        print(describe(released, directory), file=sys.stderr, flush=True)
         sys.stdout.flush()
         # An exit status set inside an atexit handler is ignored; this is the
         # only way to fail the run from here.

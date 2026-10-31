@@ -5,6 +5,10 @@ It never writes an environment value: whether TMUX_TMPDIR lies under
 FAKE_TMUX_ROOT, whether the sandbox marker equals it, and whether the -S
 socket lies under it are recorded as words. It exits with FAKE_TMUX_STATUS,
 which is 1 when unset.
+
+FAKE_TMUX_SERVER makes the file at the -S path stand for a server. With
+"answers", kill-server removes it; with "slow", a moment after it returns;
+with "stuck", never.
 """
 
 import os
@@ -16,9 +20,11 @@ SCRIPT = """#!/bin/sh
   echo CALL
   previous=
   socket=none
+  target=
   for argument in "$@"; do
     echo "ARG $argument"
     if [ "$previous" = -S ]; then
+      target=$argument
       case "$argument" in
         "${TMUX_TMPDIR:-/nonexistent}"/*) socket=inside ;;
         *) socket=outside ;;
@@ -39,6 +45,15 @@ SCRIPT = """#!/bin/sh
     echo "MARKER differs"
   fi
 } >> "$FAKE_TMUX_LOG"
+if [ -n "${FAKE_TMUX_SERVER-}" ] && [ -n "$target" ]; then
+  case "$*" in
+    *kill-server)
+      case "$FAKE_TMUX_SERVER" in
+        answers) rm -f -- "${target:?}" ;;
+        slow) (sleep 0.2; rm -f -- "${target:?}") >/dev/null 2>&1 </dev/null & ;;
+      esac ;;
+  esac
+fi
 exit "${FAKE_TMUX_STATUS:-1}"
 """
 
