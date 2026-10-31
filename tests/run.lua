@@ -1,3 +1,15 @@
+local sandbox = require("tests.support.sandbox")
+
+local refusals = sandbox.violations(os.getenv)
+if #refusals > 0 then
+    io.stderr:write(
+        "libtmux-lua tests refused to run: ",
+        table.concat(refusals, "; "),
+        "\nRun them through scripts/check.py, which makes the sandbox.\n"
+    )
+    os.exit(2)
+end
+
 local luaunit = require("luaunit")
 
 local suites = { "imports", "query", "runtime" }

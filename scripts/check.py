@@ -13,10 +13,10 @@ from urllib.parse import unquote
 
 if __package__:
     from .readme_examples import check_readmes
-    from .runtime_config import clean_environment, executable_path, identify
+    from .runtime_config import clean_environment, enter_sandbox, executable_path, identify
 else:
     from readme_examples import check_readmes
-    from runtime_config import clean_environment, executable_path, identify
+    from runtime_config import clean_environment, enter_sandbox, executable_path, identify
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -108,6 +108,7 @@ def main():
     args = parser.parse_args()
     if args.suites and args.gate != "unit":
         parser.error("suite names apply only to the unit gate")
+    enter_sandbox()
     started = time.monotonic()
     lua = tool(args.lua)
     env = lua_environment(lua)

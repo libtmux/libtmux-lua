@@ -39,6 +39,13 @@ def main():
     parser.add_argument("--pattern", default="test_*.py")
     arguments = parser.parse_args()
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+    from tests.support import sandbox
+
+    try:
+        sandbox.enter()
+    except sandbox.Refused as error:
+        print(f"integration tests refused to run: {error}", file=sys.stderr)
+        return 2
     try:
         with cancellation_signals():
             suite = unittest.defaultTestLoader.discover(

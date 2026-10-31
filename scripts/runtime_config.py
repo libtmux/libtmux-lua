@@ -6,11 +6,28 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import sys
+
+ROOT = Path(__file__).resolve().parent.parent
+# A script runs with its own directory first on the path; the sandbox is in tests/.
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
+from tests.support import sandbox
 
 
 def clean_environment():
-    return {key: value for key, value in os.environ.items()
-            if not key.startswith(("LUA_PATH", "LUA_CPATH", "LUA_INIT"))}
+    """The environment for a child: no Lua search paths and nothing that selects a tmux server."""
+    return sandbox.scrub({key: value for key, value in os.environ.items()
+                          if not key.startswith(("LUA_PATH", "LUA_CPATH", "LUA_INIT"))})
+
+
+def enter_sandbox():
+    """Make this process the test sandbox, or exit 2 saying why it cannot."""
+    try:
+        return sandbox.enter()
+    except sandbox.Refused as error:
+        print(f"libtmux-lua tests refused to run: {error}", file=sys.stderr)
+        raise SystemExit(2) from error
 
 
 @dataclass(frozen=True)
