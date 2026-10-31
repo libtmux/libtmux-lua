@@ -340,20 +340,30 @@ names, and otherwise to the default socket under `TMUX_TMPDIR`. The
 every `LIBTMUX_SOCKET*` variable and sets `TMUX_TMPDIR` to an owner-only
 `libtmux-lua-sb-` directory, so a test that forgets `-S` finds nothing.
 
-`scripts/check.py`, `scripts/package.py`, `tests/run_integration.py` and the
-tmux fixture enter the sandbox, and their children join it. The launcher
-`examples/api/run.sh` does the same for the programs it runs. A new entry point
-that starts tmux must enter the sandbox or be started by one that did.
+`scripts/check.py`, `scripts/package.py`, `tests/run_integration.py`, the tmux
+fixture and the `tests.integration` package enter the sandbox, and their
+children join it. Importing the package covers a direct `python3 -m unittest`
+run of one of its modules; discovering a module by path does not, and the canary
+refuses there. The launcher `examples/api/run.sh` does the same for the programs
+it runs, in a directory under `TMPDIR`, or under `/tmp` when `TMPDIR` leaves no
+room for the default socket path. A new entry point that starts tmux must enter
+the sandbox or be started by one that did.
 
 Lua cannot change its environment, so `tests/run.lua` only checks: it exits
 with status 2 unless a parent made the sandbox. Run unit suites through
 `scripts/check.py`.
 
-The directory goes under `TMPDIR`, or under `/tmp` when `TMPDIR` is too long
-for a socket path, so keep `TMPDIR` short. The fixture's own directories stay
-under `/tmp`. At exit, the process that made the sandbox fails the run if tmux
-left a socket under `tmux-<uid>` there, stops that server and removes the
-directory. Refusals name variables and never print their values.
+The directory goes under `TMPDIR`, or under `/tmp` when `TMPDIR` is too long for
+a socket path, so keep `TMPDIR` short. The fixture's own directories stay under
+`/tmp`. At exit, the process that made the sandbox fails the run if a socket is
+left anywhere in the sandbox, even when every test passed, whether tmux chose it
+for a command that named none or a test named it with `-S`. It stops each server
+with `tmux -S <socket> kill-server`, then connects to confirm nothing answers. A
+server that still answers keeps the directory, which the failure names. The
+launcher does the same for its own directory, confirming each stop with a
+connection to the socket from `perl` and not with a tmux client. Refusals and
+failures name variables, sockets and directories, never the values of
+environment variables.
 
 The [canary](../tests/integration/test_sandbox.py) shows that a client naming no
 socket looks only under the sandbox. Two tooling tests,
