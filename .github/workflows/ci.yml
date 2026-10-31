@@ -43,7 +43,7 @@ on:
           Open a tmate session on the one tmux job, before the tests or after a
           failure. It needs scope custom with a single tmux-ref, lua and nvim.
         type: choice
-        options: [off, before-tests, on-failure]
+        options: ['off', before-tests, on-failure]
         default: 'off'
   workflow_call:
     inputs:
