@@ -2,8 +2,9 @@
 
 It writes the arguments and the names of the variables that select a server.
 It never writes an environment value: whether TMUX_TMPDIR lies under
-FAKE_TMUX_ROOT, and whether the sandbox marker equals it, are recorded as
-words.
+FAKE_TMUX_ROOT, whether the sandbox marker equals it, and whether the -S
+socket lies under it are recorded as words. It exits with FAKE_TMUX_STATUS,
+which is 1 when unset.
 """
 
 import os
@@ -13,7 +14,19 @@ SCRIPT = """#!/bin/sh
 : "${FAKE_TMUX_LOG:?}" "${FAKE_TMUX_ROOT:?}"
 {
   echo CALL
-  for argument in "$@"; do echo "ARG $argument"; done
+  previous=
+  socket=none
+  for argument in "$@"; do
+    echo "ARG $argument"
+    if [ "$previous" = -S ]; then
+      case "$argument" in
+        "${TMUX_TMPDIR:-/nonexistent}"/*) socket=inside ;;
+        *) socket=outside ;;
+      esac
+    fi
+    previous=$argument
+  done
+  echo "SOCKET $socket"
   env | sed -n -E 's/^(TMUX|TMUX_PANE|LIBTMUX_SOCKET[A-Z_]*)=.*/SET \\1/p'
   case "${TMUX_TMPDIR-}" in
     "") echo "TMPDIR unset" ;;
@@ -26,7 +39,7 @@ SCRIPT = """#!/bin/sh
     echo "MARKER differs"
   fi
 } >> "$FAKE_TMUX_LOG"
-exit 1
+exit "${FAKE_TMUX_STATUS:-1}"
 """
 
 
@@ -39,18 +52,20 @@ def install(directory):
 
 
 def calls(log):
-    """The recorded calls: argv, selector names, and the two words per call."""
+    """The recorded calls: argv, selector names, and the words per call."""
     found = []
     if not os.path.exists(log):
         return found
     for line in Path(log).read_text().splitlines():
         word, _, rest = line.partition(" ")
         if word == "CALL":
-            found.append({"argv": [], "set": [], "tmpdir": None, "marker": None})
+            found.append({"argv": [], "set": [], "tmpdir": None, "marker": None, "socket": None})
         elif word == "ARG":
             found[-1]["argv"].append(rest)
         elif word == "SET":
             found[-1]["set"].append(rest)
+        elif word == "SOCKET":
+            found[-1]["socket"] = rest
         elif word == "TMPDIR":
             found[-1]["tmpdir"] = rest
         elif word == "MARKER":
