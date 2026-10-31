@@ -200,22 +200,28 @@ compatibility, examples and CI evidence remain open gates.
 ### GitHub Actions
 
 [CI](workflows/ci.yml) runs on pull requests, pushes to `master` and manual
-dispatch. Ubuntu 24.04 jobs run the existing offline gates after a separate
+dispatch. A pull request and a push test only the oldest and newest released
+tmux (3.3a and 3.8). The full scope covers the whole table, and runs for a
+release ([Publish](workflows/publish.yml) asks for it) and for a dispatch with
+`scope=full`. Ubuntu 24.04 jobs run the existing offline gates after a separate
 dependency bootstrap:
 
 - Unit suites on every accepted PUC Lua version and standalone LuaJIT.
-- Full outer checks at Lua/tmux/Neovim floor and current versions, including
-  format, lint, generated files, docs, installed rocks and LuaLS completion.
-- The full integration suite on every accepted tmux release from 3.3a, using
-  current Lua and Neovim. This includes 3.7d, 3.8 and the pinned `next-3.9`
-  development build. 3.7d and `next-3.9` have no tag, so they build from a
-  branch commit.
-- A refusal lane for each release below the minimum (3.0a, 3.1c, 3.2a and the
-  unpatched 3.3). It runs only the version check tests, which assert the
-  refusal and that no command reached the daemon. The 3.0a and 3.1c lanes
-  use that release as the client, then repeat the check with a 3.3a client
-  in front of the old daemon (`TMUX_CLIENT_BIN`), which covers the 3.1 usage
-  error and the 3.0 "too old for client" answer. That run must refuse in
+- Full outer checks at Lua/Neovim floor and current versions, including format,
+  lint, generated files, docs, installed rocks and LuaLS completion. The floor
+  job runs on the oldest released tmux. The current job runs on the newest on a
+  push and a pull request, and on 3.7c in the full scope, where
+  `data/ci-matrix.json` pins it.
+- The full integration suite, using current Lua and Neovim, on the oldest and
+  newest released tmux. The full scope runs it on every accepted tmux release
+  from 3.3a, which includes 3.7d and the pinned `next-3.9` development build.
+  Those two have no tag, so they build from a branch commit.
+- In the full scope, a refusal lane for each release below the minimum (3.0a,
+  3.1c, 3.2a and the unpatched 3.3). It runs only the version check tests,
+  which assert the refusal and that no command reached the daemon. The 3.0a and
+  3.1c lanes use that release as the client, then repeat the check with a 3.3a
+  client in front of the old daemon (`TMUX_CLIENT_BIN`), which covers the 3.1
+  usage error and the 3.0 "too old for client" answer. That run must refuse in
   under half a second (`LIBTMUX_REFUSAL_MAX_MS`), because a pre-3.2 daemon
   holds the client's output open and the probe timeout is 750 ms.
 
@@ -238,6 +244,60 @@ libevent and ncurses development headers. Select its result through
 `TMUX_BIN=.cache/toolchains/tmux-3.7c/bin/tmux` when running a gate.
 macOS, remaining runtime/host combinations and unfinished product gates stay
 open in the [compatibility matrix](../docs/compatibility.md).
+
+### Running CI against any tmux
+
+A `plan` job runs [ci_plan.py](../scripts/ci_plan.py) on
+[the option catalog](../data/tmux-options.json) and
+[ci-matrix.json](../data/ci-matrix.json) and decides the jobs, so the workflow
+lists no version. The catalog's releases
+are the table, and the first and last released entries are the edges. A
+development build is never an edge. The `required` job passes when the plan and
+the matrix succeeded, and is the one check to require.
+
+Run the workflow on any branch, against any tmux version, tag, branch or full
+commit of github.com/tmux/tmux. Put the comma-separated list in `tmux-ref`, with
+`scope=custom`:
+
+```console
+$ gh workflow run ci.yml \
+    --ref my-branch \
+    -f scope=custom \
+    -f tmux-ref=3.6b,master
+```
+
+A version that the table pins is built at its pinned revision. Any other ref is
+resolved to a commit and built from source by
+`scripts/bootstrap_native.py tmux --tmux-ref`, in a directory named for the
+commit. Each ref runs the integration suite, or the refusal check for a release
+below the minimum.
+
+Name other Lua runtimes or Neovim versions from `data/ci-matrix.json` with
+`lua` and `nvim`; they apply to the tmux jobs and multiply with the refs. The
+`os` input picks the Ubuntu image. The `tmate` input opens a
+[tmate](https://github.com/mxschmitt/action-tmate) session on exactly one job,
+before the tests or after a failure. The session admits only the GitHub account
+that dispatched the run and ends after 30 minutes. The plan refuses it when the
+run has more than one job:
+
+```console
+$ gh workflow run ci.yml \
+    --ref my-branch \
+    -f scope=custom \
+    -f tmux-ref=3.6b \
+    -f lua=luajit \
+    -f tmate=on-failure
+```
+
+Run every job a release runs, without tagging:
+
+```console
+$ gh workflow run ci.yml \
+    --ref my-branch \
+    -f scope=full
+```
+
+Dispatch runs do not cancel one another or the push run of the same branch.
 
 ### Test loops
 
@@ -371,10 +431,11 @@ Push that tag to the public repository to start [Publish](workflows/publish.yml)
 $ git push origin refs/tags/v0.1.1
 ```
 
-The workflow reruns CI at that commit, validates the public source tag and
-packs its source rock. It checks the installed artifact, then verifies its
-checksums again in the protected upload job. That job uploads the same
-rockspec and source rock to LuaRocks, then creates a GitHub release with
+The workflow reruns CI at that commit with `scope=full`, so every accepted
+tmux release and each refusal lane passes first. It validates the public
+source tag and packs its source rock. It checks the installed artifact, then
+verifies its checksums again in the protected upload job. That job uploads the
+same rockspec and source rock to LuaRocks, then creates a GitHub release with
 generated notes, artifacts, checksums and provenance. A version with an
 alpha, beta or rc suffix would be marked as a prerelease; `0.1.N` releases
 are not. No package is rebuilt during upload.
