@@ -222,3 +222,21 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 30
+
+  # One check to require. The plan and the matrix have to have succeeded; a
+  # matrix that never ran because the plan failed must not read as a pass.
+  required:
+    name: required
+    needs: [plan, validate]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts
+      - name: Require every planned job
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: python3 scripts/ci_plan.py verify

@@ -80,6 +80,20 @@ def problems(ci, publish):
     if re.search(r"(?m)^    if:", jobs["validate"]):
         found.append("validate: the matrix shrinks through the plan, never an if on the job")
 
+    gate = jobs.get("required")
+    if gate is None:
+        found.append("ci.yml needs one stable required job")
+    else:
+        waited = re.findall(r"[A-Za-z0-9_-]+", (field(gate, "needs") or "").strip("[]"))
+        if set(waited) != set(jobs) - {"required"}:
+            found.append("required: must wait for every other job")
+        if field(gate, "name") != "required":
+            found.append("required: the check keeps one stable name")
+        if field(gate, "if") != "always()":
+            found.append("required: must run when a job it waits for failed")
+        if "NEEDS: ${{ toJSON(needs) }}" not in gate or "scripts/ci_plan.py verify" not in gate:
+            found.append("required: must verify the needs context with the plan script")
+
     inputs = dispatch_inputs(ci)
     if options(inputs.get("scope", "")) != list(ci_plan.SCOPES):
         found.append("the scope input must offer exactly the plan's scopes")
@@ -154,6 +168,20 @@ MUTATIONS = [
     ("an input is used inline in a script", lambda ci, pub: (replaced(
         ci, '            --lua "$LUA" \\\n', '            --lua "${{ inputs.lua }}" \\\n'), pub),
      "only through env"),
+    ("the required job is dropped", lambda ci, pub: (ci[:ci.index("\n  # One check to require")] + "\n", pub),
+     "needs one stable required job"),
+    ("the required job forgets a job", lambda ci, pub: (replaced(
+        ci, "needs: [plan, validate]", "needs: [validate]"), pub), "must wait for every other job"),
+    ("the required job is renamed", lambda ci, pub: (replaced(
+        ci, "    name: required\n", "    name: all green\n"), pub), "keeps one stable name"),
+    ("the required job is skipped after a failure", lambda ci, pub: (replaced(
+        ci, "needs: [plan, validate]\n    if: always()\n", "needs: [plan, validate]\n"), pub),
+     "must run when a job it waits for failed"),
+    ("the required job stops verifying", lambda ci, pub: (replaced(
+        ci, "run: python3 scripts/ci_plan.py verify", "run: 'true'"), pub), "must verify the needs context"),
+    ("a job is added that the required job does not wait for", lambda ci, pub: (
+        ci + "\n  extra:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: 'true'\n", pub),
+     "must wait for every other job"),
     ("a dispatch shares its group with the push", lambda ci, pub: (replaced(
         ci, "github.event_name == 'workflow_dispatch' && github.run_id || ", ""), pub),
      "a dispatch run must have its own concurrency group"),
