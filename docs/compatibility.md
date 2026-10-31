@@ -79,10 +79,10 @@ row describes the upstream master commit pinned in the option catalog, so a
 later master build can differ. The full CI run builds all three.
 
 The full CI run has tmux 3.0a, 3.1c, 3.2a and the unpatched 3.3 as refusal
-lanes. They assert the refusal and that no command ran; they do not run the
-integration suite. The 3.0a and 3.1c lanes also run the check with a 3.3a
-client against the old daemon, which covers the 3.1 usage error and the 3.0
-"too old for client" answer.
+lanes. They assert the refusal and that no requested operation ran; they do
+not run the integration suite. The 3.0a and 3.1c lanes also run the check with
+a 3.3a client against the old daemon, which covers the 3.1 usage error and the
+3.0 "too old for client" answer.
 
 ## Optional features
 

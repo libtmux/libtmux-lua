@@ -218,12 +218,13 @@ dependency bootstrap:
   Those two have no tag, so they build from a branch commit.
 - In the full scope, a refusal lane for each release below the minimum (3.0a,
   3.1c, 3.2a and the unpatched 3.3). It runs only the version check tests,
-  which assert the refusal and that no command reached the daemon. The 3.0a and
-  3.1c lanes use that release as the client, then repeat the check with a 3.3a
-  client in front of the old daemon (`TMUX_CLIENT_BIN`), which covers the 3.1
-  usage error and the 3.0 "too old for client" answer. That run must refuse in
-  under half a second (`LIBTMUX_REFUSAL_MAX_MS`), because a pre-3.2 daemon
-  holds the client's output open and the probe timeout is 750 ms.
+  which assert the refusal and that no requested operation reached the daemon.
+  The 3.0a and 3.1c lanes use that release as the client, then repeat the check
+  with a 3.3a client in front of the old daemon (`TMUX_CLIENT_BIN`), which
+  covers the 3.1 usage error and the 3.0 "too old for client" answer. That run
+  must refuse in under half a second (`LIBTMUX_REFUSAL_MAX_MS`), because a
+  pre-3.2 daemon holds the client's output open and the probe timeout is
+  750 ms.
 
 Jobs retain tool identities, gate output and build diagnostics. Actions use
 pinned commits and read-only repository permissions. Setup failures fail the

@@ -16,8 +16,8 @@ directory; that directory must permit creation and hard links. Each command
 checks the original socket and alias, reads bounded daemon evidence, and
 disables tmux autostart. A restart, replaced socket or uncertain connection
 invalidates the handle. Reconnect explicitly; old references do not bind to
-reused IDs. Tests currently cover Linux under WSL2. Native Linux and macOS
-remain separate unverified platform lanes.
+reused IDs. The [compatibility matrix](compatibility.md) records Ubuntu CI
+coverage and local WSL2 checks; macOS remains outside the verified matrix.
 
 `server:close():await()` closes the handle and its owned connections. It leaves
 the borrowed daemon running. The runtime also closes handles when its root
