@@ -10,6 +10,11 @@ import tarfile
 import time
 import urllib.request
 
+if __package__:
+    from .tmux_ref import TMUX_REPOSITORY, resolve_commit
+else:
+    from tmux_ref import TMUX_REPOSITORY, resolve_commit
+
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / ".cache"
 YAML_REVISION = "2c891fc7a770e8ba2fec34fc6b545c672beb37e6"
@@ -26,6 +31,21 @@ LUALS = {
 }
 
 
+def build_tmux(source, prefix, label):
+    """Build and install the tmux checked out in `source`; return its executable."""
+    with (CACHE / "source" / f"tmux-{label}-build.log").open("w") as output:
+        for command in (["sh", "autogen.sh"], ["./configure", f"--prefix={prefix}"],
+                        ["make", "-j2"], ["make", "install"]):
+            subprocess.run(command, cwd=source, stdout=output, stderr=subprocess.STDOUT, check=True)
+    return prefix / "bin/tmux"
+
+
+def identify(executable, revision, **extra):
+    reported = subprocess.check_output([str(executable), "-V"], text=True).strip()
+    return {"tmux": reported, "source_revision": revision, "executable": str(executable),
+            "executable_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(), **extra}
+
+
 def tmux(version):
     releases = json.loads((ROOT / "data/tmux-options.json").read_text())["releases"]
     revisions = {name: release["revision"] for name, release in releases.items()}
@@ -37,26 +57,46 @@ def tmux(version):
     prefix = CACHE / "toolchains" / f"tmux-{version}"
     if not source.exists() and version in BRANCHES:
         subprocess.run(["git", "clone", "--no-checkout", f"--branch={BRANCHES[version]}", "--",
-                        "https://github.com/tmux/tmux.git", str(source)], check=True)
+                        TMUX_REPOSITORY, str(source)], check=True)
         subprocess.run(["git", "-C", str(source), "checkout", "--detach", revision], check=True)
     elif not source.exists():
         subprocess.run(["git", "clone", "--depth=1", f"--branch={version}", "--",
-                        "https://github.com/tmux/tmux.git", str(source)], check=True)
+                        TMUX_REPOSITORY, str(source)], check=True)
     actual = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
     if actual != revision:
         raise SystemExit("Cached tmux source differs from its pinned revision")
     if subprocess.check_output(["git", "-C", str(source), "status", "--porcelain", "--untracked-files=no"]):
         raise SystemExit("Cached tmux tracked source has local edits")
-    with (CACHE / "source" / f"tmux-{version}-build.log").open("w") as output:
-        for command in (["sh", "autogen.sh"], ["./configure", f"--prefix={prefix}"],
-                        ["make", "-j2"], ["make", "install"]):
-            subprocess.run(command, cwd=source, stdout=output, stderr=subprocess.STDOUT, check=True)
-    executable = prefix / "bin/tmux"
-    reported = subprocess.check_output([str(executable), "-V"], text=True).strip()
-    if reported != f"tmux {version}":
-        raise SystemExit(f"Built tmux reports an unexpected version: {reported}")
-    print(json.dumps({"tmux": reported, "source_revision": revision,
-                      "executable_sha256": hashlib.sha256(executable.read_bytes()).hexdigest()}), flush=True)
+    identity = identify(build_tmux(source, prefix, version), revision)
+    if identity["tmux"] != f"tmux {version}":
+        raise SystemExit(f"Built tmux reports an unexpected version: {identity['tmux']}")
+    print(json.dumps(identity), flush=True)
+
+
+def tmux_ref(ref):
+    """Build the commit a tag, branch or full commit of tmux names.
+
+    This is for refs the support table does not pin, so nothing here can check
+    the reported version. The build is named for the commit, never for the ref.
+    """
+    try:
+        commit = resolve_commit(ref, TMUX_REPOSITORY)
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
+    label = f"ref-{commit}"
+    source = CACHE / "source" / f"tmux-{label}"
+    prefix = CACHE / "toolchains" / f"tmux-{label}"
+    if not source.exists():
+        source.mkdir(parents=True)
+        for command in (["init", "--quiet"],
+                        ["fetch", "--quiet", "--depth=1", "--", TMUX_REPOSITORY, commit],
+                        ["checkout", "--quiet", "--detach", "FETCH_HEAD"]):
+            subprocess.run(["git", "-C", str(source), *command], check=True)
+    actual = subprocess.run(["git", "-C", str(source), "rev-parse", "HEAD"],
+                            capture_output=True, text=True).stdout.strip()
+    if actual != commit:
+        raise SystemExit(f"Cached tmux source is not at {commit}; remove {source} and run again")
+    print(json.dumps(identify(build_tmux(source, prefix, label), commit, ref=ref)), flush=True)
 
 
 def yaml():
@@ -99,13 +139,19 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("components", nargs="+", choices=("yaml", "luals", "tmux"))
     parser.add_argument("--tmux-version", help="exact released tmux version from the option catalog or the refused releases")
+    parser.add_argument("--tmux-ref", help="a tag, branch or full commit of github.com/tmux/tmux, built at the commit it names")
     args = parser.parse_args()
-    if ("tmux" in args.components) != (args.tmux_version is not None):
-        parser.error("tmux requires --tmux-version, which applies only to tmux")
+    if "tmux" in args.components:
+        if (args.tmux_version is None) == (args.tmux_ref is None):
+            parser.error("tmux requires exactly one of --tmux-version and --tmux-ref")
+    elif args.tmux_version is not None or args.tmux_ref is not None:
+        parser.error("--tmux-version and --tmux-ref apply only to tmux")
     (CACHE / "source").mkdir(parents=True, exist_ok=True)
     started = time.monotonic()
     for name in args.components:
-        if name == "tmux":
+        if name == "tmux" and args.tmux_ref is not None:
+            tmux_ref(args.tmux_ref)
+        elif name == "tmux":
             tmux(args.tmux_version)
         else:
             {"yaml": yaml, "luals": luals}[name]()
