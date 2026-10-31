@@ -1,7 +1,9 @@
 # Compatibility targets
 
-This release line supports tmux 3.3a and newer, and CI runs the integration suite on
-each listed tmux release. The table below lists the versions CI exercises. A
+This release line supports tmux 3.3a and newer. A push and a pull request run
+the integration suite on the oldest and newest released tmux (3.3a and 3.8),
+and the full CI run, which a release requires, runs it on each listed tmux
+release. The table below lists the versions the full run exercises. A
 release outside it is expected to work but is untested, and option operations
 refuse it (see [minimum tmux release](#minimum-tmux-release)). A source
 declaration, successful import, or sibling-port result does not establish live
@@ -74,13 +76,13 @@ shares 3.7c's option table and decoders. 3.8 changes the option table, the
 layout export (JSON for non-control clients) and paste sanitization, and the
 catalog and layout check cover those. `next-3.9` is a development build: its
 row describes the upstream master commit pinned in the option catalog, so a
-later master build can differ. CI builds all three.
+later master build can differ. The full CI run builds all three.
 
-CI runs tmux 3.0a, 3.1c, 3.2a and the unpatched 3.3 as refusal lanes. They
-assert the refusal and that no command ran; they do not run the integration
-suite. The 3.0a and 3.1c lanes also run the check with a 3.3a client against
-the old daemon, which covers the 3.1 usage error and the 3.0 "too old for
-client" answer.
+The full CI run has tmux 3.0a, 3.1c, 3.2a and the unpatched 3.3 as refusal
+lanes. They assert the refusal and that no command ran; they do not run the
+integration suite. The 3.0a and 3.1c lanes also run the check with a 3.3a
+client against the old daemon, which covers the 3.1 usage error and the 3.0
+"too old for client" answer.
 
 ## Optional features
 
@@ -117,7 +119,8 @@ macOS do not run in CI, so macOS is untested; checks run locally under WSL2 on
 Ubuntu 24.04 do not replace the Linux CI jobs.
 
 The [CI workflow](../.github/workflows/ci.yml) covers Linux unit runtimes,
-floor/current outer gates and the released-tmux integration sweep. Its
+floor/current outer gates and the released-tmux integration sweep, which a
+push and a pull request limit to the oldest and newest release. Its
 [setup and coverage](../.github/CONTRIBUTING.md#github-actions) use the same
 local gate commands. A passing run establishes those checks at its tested
 revision; macOS and host/runtime combinations outside the workflow matrix

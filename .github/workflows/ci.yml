@@ -5,56 +5,118 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      scope:
+        description: >-
+          edges runs the oldest and newest released tmux, full runs the whole
+          table with the refusal jobs and the development builds, custom runs
+          the refs in tmux-ref. A release is bound to a full run.
+        type: choice
+        options: [edges, full, custom]
+        default: edges
+      tmux-ref:
+        description: >-
+          With scope custom, comma-separated tmux versions, tags, branches or
+          40-hex commit SHAs from github.com/tmux/tmux, such as 3.6b,master.
+        type: string
+        default: ''
+      lua:
+        description: >-
+          Comma-separated Lua runtimes for the tmux jobs, from
+          data/ci-matrix.json, such as 5.1.5,luajit. Empty means the default
+          stack.
+        type: string
+        default: ''
+      nvim:
+        description: >-
+          Comma-separated Neovim versions for the tmux jobs, from
+          data/ci-matrix.json, such as 0.10.0. Empty means the default stack.
+        type: string
+        default: ''
+      os:
+        description: Runner image for the test jobs
+        type: choice
+        options: [ubuntu-24.04, ubuntu-latest, ubuntu-22.04]
+        default: ubuntu-24.04
+      tmate:
+        description: >-
+          Open a tmate session on the one tmux job, before the tests or after a
+          failure. It needs scope custom with a single tmux-ref, lua and nvim.
+        type: choice
+        options: [off, before-tests, on-failure]
+        default: 'off'
   workflow_call:
+    inputs:
+      scope:
+        description: How much of the table to cover. Publish passes full.
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
+  # What a run covers is decided here from the tmux catalog,
+  # data/ci-matrix.json and the event, so no job below lists a version. A push
+  # and a pull request test the oldest and newest released tmux; a release and
+  # a dispatch with scope full test the whole table.
+  plan:
+    name: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      os: ${{ steps.plan.outputs.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            scripts
+            data
+      - name: Plan the run
+        id: plan
+        env:
+          EVENT: ${{ github.event_name }}
+          SCOPE: ${{ inputs.scope }}
+          TMUX_REF: ${{ inputs.tmux-ref }}
+          LUA: ${{ inputs.lua }}
+          NVIM: ${{ inputs.nvim }}
+          IMAGE: ${{ inputs.os }}
+          TMATE: ${{ inputs.tmate }}
+        run: |
+          python3 scripts/ci_plan.py plan \
+            --event "$EVENT" \
+            --scope "$SCOPE" \
+            --tmux-ref "$TMUX_REF" \
+            --lua "$LUA" \
+            --nvim "$NVIM" \
+            --os "$IMAGE" \
+            --tmate "$TMATE" \
+            --github-output "$GITHUB_OUTPUT" \
+            --summary "$GITHUB_STEP_SUMMARY"
+
   validate:
     name: ${{ matrix.name }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    needs: plan
+    runs-on: ${{ needs.plan.outputs.os }}
+    # A tmate session needs longer than a test run does.
+    timeout-minutes: ${{ matrix.tmate == 'off' && 20 || 60 }}
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - {name: 'Unit Lua 5.1', gate: unit, lua: '5.1.5'}
-          - {name: 'Unit Lua 5.2', gate: unit, lua: '5.2.4'}
-          - {name: 'Unit Lua 5.3', gate: unit, lua: '5.3.6'}
-          - {name: 'Unit Lua 5.4', gate: unit, lua: '5.4.9'}
-          - {name: 'Unit Lua 5.5', gate: unit, lua: '5.5.1'}
-          - {name: 'Unit LuaJIT', gate: unit, lua: luajit}
-          - {name: 'Outer floor', gate: outer, lua: '5.1.5', tmux: '3.3a', nvim: '0.10.0'}
-          - {name: 'Outer current', gate: outer, lua: '5.5.1', tmux: '3.7c', nvim: '0.12.5'}
-          - {name: 'tmux 3.0a refused', gate: refusal, lua: '5.5.1', tmux: '3.0a', client: '3.3a', nvim: '0.12.5'}
-          - {name: 'tmux 3.1c refused', gate: refusal, lua: '5.5.1', tmux: '3.1c', client: '3.3a', nvim: '0.12.5'}
-          - {name: 'tmux 3.2a refused', gate: refusal, lua: '5.5.1', tmux: '3.2a', nvim: '0.12.5'}
-          - {name: 'tmux 3.3 refused', gate: refusal, lua: '5.5.1', tmux: '3.3', nvim: '0.12.5'}
-          - {name: 'tmux 3.3a', gate: integration, lua: '5.5.1', tmux: '3.3a', nvim: '0.12.5'}
-          - {name: 'tmux 3.4', gate: integration, lua: '5.5.1', tmux: '3.4', nvim: '0.12.5'}
-          - {name: 'tmux 3.5', gate: integration, lua: '5.5.1', tmux: '3.5', nvim: '0.12.5'}
-          - {name: 'tmux 3.5a', gate: integration, lua: '5.5.1', tmux: '3.5a', nvim: '0.12.5'}
-          - {name: 'tmux 3.6', gate: integration, lua: '5.5.1', tmux: '3.6', nvim: '0.12.5'}
-          - {name: 'tmux 3.6a', gate: integration, lua: '5.5.1', tmux: '3.6a', nvim: '0.12.5'}
-          - {name: 'tmux 3.6b', gate: integration, lua: '5.5.1', tmux: '3.6b', nvim: '0.12.5'}
-          - {name: 'tmux 3.7', gate: integration, lua: '5.5.1', tmux: '3.7', nvim: '0.12.5'}
-          - {name: 'tmux 3.7a', gate: integration, lua: '5.5.1', tmux: '3.7a', nvim: '0.12.5'}
-          - {name: 'tmux 3.7b', gate: integration, lua: '5.5.1', tmux: '3.7b', nvim: '0.12.5'}
-          - {name: 'tmux 3.7c', gate: integration, lua: '5.5.1', tmux: '3.7c', nvim: '0.12.5'}
-          - {name: 'tmux 3.7d', gate: integration, lua: '5.5.1', tmux: '3.7d', nvim: '0.12.5'}
-          - {name: 'tmux 3.8', gate: integration, lua: '5.5.1', tmux: '3.8', nvim: '0.12.5'}
-          - {name: 'tmux next-3.9', gate: integration, lua: '5.5.1', tmux: 'next-3.9', nvim: '0.12.5'}
+      # The plan chooses the jobs and never leaves this empty.
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     env:
       CI_LUA: ${{ matrix.lua }}
       CI_TMUX: ${{ matrix.tmux }}
       CI_CLIENT: ${{ matrix.client }}
       CI_NVIM: ${{ matrix.nvim }}
       CI_GATE: ${{ matrix.gate }}
+      CI_BUILD: ${{ matrix.build }}
     defaults:
       run:
         shell: bash
@@ -89,8 +151,13 @@ jobs:
         if: matrix.gate != 'unit'
         run: |
           python scripts/bootstrap_hosts.py "$CI_NVIM" 2>&1 | tee .cache/ci/neovim.log
-          python scripts/bootstrap_native.py tmux --tmux-version="$CI_TMUX" 2>&1 | tee .cache/ci/tmux.log
-          echo "TMUX_BIN=$PWD/.cache/toolchains/tmux-$CI_TMUX/bin/tmux" >> "$GITHUB_ENV"
+          if [[ "$CI_BUILD" == ref ]]; then
+            python scripts/bootstrap_native.py tmux --tmux-ref="$CI_TMUX" | tee .cache/ci/tmux.log
+            echo "TMUX_BIN=$(jq -r 'select(.executable) | .executable' .cache/ci/tmux.log)" >> "$GITHUB_ENV"
+          else
+            python scripts/bootstrap_native.py tmux --tmux-version="$CI_TMUX" 2>&1 | tee .cache/ci/tmux.log
+            echo "TMUX_BIN=$PWD/.cache/toolchains/tmux-$CI_TMUX/bin/tmux" >> "$GITHUB_ENV"
+          fi
           if [[ -n "$CI_CLIENT" ]]; then
             python scripts/bootstrap_native.py tmux --tmux-version="$CI_CLIENT" 2>&1 | tee .cache/ci/client.log
             echo "CI_CLIENT_BIN=$PWD/.cache/toolchains/tmux-$CI_CLIENT/bin/tmux" >> "$GITHUB_ENV"
@@ -125,6 +192,12 @@ jobs:
               ".cache/toolchains/nvim-$CI_NVIM/bin/nvim" --version
             fi
           } 2>&1 | tee .cache/ci/identity.log
+      - name: Open a tmate session before the tests
+        if: ${{ github.event_name == 'workflow_dispatch' && matrix.tmate == 'before-tests' }}
+        uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113 # v3.24
+        timeout-minutes: 30
+        with:
+          limit-access-to-actor: true
       - name: Run offline gates
         run: |
           if [[ "$CI_GATE" == unit ]]; then
@@ -165,3 +238,27 @@ jobs:
           path: dist/
           if-no-files-found: error
           retention-days: 30
+      - name: Open a tmate session after a failure
+        if: ${{ failure() && github.event_name == 'workflow_dispatch' && matrix.tmate == 'on-failure' }}
+        uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113 # v3.24
+        timeout-minutes: 30
+        with:
+          limit-access-to-actor: true
+
+  # One check to require. The plan and the matrix have to have succeeded; a
+  # matrix that never ran because the plan failed must not read as a pass.
+  required:
+    name: required
+    needs: [plan, validate]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          sparse-checkout: scripts
+      - name: Require every planned job
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: python3 scripts/ci_plan.py verify
