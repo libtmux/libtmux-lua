@@ -13,17 +13,13 @@ import urllib.request
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / ".cache"
 YAML_REVISION = "2c891fc7a770e8ba2fec34fc6b545c672beb37e6"
+MATRIX = json.loads((ROOT / "data/ci-matrix.json").read_text())
 # Releases below the supported floor. Their lanes prove the library refuses
 # the daemon, so they build from a pinned tag without a catalog entry.
-REFUSED = {
-    "3.0a": "25ae02869544b84b639b25b0aa69baa6ea2d3a6a",
-    "3.1c": "25cae5d86f01d0deb050243842ed5d967b3dc411",
-    "3.2a": "3b929f332aafa7f1080eacc31feb11ffbb1d1841",
-    "3.3": "87fe00e8b44901240fc22d7120c1b31e4331f6f5",
-}
+REFUSED = {name: lane["revision"] for name, lane in MATRIX["refused"].items()}
 # Releases and development builds without a tag of their own build from a
 # branch at the pinned commit.
-BRANCHES = {"3.7d": "release_3.7d", "next-3.9": "master"}
+BRANCHES = MATRIX["development"]
 LUALS = {
     ("Linux", "x86_64"): ("linux-x64", "e9235d2d72ef55bc41cf8c99cda2ed64777682024b4bb81f5dea425060c5cbb8"),
     ("Darwin", "arm64"): ("darwin-arm64", "0bc077f4447f076b4c92c14e9fd303f5b569eda2ec74b4dca2b55f75fae2e90c"),

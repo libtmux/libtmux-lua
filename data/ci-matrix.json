@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "stack": {"lua": "5.5.1", "nvim": "0.12.5"},
+  "unit": ["5.1.5", "5.2.4", "5.3.6", "5.4.9", "5.5.1", "luajit"],
+  "outer": {
+    "floor": {"lua": "5.1.5", "nvim": "0.10.0"},
+    "current": {"lua": "5.5.1", "nvim": "0.12.5", "full_tmux": "3.7c"}
+  },
+  "nvim": ["0.10.0", "0.12.5"],
+  "development": {
+    "3.7d": "release_3.7d",
+    "next-3.9": "master"
+  },
+  "refused": {
+    "3.0a": {"revision": "25ae02869544b84b639b25b0aa69baa6ea2d3a6a", "old_daemon": true},
+    "3.1c": {"revision": "25cae5d86f01d0deb050243842ed5d967b3dc411", "old_daemon": true},
+    "3.2a": {"revision": "3b929f332aafa7f1080eacc31feb11ffbb1d1841", "old_daemon": false},
+    "3.3": {"revision": "87fe00e8b44901240fc22d7120c1b31e4331f6f5", "old_daemon": false}
+  }
+}
