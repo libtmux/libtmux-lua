@@ -334,6 +334,35 @@ Do not stop servers or remove directories belonging to another port or to
 the developer's sessions. Use real tmux to verify tmux behavior once the
 library and its integration tests exist.
 
+A tmux command that names no socket goes to the server an inherited `TMUX`
+names, and otherwise to the default socket under `TMUX_TMPDIR`. The
+[test sandbox](../tests/support/sandbox.py) removes `TMUX`, `TMUX_PANE` and
+every `LIBTMUX_SOCKET*` variable and sets `TMUX_TMPDIR` to an owner-only
+`libtmux-lua-sb-` directory, so a test that forgets `-S` finds nothing.
+
+`scripts/check.py`, `scripts/package.py`, `tests/run_integration.py` and the
+tmux fixture enter the sandbox, and their children join it. The launcher
+`examples/api/run.sh` does the same for the programs it runs. A new entry point
+that starts tmux must enter the sandbox or be started by one that did.
+
+Lua cannot change its environment, so `tests/run.lua` only checks: it exits
+with status 2 unless a parent made the sandbox. Run unit suites through
+`scripts/check.py`.
+
+The directory goes under `TMPDIR`, or under `/tmp` when `TMPDIR` is too long
+for a socket path, so keep `TMPDIR` short. The fixture's own directories stay
+under `/tmp`. At exit, the process that made the sandbox fails the run if tmux
+left a socket under `tmux-<uid>` there, stops that server and removes the
+directory. Refusals name variables and never print their values.
+
+The [canary](../tests/integration/test_sandbox.py) shows that a client naming no
+socket looks only under the sandbox. Two tooling tests,
+[sandbox](../tests/tooling/test_sandbox.py) and
+[canary](../tests/tooling/test_canary.py), check the guard without tmux, using a
+[recording stand-in](../tests/support/recorder.py) that writes arguments and
+variable names, never values. Prove a change to the guard that way before
+running a suite.
+
 ## Pull requests
 
 Keep one subject per pull request and one logical change per commit. Describe
