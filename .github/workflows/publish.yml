@@ -16,6 +16,8 @@ jobs:
     permissions:
       contents: read
     uses: ./.github/workflows/ci.yml
+    with:
+      scope: full
 
   luarocks:
     if: github.event_name == 'push' && github.ref_type == 'tag' && github.repository == 'libtmux/libtmux-lua'
