@@ -128,6 +128,54 @@ def problems(ci, publish):
     return found
 
 
+TMATE = "mxschmitt/action-tmate"
+
+
+def steps_of(job):
+    """Split a job's text into its steps."""
+    return re.split(r"(?m)^(?=      - )", job)[1:]
+
+
+def step_field(step, key):
+    match = re.search(rf"(?m)^        {re.escape(key)}: (.*)$", step)
+    return match[1].strip() if match else None
+
+
+def session_problems(ci, publish):
+    """Name what makes a debugging session unsafe or misplaced."""
+    found = []
+    jobs = split_jobs(ci)
+    sessions = 0
+    for name, job in jobs.items():
+        for step in steps_of(job):
+            if TMATE not in step:
+                continue
+            sessions += 1
+            if name != "validate":
+                found.append(f"{name}: a debugging session belongs only in the test matrix")
+            if not re.search(rf"uses: {re.escape(TMATE)}@[0-9a-f]{{40}} # v", step):
+                found.append("a debugging session must be pinned to a full commit SHA")
+            if "limit-access-to-actor: true" not in step:
+                found.append("a debugging session must be limited to the actor")
+            if not step_field(step, "timeout-minutes"):
+                found.append("a debugging session needs its own time limit")
+            condition = step_field(step, "if") or ""
+            if "github.event_name == 'workflow_dispatch'" not in condition or "matrix.tmate ==" not in condition:
+                found.append("a debugging session runs only on a dispatch, on the job the plan chose")
+    if sessions != 2:
+        found.append("the matrix must offer a session before the tests and one after a failure")
+    if "validate" in jobs and field(jobs["validate"], "timeout-minutes") != "${{ matrix.tmate == 'off' && 20 || 60 }}":
+        found.append("validate: the job must cap its time and give the debugging job more")
+    inputs = dispatch_inputs(ci)
+    if options(inputs.get("tmate", "")) != list(ci_plan.TMATE_MODES) or "default: 'off'" not in inputs.get("tmate", ""):
+        found.append("the tmate input must offer exactly the plan's modes and default to off")
+    if "plan" in jobs and ("TMATE: ${{ inputs.tmate }}" not in jobs["plan"] or '--tmate "$TMATE"' not in jobs["plan"]):
+        found.append("plan: must pass the tmate input through env")
+    if TMATE in publish:
+        found.append("publish: a release never opens a debugging session")
+    return found
+
+
 def without(text, line):
     assert line in text, line
     return text.replace(line, "", 1)
@@ -182,6 +230,35 @@ MUTATIONS = [
     ("a job is added that the required job does not wait for", lambda ci, pub: (
         ci + "\n  extra:\n    runs-on: ubuntu-24.04\n    steps:\n      - run: 'true'\n", pub),
      "must wait for every other job"),
+    ("the session is not pinned to a commit", lambda ci, pub: (
+        ci.replace("action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113 # v3.24", "action-tmate@v3"), pub),
+     "pinned to a full commit SHA"),
+    ("the session is open to every collaborator", lambda ci, pub: (
+        ci.replace("limit-access-to-actor: true", "limit-access-to-actor: false"), pub), "limited to the actor"),
+    ("the session has no time limit of its own", lambda ci, pub: (
+        ci.replace("        timeout-minutes: 30\n", ""), pub), "its own time limit"),
+    ("the session runs on every event", lambda ci, pub: (
+        ci.replace("github.event_name == 'workflow_dispatch' && matrix.tmate == 'before-tests'", "matrix.tmate == 'before-tests'"), pub),
+     "only on a dispatch"),
+    ("the session runs on every job", lambda ci, pub: (
+        ci.replace("&& matrix.tmate == 'on-failure'", ""), pub), "only on a dispatch"),
+    ("a session returns to the release", lambda ci, pub: (
+        ci, pub + "      - uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113 # v3.24\n"),
+     "a release never opens a debugging session"),
+    ("the session moves out of the matrix", lambda ci, pub: (
+        ci.replace("      - name: Require every planned job\n", "      - uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113 # v3.24\n        timeout-minutes: 5\n        with:\n          limit-access-to-actor: true\n      - name: Require every planned job\n"), pub),
+     "belongs only in the test matrix"),
+    ("one session is dropped", lambda ci, pub: (
+        ci[:ci.index("      - name: Open a tmate session after a failure")] + ci[ci.index("\n  # One check to require"):], pub),
+     "before the tests and one after a failure"),
+    ("the job timeout ignores the session", lambda ci, pub: (
+        ci.replace("${{ matrix.tmate == 'off' && 20 || 60 }}", "20"), pub), "cap its time"),
+    ("the tmate input offers another mode", lambda ci, pub: (
+        ci.replace("options: [off, before-tests, on-failure]", "options: [off, always]"), pub), "plan's modes"),
+    ("the tmate input defaults to a session", lambda ci, pub: (
+        ci.replace("default: 'off'", "default: before-tests"), pub), "default to off"),
+    ("the plan stops hearing the tmate input", lambda ci, pub: (
+        ci.replace("          TMATE: ${{ inputs.tmate }}\n", ""), pub), "plan: must pass the tmate input"),
     ("a dispatch shares its group with the push", lambda ci, pub: (replaced(
         ci, "github.event_name == 'workflow_dispatch' && github.run_id || ", ""), pub),
      "a dispatch run must have its own concurrency group"),
@@ -208,10 +285,18 @@ class WorkflowFollowsThePlan(unittest.TestCase):
     def test_the_workflows_follow_the_plan(self):
         self.assertEqual(problems(CI, PUBLISH), [])
 
+    def test_the_debugging_session_is_safe(self):
+        self.assertEqual(session_problems(CI, PUBLISH), [])
+
+    def test_no_other_workflow_opens_a_session(self):
+        for path in (ROOT / ".github/workflows").glob("*.yml"):
+            if path.name != "ci.yml":
+                self.assertNotIn(TMATE, path.read_text(), path.name)
+
     def test_a_mutation_is_reported(self):
         for description, mutate, message in MUTATIONS:
             with self.subTest(description):
-                reported = problems(*mutate(CI, PUBLISH))
+                reported = [*problems(*mutate(CI, PUBLISH)), *session_problems(*mutate(CI, PUBLISH))]
                 self.assertTrue([each for each in reported if message in each], (message, reported))
 
     def test_the_workflow_runs_every_job_the_plan_names(self):
