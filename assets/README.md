@@ -17,4 +17,4 @@ with the centered logo block and rejects art that belongs to another product.
 repository's **Settings → Social preview**.
 
 The sharing card comes from `assets/lua/library/opengraph-light.png`
-at kit revision `c9688d9db25e4c522ff1255d0f3badaf27d780dd`.
+at kit revision `4b86a9d9158d7c6d52cd635d59c92a04b48b960f`.
