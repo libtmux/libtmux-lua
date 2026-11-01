@@ -38,9 +38,43 @@ local function options_copy(options)
         end
         copied[key] = value
     end
-    if not copied.binary or not copied.socket or copied.socket:sub(-1) == "/" then
-        return nil,
-            failure("invalid_endpoint", "endpoint needs explicit executable and socket paths")
+    if not copied.binary then
+        return nil, failure("invalid_endpoint", "endpoint needs an explicit executable path")
+    end
+    if copied.socket and copied.socket:sub(-1) == "/" then
+        return nil, failure("invalid_endpoint", "endpoint socket path must name a file")
+    end
+    return copied
+end
+
+local function blank(value)
+    return value == nil or value:find("^%s*$") ~= nil
+end
+
+-- A caller that names no socket leaves the choice to the environment, as
+-- libtmux for Python does: LIBTMUX_SOCKET_PATH (-S), else LIBTMUX_SOCKET (-L),
+-- else none, and tmux picks the server in TMUX or its default socket. A blank
+-- value counts as unset, each variable on its own. Explicit options are never
+-- combined with the variables, so they are not read at all.
+local function choose_socket(copied, getenv)
+    if copied.socket then
+        return copied
+    end
+    local path = getenv("LIBTMUX_SOCKET_PATH")
+    if not blank(path) then
+        if not absolute(path) or path:sub(-1) == "/" then
+            return nil,
+                failure(
+                    "invalid_endpoint",
+                    "LIBTMUX_SOCKET_PATH must be an absolute, NUL-free path to a socket file"
+                )
+        end
+        copied.socket = path
+    else
+        local name = getenv("LIBTMUX_SOCKET")
+        if not blank(name) then
+            copied.name = name
+        end
     end
     return copied
 end
@@ -151,7 +185,8 @@ local function verify(state)
     if state.invalid then
         return nil, failure("stale_generation", "endpoint generation is no longer current")
     end
-    for _, path in ipairs({ state.options.socket, state.alias }) do
+    -- Without a pinned socket the fence on every command is the identity check.
+    for _, path in ipairs(state.stat and { state.options.socket, state.alias } or {}) do
         local stat, err = fs(state, "fs_lstat", { path }):await()
         if not same_socket(stat, state.stat) then
             invalidate(state, "socket identity changed or became uncertain")
@@ -177,6 +212,21 @@ local function parse_probe(prefix, err)
     return versions.report(prefix, partial.stderr)
 end
 
+-- With -N a client never starts a daemon: these two reports mean nothing ran.
+local function daemon_absent(report)
+    local output = type(report) == "table" and (report.partial or report) or nil
+    local stderr = type(output) == "table" and rawget(output, "stderr") or nil
+    if type(stderr) ~= "string" or rawget(output, "exit_code") ~= 1 then
+        return false
+    end
+    for line in stderr:gmatch("[^\n]+") do
+        if line:find("^no server running on ") or line:find("^error connecting to ") then
+            return true
+        end
+    end
+    return false
+end
+
 local REMEDY = "upgrade tmux to "
     .. fields.support_floor
     .. " or newer and restart the server, or install the previous libtmux release"
@@ -197,7 +247,18 @@ local function read_evidence(state, operation)
         :await()
     local observed = not result and parse_probe(prefix, err) or nil
     if not observed then
+        local absent = daemon_absent(result or err)
         local _, retained_error = process.retain_output(operation, result, err, "endpoint")
+        -- A socket path was checked by the pin; a name or none was not, and
+        -- tmux alone knows the socket it would have used.
+        if absent and not state.options.socket then
+            return nil,
+                failure(
+                    "invalid_endpoint",
+                    "no tmux server is running on the socket tmux selected; none is started",
+                    retained_error
+                )
+        end
         local partial = type(err) == "table" and rawget(err, "partial") or nil
         local side = type(partial) == "table"
                 and partial.exit_code == 1
@@ -276,21 +337,6 @@ local function fence_refused(report, fence)
     local refusal = "unknown command: " .. fence.marker
     for line in stderr:gmatch("[^\n]+") do
         if line == refusal then
-            return true
-        end
-    end
-    return false
-end
-
--- With -N a client never starts a daemon: these two reports mean nothing ran.
-local function daemon_absent(report)
-    local output = type(report) == "table" and (report.partial or report) or nil
-    local stderr = type(output) == "table" and rawget(output, "stderr") or nil
-    if type(stderr) ~= "string" or rawget(output, "exit_code") ~= 1 then
-        return false
-    end
-    for line in stderr:gmatch("[^\n]+") do
-        if line:find("^no server running on ") or line:find("^error connecting to ") then
             return true
         end
     end
@@ -433,7 +479,7 @@ end
 
 -- Hard-links the socket into a private directory beside it, so every later
 -- command reaches the daemon whose socket was checked even if the path is
--- replaced.
+-- replaced. Only a socket the caller named can be pinned.
 local function pin(state)
     local socket = state.options.socket
     local stat, err = fs(state, "fs_lstat", { socket }):await()
@@ -470,8 +516,12 @@ local function pin(state)
     return verify(state)
 end
 
-function M.bind(runtime, options)
+---@param getenv? fun(name: string): string? Reads the process environment; tests replace it.
+function M.bind(runtime, options, getenv)
     local copied, validation_error = options_copy(options)
+    if copied then
+        copied, validation_error = choose_socket(copied, getenv or os.getenv)
+    end
     local state = {
         runtime = runtime,
         uv = runtime._driver.uv,
@@ -498,13 +548,16 @@ function M.bind(runtime, options)
         end
         state.lease = lease
         local valid
-        valid, err = pin(state)
-        if not valid then
-            return nil, err
+        if copied.socket then
+            valid, err = pin(state)
+            if not valid then
+                return nil, err
+            end
         end
         state.endpoint = {
             binary = copied.binary,
             socket = state.alias,
+            name = copied.name,
             config = copied.config,
             no_start = true,
         }
