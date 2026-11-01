@@ -1,5 +1,13 @@
 # Changelog
 
+Notable changes to `libtmux`.
+
+The other rocks in this repository keep their own changelogs:
+[`libtmux-workspace`](packages/workspace/CHANGELOG.md) and
+[`libtmux-mcp`](packages/mcp/CHANGELOG.md). Neither has a release yet. Changes
+that span rocks, such as documentation, CI and release tooling, are listed
+here.
+
 ## Unreleased
 
 - Connect: `socket_path` is optional. Without it, `Runtime:connect` reads
