@@ -15,6 +15,15 @@ NUMBER = r"(?:0|[1-9][0-9]*)"
 VERSION = re.compile(rf"({NUMBER}\.{NUMBER}\.{NUMBER}(?:(?:alpha|beta|rc)[1-9][0-9]*)?)-([1-9][0-9]*)")
 
 
+CHANGELOGS = {
+    "libtmux": "CHANGES.md",
+    "libtmux-mcp": "packages/mcp/CHANGELOG.md",
+    "libtmux-workspace": "packages/workspace/CHANGELOG.md",
+}
+OPENING = re.compile(r"\A# Changelog\s+Notable changes to `([^`]+)`\.$", re.MULTILINE)
+FENCE = re.compile(r"^\s*(`{3,}|~{3,})(.*)$")
+
+
 def identity(version):
     match = VERSION.fullmatch(version) if isinstance(version, str) else None
     if not match:
@@ -28,6 +37,65 @@ def candidate(root):
         raise ValueError("release.json must identify the libtmux core only")
     identity(metadata["version"])
     return metadata["version"]
+
+
+def has_heading(markdown, heading):
+    """Whether `heading` is a line of its own outside every code fence.
+
+    A fence closes on a line of the same character, at least as long, with no
+    info string, so a shorter or different fence inside one does not end it.
+    """
+    fence = None
+    for line in markdown.splitlines():
+        match = FENCE.match(line)
+        if fence is None:
+            if match:
+                fence = match.group(1)
+            elif line == heading:
+                return True
+        elif (match and match.group(1)[0] == fence[0] and len(match.group(1)) >= len(fence)
+              and not match.group(2).strip()):
+            fence = None
+    return False
+
+
+def changelog_failures(root):
+    """List every way a rock's changelog falls short of the policy.
+
+    Each rock keeps its own changelog, so a rock could lose its file, lose its
+    Unreleased section, or carry another rock's file pasted over its own, and
+    nothing else would notice. Each claim is answerable from the checkout:
+
+    - the file exists;
+    - it opens with the name of the rock it belongs to;
+    - it has an Unreleased section for the next release to land under; and
+    - the rockspec installs it. LuaRocks installs the root CHANGES.md of the
+      core into doc/ by itself, so only the other rocks name theirs.
+    """
+    failures = []
+    for name, path in CHANGELOGS.items():
+        changelog = root / path
+        if not changelog.is_file():
+            failures.append(f"{path}: {name} has no changelog")
+            continue
+        text = changelog.read_text()
+        opening = OPENING.search(text)
+        if not opening:
+            failures.append(f'{path}: does not open with "Notable changes to `{name}`."')
+        elif opening.group(1) != name:
+            failures.append(f"{path}: is the changelog of {opening.group(1)}, not {name}")
+        if not has_heading(text, "## Unreleased"):
+            failures.append(f'{path}: has no "## Unreleased" section')
+        if name == "libtmux":
+            continue
+        spec = root / "rockspecs" / f"{name}-scm-1.rockspec"
+        installs = rf'\[\s*"CHANGELOG\.md"\s*\]\s*=\s*"{re.escape(path)}"'
+        # A commented-out line installs nothing.
+        code = "\n".join(line for line in spec.read_text().splitlines()
+                         if not line.lstrip().startswith("--")) if spec.is_file() else ""
+        if not re.search(installs, code):
+            failures.append(f"rockspecs/{spec.name}: does not install {path}")
+    return failures
 
 
 def command(arguments, *, cwd):
@@ -121,6 +189,9 @@ def verify_artifacts(root, directory, head):
 
 
 def verify_release(root, event, commit, artifacts=None):
+    failures = changelog_failures(root)
+    if failures:
+        raise ValueError("every rock needs a changelog:\n" + "\n".join(failures))
     version = candidate(root)
     source, revision = identity(version)
     if (event.get("repository", {}).get("full_name") != "libtmux/libtmux-lua" or
@@ -150,12 +221,19 @@ def main():
     preparation = commands.add_parser("prepare", help="update candidate metadata and release notes")
     preparation.add_argument("version", nargs="?", help="explicit LuaRocks version, including revision")
     preparation.add_argument("--check", action="store_true", help="report drift without changing files")
+    commands.add_parser("changelogs", help="check that every rock keeps and installs its changelog")
     verification = commands.add_parser("verify", help="check publication guards without uploading")
     verification.add_argument("--event", type=Path, required=True, help="GitHub tag-push event JSON")
     verification.add_argument("--commit", required=True, help="exact commit validated by the workflow")
     verification.add_argument("--artifacts", type=Path, help="directory containing validated artifacts")
     args = parser.parse_args()
     root = Path.cwd()
+    if args.command == "changelogs":
+        failures = changelog_failures(root)
+        if failures:
+            raise ValueError("every rock needs a changelog:\n" + "\n".join(failures))
+        print(f"PASS {len(CHANGELOGS)} rocks keep a changelog")
+        return
     if args.command == "verify":
         verify_release(root, json.loads(args.event.read_text()), args.commit, args.artifacts)
         print(f"PASS publication guards for {candidate(root)} at {args.commit}")
