@@ -127,8 +127,8 @@ jobs:
           fetch-depth: 0
       - name: Native build dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install --no-install-recommends -y build-essential cmake pkg-config autoconf automake libtool bison libevent-dev libncurses-dev libreadline-dev
+          ./scripts/apt-get.sh update
+          ./scripts/apt-get.sh install --no-install-recommends -y build-essential cmake pkg-config autoconf automake libtool bison libevent-dev libncurses-dev libreadline-dev
       - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           version: 2026.9.9

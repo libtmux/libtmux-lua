@@ -221,6 +221,80 @@ def session_problems(ci, publish):
     return found
 
 
+def step_name(lines, at, column):
+    """The name of the step whose `run` key sits on lines[at] at `column`."""
+    for back in range(at, -1, -1):
+        named = re.match(rf"^(?: {{{column}}}| {{{column - 2}}}- )name: *(.*)$", lines[back])
+        if named:
+            return named[1].strip()
+        if re.match(rf"^ {{{column - 2}}}- ", lines[back]):
+            break
+    return f"line {at + 1}"
+
+
+def run_scripts(text):
+    """Yield (job, step, script) for each `run` value in a workflow or action.
+
+    Reads `run: command` and `run: |` or `>` block scalars. A `run:` with no
+    value is the `defaults` mapping, never a script.
+    """
+    lines = text.splitlines()
+    job, in_jobs, i = None, False, 0
+    while i < len(lines):
+        line, at = lines[i], i
+        i += 1
+        if re.match(r"^[A-Za-z_-]+:", line):
+            in_jobs = line.startswith("jobs:")
+        elif in_jobs and (header := re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)):
+            job = header[1]
+        found = re.match(r"^( *)(- )?run: *(.*)$", line)
+        if not found:
+            continue
+        column, value = len(found[1]) + 2 * bool(found[2]), found[3].strip()
+        if re.fullmatch(r"[|>][+-]?\d*", value):
+            body = []
+            while i < len(lines) and (not lines[i].strip() or len(lines[i]) - len(lines[i].lstrip()) > column):
+                body.append(lines[i])
+                i += 1
+            script = "\n".join(body)
+        elif value:
+            script = value.strip("'\"")
+        else:
+            continue
+        yield job, step_name(lines, at, column), script
+
+
+# A command word: after a line start, a separator or a shell keyword, then any
+# VAR=value words and sudo with its flags.
+RAW_APT = re.compile(
+    r"(?:^|[;&|(]|\b(?:then|do|else)\b)\s*(?:\w+=\S*\s+)*"
+    r"(?:sudo\s+(?:-\S+\s+|\w+=\S*\s+)*)?(apt(?:-get)?)(?=\s|$)"
+)
+
+
+def apt_problems(files):
+    """Name each `run` script that calls apt or apt-get without scripts/apt-get.sh.
+
+    The wrapper bounds a hung mirror (actions/runner-images#15040) only while
+    every call goes through it. `files` maps a path to its workflow text.
+    """
+    found = []
+    for path, text in files.items():
+        for job, step, script in run_scripts(text):
+            for line in script.replace("\\\n", " ").splitlines():
+                call = None if line.lstrip().startswith("#") else RAW_APT.search(line)
+                if call:
+                    where = ": ".join(filter(None, [path, job, step]))
+                    found.append(f"{where}: calls {call[1]} directly; run it through scripts/apt-get.sh")
+    return found
+
+
+def workflow_files():
+    """Map each workflow and composite action path to its text."""
+    paths = [*(ROOT / ".github/workflows").glob("*.y*ml"), *(ROOT / ".github/actions").glob("*/action.y*ml")]
+    return {str(path.relative_to(ROOT)): path.read_text() for path in sorted(paths)}
+
+
 def without(text, line):
     assert line in text, line
     return text.replace(line, "", 1)
@@ -372,6 +446,70 @@ class WorkflowFollowsThePlan(unittest.TestCase):
         self.assertIn("Outer current", names)
         self.assertEqual(field(split_jobs(CI)["validate"], "name"), "${{ matrix.name }}")
         self.assertIn("if: matrix.name == 'Outer current'", CI)
+
+
+def workflow_with(script, indent="          "):
+    body = "\n".join(f"{indent}{line}" for line in script.splitlines())
+    return (
+        "on: push\njobs:\n  build:\n    runs-on: ubuntu-24.04\n    steps:\n"
+        f"      - name: Install tmux\n        run: |\n{body}\n"
+    )
+
+
+class AptCallsUseTheWrapper(unittest.TestCase):
+    FIX = "calls {} directly; run it through scripts/apt-get.sh"
+
+    def test_the_workflows_call_only_the_wrapper(self):
+        files = workflow_files()
+        self.assertIn(".github/workflows/ci.yml", files)
+        wrapped = [script for text in files.values() for _, _, script in run_scripts(text) if "./scripts/apt-get.sh" in script]
+        self.assertTrue(wrapped, "run_scripts no longer finds the wrapper calls in the workflows")
+        self.assertEqual(apt_problems(files), [])
+
+    def test_a_raw_apt_get_names_the_file_job_step_and_fix(self):
+        reported = apt_problems({"w.yml": workflow_with("sudo apt-get update")})
+        self.assertEqual(reported, ["w.yml: build: Install tmux: " + self.FIX.format("apt-get")])
+
+    def test_the_wrapper_passes(self):
+        script = "./scripts/apt-get.sh update\n./scripts/apt-get.sh install --yes tmux"
+        self.assertEqual(apt_problems({"w.yml": workflow_with(script)}), [])
+
+    def test_each_way_to_call_apt_is_reported(self):
+        for script, command in [
+            ("apt-get update", "apt-get"),
+            ("sudo apt install -y tmux", "apt"),
+            ("sudo -E DEBIAN_FRONTEND=noninteractive apt-get install tmux", "apt-get"),
+            ("sudo apt-get update && echo ok", "apt-get"),
+            ("echo start; sudo apt-get update", "apt-get"),
+            ("if true; then sudo apt-get update; fi", "apt-get"),
+            ("sudo \\\n  apt-get update", "apt-get"),
+        ]:
+            with self.subTest(script):
+                reported = apt_problems({"w.yml": workflow_with(script)})
+                self.assertEqual(reported, ["w.yml: build: Install tmux: " + self.FIX.format(command)])
+
+    def test_a_single_line_run_is_reported(self):
+        text = "jobs:\n  build:\n    steps:\n      - run: sudo apt-get update\n"
+        self.assertEqual(apt_problems({"w.yml": text}), ["w.yml: build: line 4: " + self.FIX.format("apt-get")])
+
+    def test_a_composite_action_is_reported(self):
+        text = "runs:\n  using: composite\n  steps:\n    - name: Deps\n      shell: bash\n      run: sudo apt-get update\n"
+        self.assertEqual(apt_problems({"a/action.yml": text}), ["a/action.yml: Deps: " + self.FIX.format("apt-get")])
+
+    def test_comments_and_other_words_pass(self):
+        script = "# sudo apt-get update\n  # apt install tmux\necho 'run apt-get later'\npip install apt\n./scripts/apt-get.sh update"
+        self.assertEqual(apt_problems({"w.yml": workflow_with(script)}), [])
+
+    def test_the_defaults_mapping_is_not_a_script(self):
+        text = "jobs:\n  build:\n    defaults:\n      run:\n        shell: bash\n"
+        self.assertEqual(list(run_scripts(text)), [])
+
+    def test_a_raw_call_in_the_real_workflow_is_reported(self):
+        raw = replaced(CI, "          ./scripts/apt-get.sh update\n", "          sudo apt-get update\n")
+        reported = apt_problems({".github/workflows/ci.yml": raw})
+        self.assertEqual(len(reported), 1, reported)
+        self.assertTrue(reported[0].startswith(".github/workflows/ci.yml: validate: Native build dependencies: "), reported)
+        self.assertTrue(reported[0].endswith(self.FIX.format("apt-get")), reported)
 
 
 if __name__ == "__main__":
