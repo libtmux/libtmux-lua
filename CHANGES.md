@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Tests: `scripts/check.py`, `scripts/package.py` and the integration runner
+  run in a private `TMUX_TMPDIR` with `TMUX`, `TMUX_PANE` and every
+  `LIBTMUX_SOCKET*` variable cleared, refuse to run outside it, and fail a run
+  that leaves a tmux socket anywhere in it. A test that names no socket finds
+  no server. (#74)
+- Examples: `examples/api/run.sh` clears the same variables for the program it
+  runs, fails when the program leaves a tmux socket in the launcher's
+  directory, and needs `perl` to confirm that its server stopped. (#74)
 - Docs: describe the field helper's ranked development and release-candidate
   reports, and the environment decoder's exact release table.
 - Docs: distinguish connection probes from refused caller operations, and
