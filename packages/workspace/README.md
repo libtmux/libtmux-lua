@@ -92,6 +92,8 @@ runs each with a tested example.
 ## Support and status
 
 - **Unpublished development scaffold.** Build it from a checkout, as above.
+- **Changelog.** [`CHANGELOG.md`][changelog] lists its changes. It has no
+  release yet, and the rockspec installs the file.
 - **Lua 5.1 to 5.5.** The rockspec asks for `luv` 1.52.1 or newer,
   `lunajson` 1.2.3 or newer and `lyaml` 6.2.9 or newer.
 - **Linux, including WSL.** CI runs the package check on Ubuntu 24.04, on Lua
@@ -105,3 +107,4 @@ runs each with a tested example.
 [lunajson]: https://luarocks.org/modules/grafi/lunajson
 [lyaml]: https://luarocks.org/modules/gvvaughan/lyaml
 [libyaml]: https://pyyaml.org/wiki/LibYAML
+[changelog]: https://github.com/libtmux/libtmux-lua/blob/master/packages/workspace/CHANGELOG.md

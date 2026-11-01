@@ -438,8 +438,12 @@ implemented core, with the limits recorded in the
 
 ### Prepare a version
 
-Add user-visible changes under `Unreleased` in [CHANGES.md](../CHANGES.md),
-then run this from the repository root:
+Add user-visible changes under `Unreleased` in the changelog of the rock they
+change: [CHANGES.md](../CHANGES.md) for `libtmux` and for changes that span
+rocks, [packages/mcp/CHANGELOG.md](../packages/mcp/CHANGELOG.md) for
+`libtmux-mcp` and
+[packages/workspace/CHANGELOG.md](../packages/workspace/CHANGELOG.md) for
+`libtmux-workspace`. Then run this from the repository root:
 
 ```console
 $ mise exec -- python scripts/release.py prepare 0.1.1-1
@@ -456,6 +460,15 @@ Check those files without changing them:
 
 ```console
 $ mise exec -- python scripts/release.py prepare --check
+```
+
+Check that every rock keeps its changelog, opening with its own name and
+holding an `## Unreleased` section, and that each rockspec other than the
+core's installs it. The generated gate and the publication guards run the
+same check:
+
+```console
+$ mise exec -- python scripts/release.py changelogs
 ```
 
 `0.1.N` is the source/runtime version; `-R` is the rockspec revision.

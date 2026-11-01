@@ -26,6 +26,9 @@ requested work. Prefer `rg`, `ag`, and `fd` for discovery.
   [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
 - Documentation, user-facing text, comments, and commit messages:
   [.github/WRITING.md](.github/WRITING.md).
+- Changelog entries: one changelog per rock, and
+  [.github/WRITING.md](.github/WRITING.md#changelogs-and-release-notes) says
+  which file.
 
 Each guide is the single home for its subject. `CLAUDE.md` is a relative
 symlink to this file so both entry points use the same instructions.

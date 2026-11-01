@@ -23,7 +23,7 @@ It is published on
 [LuaRocks](https://luarocks.org/modules/tony/libtmux).
 Releases are numbered `0.1.N`, and each release increments `N`. The API is not
 settled: any release may change or remove exported identifiers, and the
-changelog marks each break. Pin an exact version to avoid one.
+[changelog][changes] marks each break. Pin an exact version to avoid one.
 
 The [root README](https://github.com/libtmux/libtmux-lua/blob/master/README.md#quick-start)
 shows a first tmux program, and the
@@ -238,8 +238,8 @@ prompts yet.
 
 - **Versions.** Releases are numbered `0.1.N`, and each release increments
   `N`. The API is not settled: any release may change or remove exported
-  identifiers, and the changelog marks each break. Pin an exact version to
-  avoid one.
+  identifiers, and the [changelog][changes] marks each break. Pin an exact
+  version to avoid one.
 - **Lua 5.1 to 5.5, and LuaJIT.** CI runs the unit suites on each.
 - **tmux 3.3a or newer.** An older server is refused with `unsupported_version`
   before caller operations run. Connection setup may probe the daemon's release.
@@ -261,3 +261,4 @@ prompts yet.
 [ref-selection]: https://libtmux.org/en/lua/latest/reference/libtmux-selection/
 [ref-selection-where]: https://libtmux.org/en/lua/latest/reference/libtmux-selection-where/
 [ref-selection-filter]: https://libtmux.org/en/lua/latest/reference/libtmux-selection-filter/
+[changes]: https://github.com/libtmux/libtmux-lua/blob/master/CHANGES.md

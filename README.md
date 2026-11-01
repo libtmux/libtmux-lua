@@ -26,7 +26,7 @@ Neovim's event loop.
 
 Releases are numbered `0.1.N`, and each release increments `N`. The API is not
 settled: any release may change or remove exported identifiers, and the
-changelog marks each break. Pin an exact version to avoid one.
+[changelog](CHANGES.md) marks each break. Pin an exact version to avoid one.
 
 The separate MCP and workspace packages are unpublished scaffolds.
 
@@ -446,6 +446,10 @@ server running. See [runtime ownership and cancellation](docs/runtime.md).
 Each heading below links to its directory on GitHub, which LuaRocks does not
 show. Only `libtmux` is published. `libtmux-workspace` and `libtmux-mcp` are
 unpublished scaffolds with no public API.
+
+Each rock keeps its own changelog: [`libtmux`](CHANGES.md),
+[`libtmux-workspace`](packages/workspace/CHANGELOG.md) and
+[`libtmux-mcp`](packages/mcp/CHANGELOG.md).
 
 ### [`libtmux`](https://github.com/libtmux/libtmux-lua/tree/master/lua/libtmux): the library
 

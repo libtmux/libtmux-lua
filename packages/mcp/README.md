@@ -87,6 +87,8 @@ runs each with a tested example.
 ## Support and status
 
 - **Unpublished development scaffold.** Build it from a checkout, as above.
+- **Changelog.** [`CHANGELOG.md`][changelog] lists its changes. It has no
+  release yet, and the rockspec installs the file.
 - **Lua 5.1 to 5.5.** The rockspec asks for `luv` 1.52.1 or newer and
   `lunajson` 1.2.3 or newer.
 - **Linux, including WSL.** CI runs the package check on Ubuntu 24.04, on Lua
@@ -98,3 +100,4 @@ runs each with a tested example.
 [ref-pane-capture]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-capture/
 [luv]: https://github.com/luvit/luv
 [lunajson]: https://luarocks.org/modules/grafi/lunajson
+[changelog]: https://github.com/libtmux/libtmux-lua/blob/master/packages/mcp/CHANGELOG.md

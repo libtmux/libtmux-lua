@@ -95,5 +95,12 @@ When a changelog exists, record one observable change per bullet under
 incompatibilities, with the migration in the same entry. Omit invisible
 refactors and descriptions of effort.
 
+Each rock keeps its own changelog, and an entry goes in the file of the rock it
+changes: `CHANGES.md` for `libtmux`, `packages/mcp/CHANGELOG.md` for
+`libtmux-mcp` and `packages/workspace/CHANGELOG.md` for `libtmux-workspace`. A
+change that spans rocks, such as documentation, CI or release tooling, goes in
+`CHANGES.md`. A file lists only the releases of its own rock, and the two
+unpublished rocks hold an `## Unreleased` section alone.
+
 Release notes explain what an upgrader needs to know and any required action.
 Do not claim publication, compatibility, or passing checks without evidence.
