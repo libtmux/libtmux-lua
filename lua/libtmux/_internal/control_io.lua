@@ -1,3 +1,4 @@
+local command = require("libtmux._internal.command")
 local errors = require("libtmux._internal.error")
 local M = {}
 
@@ -224,7 +225,11 @@ function M.start(runtime, endpoint, options, on_data, on_end)
         end
         pipes[index], open = pipe, open + 1
     end
-    local args = { "-N", "-S", endpoint.socket, "-u" }
+    local args = { "-N" }
+    for _, flag in ipairs(command.selector(endpoint)) do
+        args[#args + 1] = flag
+    end
+    args[#args + 1] = "-u"
     if endpoint.config then
         args[#args + 1], args[#args + 2] = "-f", endpoint.config
     end

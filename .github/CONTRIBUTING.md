@@ -332,7 +332,9 @@ before a commit or pull request.
 
 Any test or probe that starts tmux must use an explicit socket in a unique
 temporary directory named for `libtmux-lua`. Clear inherited `TMUX` and
-`TMUX_PANE` values in the child environment. Never use the default server.
+`TMUX_PANE` values in the child environment. Never use the default server of
+the developer's `TMUX_TMPDIR`; only a test of how a connection chooses its
+server starts one, and only on the sandbox's own default socket, below.
 
 Clean up only the server and files owned by that run, including on failure.
 Do not stop servers or remove directories belonging to another port or to
@@ -379,6 +381,42 @@ arguments and variable names, never values: the
 [launcher](../tests/integration/test_launcher.py) tests with the integration
 suite, since the tooling tests share a five-second limit in `scripts/check.py`.
 Prove a change to the guard that way before running a suite.
+
+`Runtime:connect` with no `socket_path` reads `LIBTMUX_SOCKET_PATH`, then
+`LIBTMUX_SOCKET`, and otherwise leaves the server to tmux, so a program run by
+hand with neither set reaches the server you work in. The sandbox clears both
+variables, and tests that connect name their own socket or set a variable in a
+child process they start. tmux leaves its socket file behind when a server
+exits, and the tree check counts it, so a test that starts a server on the
+default socket stops it, waits for it to exit and removes the file, as
+[the default-socket test](../tests/integration/test_socket_default.py) does.
+
+To run a program by hand against a server of your own, keep a `.env` that names
+its socket. `.gitignore` keeps it out of commits, and the rockspecs install
+only the modules they list. Write the file:
+
+```console
+$ printf 'LIBTMUX_SOCKET_PATH=%s\n' /tmp/libtmux-lua-dev.sock > .env
+```
+
+The library never starts a server, so start one on that socket first:
+
+```console
+$ tmux -S /tmp/libtmux-lua-dev.sock -f /dev/null new-session -d
+```
+
+Load the file into the shell before running the program:
+
+```console
+$ set -a && . ./.env && set +a
+```
+
+Stop the server when you are done. tmux leaves its socket file behind, and a
+connection to it reports `uncertain_generation`:
+
+```console
+$ tmux -S /tmp/libtmux-lua-dev.sock kill-server
+```
 
 ## Pull requests
 

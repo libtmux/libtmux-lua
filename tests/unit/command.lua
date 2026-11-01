@@ -80,6 +80,30 @@ function M.test_bound_endpoint_can_disable_tmux_server_autostart()
     t.assertEquals(invalid_err.code, "invalid_endpoint")
 end
 
+function M.test_endpoint_that_names_no_socket_passes_tmux_neither_flag()
+    local encoded, err = command.prepare({}, { { "display-message", "-p", "x" } })
+    t.assertNil(err)
+    t.assertEquals(encoded, { "tmux", "-u", "--", "display-message", "-p", "x" })
+    encoded, err = command.prepare(
+        { binary = "/actual/tmux", config = "/dev/null", no_start = true },
+        { { "list-sessions" } }
+    )
+    t.assertNil(err)
+    t.assertEquals(
+        encoded,
+        { "/actual/tmux", "-u", "-f", "/dev/null", "-N", "--", "list-sessions" }
+    )
+end
+
+function M.test_endpoint_selects_a_socket_path_with_S_and_a_socket_name_with_L()
+    local encoded, err = command.prepare({ socket = "/owned/pin" }, { { "list-sessions" } })
+    t.assertNil(err)
+    t.assertEquals(encoded, { "tmux", "-S", "/owned/pin", "-u", "--", "list-sessions" })
+    encoded, err = command.prepare({ name = "work", no_start = true }, { { "list-sessions" } })
+    t.assertNil(err)
+    t.assertEquals(encoded, { "tmux", "-L", "work", "-u", "-N", "--", "list-sessions" })
+end
+
 function M.test_invalid_group_member_rejects_whole_submission_without_effects()
     t.assertTrue(available, "command layer is not implemented")
     for _, commands in ipairs({
@@ -98,9 +122,12 @@ function M.test_invalid_group_member_rejects_whole_submission_without_effects()
     end
     for _, invalid in ipairs({
         false,
-        {},
         { socket = "nul\000" },
+        { socket = "" },
+        { name = "nul\000" },
+        { name = "" },
         { socket = "valid", extra = true },
+        { socket = "/owned/pin", name = "valid" },
     }) do
         local encoded, err = command.prepare(invalid, { { "valid" } })
         t.assertNil(encoded)

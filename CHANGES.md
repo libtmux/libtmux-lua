@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+- Connect: `socket_path` is optional. Without it, `Runtime:connect` reads
+  `LIBTMUX_SOCKET_PATH` (tmux `-S`), then `LIBTMUX_SOCKET` (`-L`), and with
+  neither set passes tmux no socket, so tmux picks the server: the one in
+  `TMUX` inside tmux, otherwise its default socket. A `socket_path` option
+  comes first and leaves both unread, and a blank variable counts as unset.
+  `LIBTMUX_SOCKET_PATH` must be an absolute path, as the option must. A call
+  that used to fail for lacking `socket_path` now reaches the server tmux
+  picks, so a program that must not reach your server passes `socket_path` or
+  runs with a sandboxed `TMUX_TMPDIR`. (#75)
+- Connect: a connection that names no socket, or names one with
+  `LIBTMUX_SOCKET`, reports `invalid_endpoint` when tmux finds no server. A
+  socket path whose file outlived its server reports `uncertain_generation`.
+  The library still never starts a server. (#75)
+- Control: observation attaches to the server the connection reached. (#75)
 - Tests: `scripts/check.py`, `scripts/package.py` and the integration runner
   run in a private `TMUX_TMPDIR` with `TMUX`, `TMUX_PANE` and every
   `LIBTMUX_SOCKET*` variable cleared, refuse to run outside it, and fail a run

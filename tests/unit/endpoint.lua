@@ -161,6 +161,242 @@ function M.test_rejects_untyped_or_relative_options_before_filesystem_effects()
     t.assertTrue(f.root:is_retired())
 end
 
+-- The environment as a function, with the names it was asked for.
+local function environment(values)
+    local asked = {}
+    return function(name)
+        asked[#asked + 1] = name
+        return values[name]
+    end,
+        asked
+end
+
+-- The tmux flags that choose a server, in the part of argv before "--".
+local function selectors(args)
+    local found = {}
+    for index, word in ipairs(args) do
+        if word == "--" then
+            break
+        end
+        if word == "-S" or word == "-L" then
+            found[#found + 1] = word
+            found[#found + 1] = args[index + 1]
+        end
+    end
+    return found
+end
+
+-- Whether tmux was given the flag as a client option, before "--".
+local function has_flag(args, flag)
+    for _, word in ipairs(args) do
+        if word == "--" then
+            return false
+        elseif word == flag then
+            return true
+        end
+    end
+    return false
+end
+
+local ALIAS = "/owned/libtmux-lua-pin-test/socket"
+
+function M.test_no_socket_and_no_variable_leave_the_server_to_tmux()
+    local f = fixture()
+    local getenv, asked = environment({})
+    f:start(function(rt)
+        local bound = assert(endpoints.bind(rt, { binary = "/tmux" }, getenv):await())
+        assert(bound:execute({ "display-message", "-p", "done" }):await())
+        t.assertEquals(#f.uv.spawned, 2)
+        for _, call in ipairs(f.uv.spawned) do
+            t.assertEquals(selectors(call.args), {})
+            -- Autostart stays off: tmux may pick a server, but never starts one.
+            t.assertTrue(has_flag(call.args, "-N"))
+        end
+        -- The probe reports the socket tmux chose, and that is the identity.
+        t.assertEquals(assert(bound:evidence()).socket, "/owned/tmux.sock")
+        assert(bound:close():await())
+    end)
+    t.assertEquals(asked, { "LIBTMUX_SOCKET_PATH", "LIBTMUX_SOCKET" })
+    -- Nothing was pinned: there is no socket path to link.
+    t.assertEquals(f.uv.calls, {})
+end
+
+function M.test_libtmux_socket_path_is_a_pinned_socket_passed_as_S()
+    local f = fixture()
+    f:start(function(rt)
+        local getenv = environment({ LIBTMUX_SOCKET_PATH = "/owned/tmux.sock" })
+        local bound = assert(endpoints.bind(rt, { binary = "/tmux" }, getenv):await())
+        assert(bound:execute({ "display-message", "-p", "done" }):await())
+        for _, call in ipairs(f.uv.spawned) do
+            t.assertEquals(selectors(call.args), { "-S", ALIAS })
+        end
+        assert(bound:close():await())
+    end)
+    -- The socket was linked into a private directory, and the link was removed at close.
+    local made = {}
+    for _, call in ipairs(f.uv.calls) do
+        made[call] = true
+    end
+    for _, call in ipairs({ "mkdtemp", "link", "unlink", "rmdir" }) do
+        t.assertTrue(made[call], call)
+    end
+end
+
+function M.test_libtmux_socket_is_a_name_passed_as_L_and_pins_nothing()
+    local f = fixture()
+    f:start(function(rt)
+        local getenv = environment({ LIBTMUX_SOCKET = "work" })
+        local bound = assert(endpoints.bind(rt, { binary = "/tmux" }, getenv):await())
+        assert(bound:execute({ "display-message", "-p", "done" }):await())
+        for _, call in ipairs(f.uv.spawned) do
+            t.assertEquals(selectors(call.args), { "-L", "work" })
+        end
+        assert(bound:close():await())
+    end)
+    t.assertEquals(f.uv.calls, {})
+end
+
+function M.test_the_path_wins_when_both_variables_are_set()
+    local f = fixture()
+    f:start(function(rt)
+        local getenv =
+            environment({ LIBTMUX_SOCKET_PATH = "/owned/tmux.sock", LIBTMUX_SOCKET = "work" })
+        assert(endpoints.bind(rt, { binary = "/tmux" }, getenv):await())
+        t.assertEquals(selectors(f.uv.spawned[1].args), { "-S", ALIAS })
+    end)
+end
+
+function M.test_an_explicit_socket_leaves_both_variables_unread()
+    local f = fixture()
+    local getenv, asked =
+        environment({ LIBTMUX_SOCKET_PATH = "/elsewhere.sock", LIBTMUX_SOCKET = "work" })
+    f:start(function(rt)
+        assert(
+            endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }, getenv):await()
+        )
+        t.assertEquals(selectors(f.uv.spawned[1].args), { "-S", ALIAS })
+    end)
+    t.assertEquals(asked, {})
+end
+
+function M.test_a_blank_variable_counts_as_unset_each_on_its_own()
+    local cases = {
+        { { LIBTMUX_SOCKET_PATH = "", LIBTMUX_SOCKET = "work" }, { "-L", "work" } },
+        { { LIBTMUX_SOCKET_PATH = " \t", LIBTMUX_SOCKET = "work" }, { "-L", "work" } },
+        { { LIBTMUX_SOCKET_PATH = "/owned/tmux.sock", LIBTMUX_SOCKET = "" }, { "-S", ALIAS } },
+        { { LIBTMUX_SOCKET_PATH = "", LIBTMUX_SOCKET = "  " }, {} },
+    }
+    for index, case in ipairs(cases) do
+        local f = fixture()
+        f:start(function(rt)
+            assert(endpoints.bind(rt, { binary = "/tmux" }, environment(case[1])):await())
+            t.assertEquals(selectors(f.uv.spawned[1].args), case[2], index)
+        end)
+    end
+end
+
+function M.test_a_socket_path_variable_that_is_not_an_absolute_file_is_refused_without_its_value()
+    for _, value in ipairs({ "relative.sock", "./tmux.sock", "/owned/directory/" }) do
+        local f = fixture()
+        f:start(function(rt)
+            local getenv = environment({ LIBTMUX_SOCKET_PATH = value, LIBTMUX_SOCKET = "work" })
+            local bound, err = endpoints.bind(rt, { binary = "/tmux" }, getenv):await()
+            t.assertNil(bound)
+            t.assertEquals(assert(err).code, "invalid_endpoint", value)
+            t.assertEquals(err.effect, "not_sent")
+            t.assertStrContains(err.message, "LIBTMUX_SOCKET_PATH")
+            t.assertNotStrContains(err.message, value)
+        end)
+        t.assertEquals(f.uv.spawned, {})
+        t.assertEquals(f.uv.calls, {})
+    end
+end
+
+function M.test_no_server_on_the_socket_tmux_selected_is_named_and_nothing_is_started()
+    for _, values in ipairs({ {}, { LIBTMUX_SOCKET = "work" } }) do
+        local f = fixture()
+        f.uv.probe_reply = function()
+            return "no server running on /tmp/tmux-1000/default\n"
+        end
+        f:start(function(rt)
+            local bound, err = endpoints.bind(rt, { binary = "/tmux" }, environment(values)):await()
+            t.assertNil(bound)
+            t.assertEquals(assert(err).code, "invalid_endpoint")
+            t.assertEquals(err.effect, "not_sent")
+            t.assertStrContains(err.message, "no tmux server is running")
+            -- One probe, and it carried -N, so no client could start a daemon.
+            t.assertEquals(#f.uv.spawned, 1)
+            t.assertTrue(has_flag(f.uv.spawned[1].args, "-N"))
+        end)
+    end
+end
+
+function M.test_a_socket_path_is_missing_or_stale_not_absent_whether_option_or_variable()
+    local variable = { LIBTMUX_SOCKET_PATH = "/owned/tmux.sock" }
+    -- A file with no server behind it: the pin succeeds, and the probe finds nobody.
+    for name, bind in pairs({
+        option = function(rt)
+            return endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" })
+        end,
+        variable = function(rt)
+            return endpoints.bind(rt, { binary = "/tmux" }, environment(variable))
+        end,
+    }) do
+        local f = fixture()
+        f.uv.probe_reply = function()
+            return "no server running on /owned/tmux.sock\n"
+        end
+        f:start(function(rt)
+            local bound, err = bind(rt):await()
+            t.assertNil(bound, name)
+            t.assertEquals(assert(err).code, "uncertain_generation", name)
+            t.assertEquals(err.effect, "not_sent", name)
+            t.assertEquals(#f.uv.spawned, 1, name)
+        end)
+        t.assertNil(f.uv.files[f.uv.alias], name)
+    end
+    -- No file at the path: the pin refuses before any probe.
+    local f = fixture()
+    f:start(function(rt)
+        local getenv = environment({ LIBTMUX_SOCKET_PATH = "/owned/missing.sock" })
+        local bound, err = endpoints.bind(rt, { binary = "/tmux" }, getenv):await()
+        t.assertNil(bound)
+        t.assertEquals(assert(err).code, "invalid_endpoint")
+        t.assertStrContains(err.message, "not an accessible socket")
+        t.assertEquals(f.uv.spawned, {})
+    end)
+end
+
+function M.test_a_replaced_or_missing_daemon_stops_an_endpoint_that_pinned_nothing()
+    local f = fixture()
+    f:start(function(rt)
+        local bound = assert(endpoints.bind(rt, { binary = "/tmux" }, environment({})):await())
+        assert(bound:generation())
+        f.uv.fence_refused = true
+        local value, err = bound:execute({ "new-session", "-d", "-s", "must-not-exist" }):await()
+        t.assertNil(value)
+        t.assertEquals(assert(err).code, "stale_generation")
+        t.assertEquals(err.effect, "not_sent")
+        f.uv.fence_refused = false
+        t.assertNil(bound:generation())
+        local again, again_error = bound:execute({ "display-message", "-p", "late" }):await()
+        t.assertNil(again)
+        t.assertEquals(assert(again_error).code, "stale_generation")
+        -- The bind probe and the one dispatch the fence refused.
+        t.assertEquals(#f.uv.spawned, 2)
+    end)
+    f = fixture()
+    f:start(function(rt)
+        local bound = assert(endpoints.bind(rt, { binary = "/tmux" }, environment({})):await())
+        f.uv.dead_listener = true
+        local value, err = bound:execute({ "new-session", "-d" }):await()
+        t.assertNil(value)
+        t.assertEquals(assert(err).code, "stale_generation")
+        t.assertNil(bound:generation())
+        t.assertEquals(#f.uv.spawned, 2)
+    end)
+end
+
 function M.test_only_the_exact_probe_report_is_daemon_evidence()
     local replies = {
         ["silent failure"] = function()

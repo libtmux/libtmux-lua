@@ -226,9 +226,9 @@ prompts yet.
 
 ## What it leaves out
 
-- **A default server.** [`Runtime:connect`][ref-runtime-connect] takes an
-  absolute tmux binary and socket path. The library never picks or starts a
-  server.
+- **Starting a server.** [`Runtime:connect`][ref-runtime-connect] never starts
+  one. Without a `socket_path`, `LIBTMUX_SOCKET_PATH` or `LIBTMUX_SOCKET` names
+  the server, and otherwise tmux picks it.
 - **Live records.** A [snapshot][ref-snapshot] holds what tmux said when it
   was read. Capture again to see a change.
 - **An interactive terminal.** The luv and Neovim adapters own no terminal, so

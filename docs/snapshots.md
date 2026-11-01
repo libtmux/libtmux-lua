@@ -5,19 +5,36 @@ Use `runtime:connect(options):await()` to bind a borrowed tmux daemon, then
 returns a Request. The [snapshot example](../examples/snapshot.lua) prints
 each unique pane and its window ID using the public API.
 
-Pass an absolute `binary` and explicit absolute `socket_path` to `connect`.
+Pass an absolute `binary` to `connect`, and usually an absolute `socket_path`.
 Optional `config_path` defaults to `/dev/null`. Connection options are copied
-before dispatch. The library does not select a default server or start one.
-Importing the library and inspecting captured records perform no I/O.
+before dispatch. The library never starts a server. Importing the library and
+inspecting captured records perform no I/O.
 
-Connection setup reads the actual daemon's version and identity. Linux socket
-binding creates a private socket alias in the selected socket's parent
-directory; that directory must permit creation and hard links. Each command
-checks the original socket and alias, reads bounded daemon evidence, and
-disables tmux autostart. A restart, replaced socket or uncertain connection
-invalidates the handle. Reconnect explicitly; old references do not bind to
-reused IDs. The [compatibility matrix](compatibility.md) records Ubuntu CI
-coverage and local WSL2 checks; macOS remains outside the verified matrix.
+Without a `socket_path`, `connect` reads `LIBTMUX_SOCKET_PATH`, a socket path
+(tmux `-S`), then `LIBTMUX_SOCKET`, a socket name (`-L`). The path wins when
+both are set, and a variable that is empty or only whitespace counts as unset.
+A `socket_path` option leaves both unread. With neither variable set, tmux gets
+no socket and picks the server itself: the one in `TMUX` inside tmux, otherwise
+the default socket under `TMUX_TMPDIR`. `LIBTMUX_SOCKET_PATH` must be absolute
+and name a file.
+
+`connect` starts no server. If tmux finds none running on the socket it picked,
+or on the `LIBTMUX_SOCKET` name, it fails with `invalid_endpoint`. A socket
+path, from the option or `LIBTMUX_SOCKET_PATH`, fails with `invalid_endpoint`
+when no file is there, and with `uncertain_generation` when the file outlived
+its server, which tmux leaves behind when it exits.
+
+Connection setup reads the actual daemon's version and identity and disables
+tmux autostart. Linux socket binding creates a private socket alias in the
+selected socket's parent directory; that directory must permit creation and
+hard links. Each command checks the original socket and alias, and reads
+bounded daemon evidence. A socket name, or tmux's own choice, has no path to
+alias, so nothing is created: the daemon's pid, start time and release, which
+every command carries as a fence, are its only identity. A restart, replaced
+socket or uncertain connection invalidates the handle. Reconnect explicitly;
+old references do not bind to reused IDs. The
+[compatibility matrix](compatibility.md) records Ubuntu CI coverage and local
+WSL2 checks; macOS remains outside the verified matrix.
 
 `server:close():await()` closes the handle and its owned connections. It leaves
 the borrowed daemon running. The runtime also closes handles when its root

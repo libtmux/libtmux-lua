@@ -57,7 +57,7 @@ Each dispatched command group then starts with a fence on the cached pid,
 start time and release, so a command costs no probe. A daemon that changed
 after the check raises `stale_generation`, none of the group's commands run
 and the cache is dropped; a daemon that is gone raises the same error. The
-endpoint only binds to an existing socket and always passes `-N`, so no
+endpoint only binds to a running server and always passes `-N`, so no
 client binary starts a daemon.
 
 A daemon below the minimum raises `unsupported_version` when connecting, with

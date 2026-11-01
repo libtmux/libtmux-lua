@@ -110,6 +110,18 @@ function M.prepare_program(input, compact)
     return table.concat(encoded, " ; ")
 end
 
+-- The flags that choose a server: -S for a socket path, -L for a socket name,
+-- and none when the endpoint names neither, which leaves the choice to tmux:
+-- the server in TMUX inside tmux, otherwise its default socket.
+function M.selector(endpoint)
+    if endpoint.socket ~= nil then
+        return { "-S", endpoint.socket }
+    elseif endpoint.name ~= nil then
+        return { "-L", endpoint.name }
+    end
+    return {}
+end
+
 -- A fence is a format condition that is true only on the checked daemon. When
 -- another daemon answers, if-shell runs the marker word, tmux refuses it, and
 -- the commands after the fence never run.
@@ -118,7 +130,13 @@ function M.prepare(endpoint, commands, fence)
         return invalid("invalid_endpoint", "tmux endpoint must be a plain table")
     end
     for key in next, endpoint do
-        if key ~= "binary" and key ~= "socket" and key ~= "config" and key ~= "no_start" then
+        if
+            key ~= "binary"
+            and key ~= "socket"
+            and key ~= "name"
+            and key ~= "config"
+            and key ~= "no_start"
+        then
             return invalid("invalid_endpoint", "unknown tmux endpoint field")
         end
     end
@@ -126,24 +144,35 @@ function M.prepare(endpoint, commands, fence)
     if binary == nil then
         binary = "tmux"
     end
-    local socket, config = rawget(endpoint, "socket"), rawget(endpoint, "config")
-    local no_start = rawget(endpoint, "no_start")
+    local socket, name = rawget(endpoint, "socket"), rawget(endpoint, "name")
+    local config, no_start = rawget(endpoint, "config"), rawget(endpoint, "no_start")
     if
         not string_value(binary, true)
-        or not string_value(socket, true)
+        or (socket ~= nil and not string_value(socket, true))
+        or (name ~= nil and not string_value(name, true))
         or (config ~= nil and not string_value(config, true))
         or (no_start ~= nil and type(no_start) ~= "boolean")
     then
         return invalid(
             "invalid_endpoint",
-            "tmux endpoint needs NUL-free executable and socket paths"
+            "tmux endpoint needs NUL-free executable, socket and configuration strings"
+        )
+    end
+    if socket ~= nil and name ~= nil then
+        return invalid(
+            "invalid_endpoint",
+            "tmux endpoint names both a socket path and a socket name"
         )
     end
     local count = length(commands)
     if not count then
         return invalid("invalid_command", "tmux commands must be a nonempty plain sequence")
     end
-    local result = { binary, "-S", socket, "-u" }
+    local result = { binary }
+    for _, flag in ipairs(M.selector(endpoint)) do
+        result[#result + 1] = flag
+    end
+    result[#result + 1] = "-u"
     if config then
         result[#result + 1], result[#result + 2] = "-f", config
     end

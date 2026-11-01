@@ -107,8 +107,8 @@ must(adapter.run(function(runtime)
 end))
 ```
 
-[`Runtime:connect`][ref-runtime-connect] binds the socket you name, because
-the library never picks or starts a server.
+[`Runtime:connect`][ref-runtime-connect] binds the socket you name and never
+starts a server.
 [`Server:new_session`][ref-server-new-session] creates the session and
 [`Session:snapshot`][ref-session-snapshot] reads it back.
 
@@ -516,9 +516,9 @@ The [package README](packages/mcp/README.md) has the full build steps.
 
 ## What it leaves out
 
-- **A default server.** [`Runtime:connect`][ref-runtime-connect] takes an
-  absolute tmux binary and socket path. The library never picks or starts a
-  server.
+- **Starting a server.** [`Runtime:connect`][ref-runtime-connect] never starts
+  one. Without a `socket_path`, `LIBTMUX_SOCKET_PATH` or `LIBTMUX_SOCKET` names
+  the server, and otherwise tmux picks it.
 - **Live records.** A [snapshot][ref-snapshot] holds what tmux said when it
   was read. Capture again to see a change.
 - **Proof that a command finished.** [`Pane:send_keys`][ref-pane-send-keys]
