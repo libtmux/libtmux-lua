@@ -29,6 +29,11 @@ Development scripts require Python 3.12 or newer; the development pin supplies
 actionlint 1.7.12 are build prerequisites. Bootstrap runs outside all test
 loops and may use the network.
 
+The [example launcher](../examples/api/run.sh) also needs `perl` on `PATH`, to
+confirm over a socket connection that tmux stopped. The Ubuntu 24.04 CI image
+and macOS include it. The launcher exits before it starts tmux when it is
+missing.
+
 Build the floor interpreter and the Lua 5.4.9 lint-tool interpreter:
 
 ```console
