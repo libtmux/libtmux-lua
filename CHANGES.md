@@ -10,6 +10,8 @@ here.
 
 ## Unreleased
 
+## 0.1.1-1 (2026-11-01)
+
 - Connect: `socket_path` is optional. Without it, `Runtime:connect` reads
   `LIBTMUX_SOCKET_PATH` (tmux `-S`), then `LIBTMUX_SOCKET` (`-L`), and with
   neither set passes tmux no socket, so tmux picks the server: the one in
@@ -36,9 +38,10 @@ here.
   reports, and the environment decoder's exact release table.
 - Docs: distinguish connection probes from refused caller operations, and
   describe implemented APIs and Linux CI coverage through the owning guides.
-
-## 0.1.1-1
-
+- Docs: the `Server` doc comment lists what is on a server as a capability
+  directory. (#82)
+- Docs: each rock keeps its own changelog, `libtmux-mcp` and
+  `libtmux-workspace` in `packages/*/CHANGELOG.md`. (#79)
 - Layouts: a JSON layout needs tmux 3.8 or newer, the first release that
   accepts one. Below 3.8, `Window:layout` refuses it with `invalid_layout`,
   and a literal `select-layout` with a JSON layout is now refused as
