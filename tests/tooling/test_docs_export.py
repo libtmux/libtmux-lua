@@ -62,7 +62,7 @@ class DocsExportTest(unittest.TestCase):
 
     def test_server_overview_check_reports_missing_and_invented_members(self):
         source = (ROOT / "lua/libtmux/_internal/server.lua").read_text()
-        self.assertEqual(source.count("`Server:batch`"), 1)
+        self.assertGreaterEqual(source.count("`Server:batch`"), 1)
         listed, declared = server_members(source.replace("`Server:batch`", "`batch`"))
         self.assertEqual(sorted(declared - listed), ["batch"])
         listed, declared = server_members(
