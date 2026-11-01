@@ -5,9 +5,10 @@ client runs. The clients here name no socket; the sandbox decides where they
 look, and no server listens there. Failure messages are fixed text: the paths
 involved come from environment values.
 
-The library has no default-server resolver yet, because Runtime:connect takes
-an absolute socket. When one exists, its test compares its answer with
-sandbox.default_socket, which these cases pin against tmux itself.
+The library has no default-server resolver: a connection that names no socket
+passes tmux none, and tmux chooses. test_socket_default compares the socket
+tmux chose with sandbox.default_socket, which these cases pin against tmux
+itself.
 """
 
 import os
