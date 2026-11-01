@@ -29,6 +29,11 @@ Development scripts require Python 3.12 or newer; the development pin supplies
 actionlint 1.7.12 are build prerequisites. Bootstrap runs outside all test
 loops and may use the network.
 
+The [example launcher](../examples/api/run.sh) also needs `perl` on `PATH`, to
+confirm over a socket connection that tmux stopped. The Ubuntu 24.04 CI image
+and macOS include it. The launcher exits before it starts tmux when it is
+missing.
+
 Build the floor interpreter and the Lua 5.4.9 lint-tool interpreter:
 
 ```console
@@ -333,6 +338,47 @@ Clean up only the server and files owned by that run, including on failure.
 Do not stop servers or remove directories belonging to another port or to
 the developer's sessions. Use real tmux to verify tmux behavior once the
 library and its integration tests exist.
+
+A tmux command that names no socket goes to the server an inherited `TMUX`
+names, and otherwise to the default socket under `TMUX_TMPDIR`. The
+[test sandbox](../tests/support/sandbox.py) removes `TMUX`, `TMUX_PANE` and
+every `LIBTMUX_SOCKET*` variable and sets `TMUX_TMPDIR` to an owner-only
+`libtmux-lua-sb-` directory, so a test that forgets `-S` finds nothing.
+
+`scripts/check.py`, `scripts/package.py`, `tests/run_integration.py`, the tmux
+fixture and the `tests.integration` package enter the sandbox, and their
+children join it. Importing the package covers a direct `python3 -m unittest`
+run of one of its modules; discovering a module by path does not, and the canary
+refuses there. The launcher `examples/api/run.sh` does the same for the programs
+it runs, in a directory under `TMPDIR`, or under `/tmp` when `TMPDIR` leaves no
+room for the default socket path. A new entry point that starts tmux must enter
+the sandbox or be started by one that did.
+
+Lua cannot change its environment, so `tests/run.lua` only checks: it exits
+with status 2 unless a parent made the sandbox. Run unit suites through
+`scripts/check.py`.
+
+The directory goes under `TMPDIR`, or under `/tmp` when `TMPDIR` is too long for
+a socket path, so keep `TMPDIR` short. The fixture's own directories stay under
+`/tmp`. At exit, the process that made the sandbox fails the run if a socket is
+left anywhere in the sandbox, even when every test passed, whether tmux chose it
+for a command that named none or a test named it with `-S`. It stops each server
+with `tmux -S <socket> kill-server`, then connects to confirm nothing answers. A
+server that still answers keeps the directory, which the failure names. The
+launcher does the same for its own directory, confirming each stop with a
+connection to the socket from `perl` and not with a tmux client. Refusals and
+failures name variables, sockets and directories, never the values of
+environment variables.
+
+The [canary](../tests/integration/test_sandbox.py) shows that a client naming no
+socket looks only under the sandbox. Three more tests check the guard without
+tmux, using a [recording stand-in](../tests/support/recorder.py) that writes
+arguments and variable names, never values: the
+[sandbox](../tests/tooling/test_sandbox.py) test in the mid loop, and the
+[canary runner](../tests/integration/test_canary_runner.py) and
+[launcher](../tests/integration/test_launcher.py) tests with the integration
+suite, since the tooling tests share a five-second limit in `scripts/check.py`.
+Prove a change to the guard that way before running a suite.
 
 ## Pull requests
 

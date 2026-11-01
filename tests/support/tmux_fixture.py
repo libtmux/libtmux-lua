@@ -9,6 +9,8 @@ import subprocess
 import tempfile
 import time
 
+from tests.support import sandbox
+
 
 _DEADLINE = 0.8
 
@@ -72,8 +74,11 @@ class TmuxFixture:
 
     def __init__(self, binary=None):
         self.binary = binary or os.environ.get("TMUX_BIN", "tmux")
-        self.env = {key: value for key, value in os.environ.items()
-                    if key not in ("TMUX", "TMUX_PANE")}
+        # Every test that starts a server passes through here. Joining or making
+        # the sandbox removes what selects a server from os.environ, so a client
+        # that omits -S looks only inside it.
+        sandbox.enter()
+        self.env = dict(os.environ)
         self.path = None
         self.socket = None
         self.server_pid = None

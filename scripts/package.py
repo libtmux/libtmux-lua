@@ -19,11 +19,11 @@ import zipfile
 if __package__:
     from .api_examples import load_examples
     from .release import REPOSITORY, candidate, identity, prepare
-    from .runtime_config import executable_path, identify
+    from .runtime_config import clean_environment, enter_sandbox, executable_path, identify
 else:
     from api_examples import load_examples
     from release import REPOSITORY, candidate, identity, prepare
-    from runtime_config import executable_path, identify
+    from runtime_config import clean_environment, enter_sandbox, executable_path, identify
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -286,12 +286,10 @@ def main():
     parser.add_argument("--luarocks", default="luarocks", help="LuaRocks executable")
     parser.add_argument("--yaml-dir", type=Path, help="LibYAML prefix (defaults to .cache/libyaml if present)")
     args = parser.parse_args()
+    enter_sandbox()
     started = time.monotonic()
-    env = {
-        key: value for key, value in os.environ.items()
-        if not key.startswith(("LUA_PATH", "LUA_CPATH", "LUA_INIT", "LUAROCKS_CONFIG"))
-        and key not in {"TMUX", "TMUX_PANE"}
-    }
+    env = {key: value for key, value in clean_environment().items()
+           if not key.startswith("LUAROCKS_CONFIG")}
     runtime = identify(args.lua)
     lua = runtime.executable
     luarocks = executable_path(args.luarocks)
