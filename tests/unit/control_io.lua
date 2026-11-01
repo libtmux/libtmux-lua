@@ -3,7 +3,7 @@ local drivers = require("tests.support.runtime_driver")
 local available, transport = pcall(require, "libtmux._internal.control_io")
 local M = {}
 
-local function fixture()
+local function fixture(endpoint)
     t.assertTrue(available, "persistent control byte transport is missing")
     local driver = drivers.new()
     local uv = { pipes = {}, signals = {} }
@@ -40,7 +40,7 @@ local function fixture()
     end
     driver.uv = uv
     local f = { driver = driver, uv = uv, data = {}, endings = {} }
-    f.io = assert(transport.start({ _driver = driver }, {
+    f.io = assert(transport.start({ _driver = driver }, endpoint or {
         binary = "/actual/tmux",
         socket = "/owned/pin/socket",
         config = "/dev/null",
@@ -94,6 +94,28 @@ function M.test_literal_control_spawn_keeps_reader_alive_until_exit_and_both_eof
         closed = true
     end)
     t.assertTrue(closed)
+end
+
+function M.test_control_client_for_an_endpoint_without_a_socket_gets_neither_flag()
+    local f = fixture({ binary = "/actual/tmux" })
+    t.assertEquals(
+        f.uv.options.args,
+        { "-N", "-u", "-C", "attach-session", "-E", "-f", "ignore-size,active-pane", "-t", "$0" }
+    )
+    f = fixture({ binary = "/actual/tmux", name = "work" })
+    t.assertEquals(f.uv.options.args, {
+        "-N",
+        "-L",
+        "work",
+        "-u",
+        "-C",
+        "attach-session",
+        "-E",
+        "-f",
+        "ignore-size,active-pane",
+        "-t",
+        "$0",
+    })
 end
 
 function M.test_stdout_eof_before_exit_reports_loss_and_retains_native_ownership()
