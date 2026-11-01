@@ -18,16 +18,23 @@ import zipfile
 
 if __package__:
     from .api_examples import load_examples
-    from .release import REPOSITORY, candidate, identity, prepare
+    from .release import CHANGELOGS, REPOSITORY, candidate, identity, prepare
     from .runtime_config import clean_environment, enter_sandbox, executable_path, identify
 else:
     from api_examples import load_examples
-    from release import REPOSITORY, candidate, identity, prepare
+    from release import CHANGELOGS, REPOSITORY, candidate, identity, prepare
     from runtime_config import clean_environment, enter_sandbox, executable_path, identify
 
 
 ROOT = Path(__file__).resolve().parents[1]
 DEPENDENCIES = {"luv": "1.52.1-0", "lunajson": "1.2.3-1", "lyaml": "6.2.9-1"}
+# Where each rock's changelog lands inside its installed rock: LuaRocks copies the
+# core's root CHANGES.md into doc/, and the other rockspecs install theirs into conf/.
+INSTALLED_CHANGELOGS = {
+    "libtmux": "doc/CHANGES.md",
+    "libtmux-mcp": "conf/CHANGELOG.md",
+    "libtmux-workspace": "conf/CHANGELOG.md",
+}
 PACKAGES = {
     "libtmux": ("lua", []),
     "libtmux-mcp": ("packages/mcp/lua", ["luv", "lunajson"]),
@@ -80,6 +87,17 @@ def inspect_installed_license(name, prefix, version, rock_version="scm-1"):
         raise RuntimeError(f"{name}: installed rockspec differs from its source metadata")
     if (rock / "doc/LICENSE").read_bytes() != (ROOT / "LICENSE").read_bytes():
         raise RuntimeError(f"{name}: installed license differs from the project MIT license")
+
+
+def inspect_installed_changelog(name, prefix, version, rock_version="scm-1", expected=None):
+    """Require the installed changelog to match `expected`, by default the checkout's."""
+    rock = prefix / "lib/luarocks" / f"rocks-{version}" / name / rock_version
+    installed = rock / INSTALLED_CHANGELOGS[name]
+    if expected is None:
+        expected = (ROOT / CHANGELOGS[name]).read_bytes()
+    if not installed.is_file() or installed.read_bytes() != expected:
+        raise RuntimeError(
+            f"{name}: installed {INSTALLED_CHANGELOGS[name]} differs from {CHANGELOGS[name]}")
 
 
 def import_installed(name, prefix, version, *, lua, cwd, env):
@@ -229,6 +247,10 @@ def source_rock(spec, work, env, *, rocks, public_tag):
         if actual != set(expected):
             raise RuntimeError("source rock Lua module inventory differs from the tested checkout")
         expected["libtmux-lua/LICENSE"] = (ROOT / "LICENSE").read_bytes()
+        # A packaging revision packs the original source tag, whose notes are the
+        # ones that release was tagged with, so only the file's presence is held.
+        if "libtmux-lua/CHANGES.md" not in packed.namelist():
+            raise RuntimeError("source rock carries no CHANGES.md")
         for name, content in expected.items():
             if packed.read(name) != content:
                 raise RuntimeError(f"source rock differs from the tested checkout: {name}")
@@ -247,6 +269,11 @@ def check_release(work, env, *, rocks, lua, runtime, cache, output, public_tag):
     if installed(prefix, rocks, cwd=work) != {"libtmux"}:
         raise RuntimeError("core release includes unexpected dependencies")
     inspect_installed_license("libtmux", prefix, runtime.version, rock_version)
+    # The release is built from the source rock, which for a packaging revision is the
+    # original tag's, so the installed notes are held to that rock's copy of CHANGES.md.
+    with zipfile.ZipFile(artifact) as packed:
+        shipped = packed.read("libtmux-lua/CHANGES.md")
+    inspect_installed_changelog("libtmux", prefix, runtime.version, rock_version, expected=shipped)
     import_installed("libtmux", prefix, runtime.version, lua=lua, cwd=work, env=env)
     # Add the explicit standalone adapter dependency only after proving the core boundary.
     rocks([f"--tree={cache}", "pack", "luv", DEPENDENCIES["luv"]], cwd=work)
@@ -270,7 +297,8 @@ def check_release(work, env, *, rocks, lua, runtime, cache, output, public_tag):
             "source": "public-tag" if public_tag else "local-fixture",
             "artifacts": hashes,
         }, indent=2) + "\n")
-    print(f"PASS libtmux {rock_version}: source rock, isolated install, MIT, version, imports, examples", flush=True)
+    print(f"PASS libtmux {rock_version}: source rock, isolated install, MIT, changelog, version, "
+          "imports, examples", flush=True)
 
 
 def main():
@@ -360,6 +388,9 @@ def main():
             shutil.copytree(ROOT / source_root, build / source_root)
             shutil.copyfile(spec, build / spec.name)
             shutil.copyfile(ROOT / "LICENSE", build / "LICENSE")
+            changelog = CHANGELOGS[name]
+            (build / changelog).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(ROOT / changelog, build / changelog)
             build_prefix = work / f"build-tree-{name}"
             prerequisites = [dependency_rocks[dep] for dep in dependencies]
             if name != "libtmux":
@@ -388,11 +419,13 @@ def main():
                 raise RuntimeError(f"{name}: installed closure {actual} != {expected_installed}")
             for installed_name in sorted(expected_installed & PACKAGES.keys()):
                 inspect_installed_license(installed_name, prefix, version)
+                inspect_installed_changelog(installed_name, prefix, version)
             import_installed(name, prefix, version, lua=lua, cwd=work, env=env)
             if "luv" in dependencies and not live_example_checked:
                 live_example(prefix, version, lua=lua, cwd=work, env=env)
                 live_example_checked = True
-            print(f"PASS {name}: built artifact, isolated install, MIT license, imports, dependency closure", flush=True)
+            print(f"PASS {name}: built artifact, isolated install, MIT license, changelog, imports, "
+                  "dependency closure", flush=True)
         check_release(work, env, rocks=rocks, lua=lua, runtime=runtime, cache=cache,
                       output=args.output.resolve() if args.output else None, public_tag=args.public_tag)
     print(f"PASS package checks: Lua {version}, {time.monotonic() - started:.3f}s")

@@ -19,4 +19,5 @@ build = {
     modules = {
         libtmux_workspace = "packages/workspace/lua/libtmux_workspace/init.lua",
     },
+    install = { conf = { ["CHANGELOG.md"] = "packages/workspace/CHANGELOG.md" } },
 }

@@ -58,8 +58,9 @@ def lua_environment(lua):
 
 
 def docs():
-    files = [ROOT / "AGENTS.md", *ROOT.glob("README*.md"), *ROOT.glob("lua/*/README.md"),
-             *ROOT.glob("packages/*/README.md"), *ROOT.glob(".github/*.md"), *ROOT.glob("docs/**/*.md")]
+    files = [ROOT / "AGENTS.md", ROOT / "CHANGES.md", *ROOT.glob("README*.md"), *ROOT.glob("lua/*/README.md"),
+             *ROOT.glob("packages/*/README.md"), *ROOT.glob("packages/*/CHANGELOG.md"),
+             *ROOT.glob(".github/*.md"), *ROOT.glob("docs/**/*.md")]
     files = [path for path in files if "_build" not in path.parts]
     anchors = {}
 
@@ -139,6 +140,7 @@ def main():
             run([sys.executable, "scripts/generate_options.py", "--check"], env=env, timeout=5)
             run([sys.executable, "scripts/emit_capabilities.py", "--check"], env=env, timeout=5)
             run([sys.executable, "scripts/release.py", "prepare", "--check"], timeout=5)
+            run([sys.executable, "scripts/release.py", "changelogs"], timeout=5)
         elif gate == "integration":
             run([sys.executable, "tests/run_integration.py"], env=env)
         elif gate == "refusal":

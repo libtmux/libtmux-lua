@@ -16,4 +16,5 @@ dependencies = {
 build = {
     type = "builtin",
     modules = { libtmux_mcp = "packages/mcp/lua/libtmux_mcp/init.lua" },
+    install = { conf = { ["CHANGELOG.md"] = "packages/mcp/CHANGELOG.md" } },
 }
