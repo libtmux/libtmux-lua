@@ -431,6 +431,45 @@ function Bound:_client(open, close)
     return request, finish_cleanup
 end
 
+-- Hard-links the socket into a private directory beside it, so every later
+-- command reaches the daemon whose socket was checked even if the path is
+-- replaced.
+local function pin(state)
+    local socket = state.options.socket
+    local stat, err = fs(state, "fs_lstat", { socket }):await()
+    if not stat or stat.type ~= "socket" then
+        return nil, failure("invalid_endpoint", "endpoint path is not an accessible socket", err)
+    end
+    if not precise_integer(stat.dev) or not precise_integer(stat.ino) then
+        return nil, failure("uncertain_generation", "socket identity is not represented precisely")
+    end
+    state.stat = { dev = stat.dev, ino = stat.ino }
+    local parent = socket:match("^(.*)/[^/]+$")
+    local directory
+    directory, err = fs(
+        state,
+        "fs_mkdtemp",
+        { parent .. "/libtmux-lua-pin-XXXXXX" },
+        function(value)
+            state.directory = value
+        end
+    ):await()
+    if not directory then
+        return nil, err
+    end
+    stat, err = fs(state, "fs_lstat", { directory }):await()
+    if not stat or stat.type ~= "directory" or stat.mode % 512 ~= 448 then
+        return nil, failure("filesystem_error", "endpoint pin directory must have mode 0700", err)
+    end
+    state.alias = directory .. "/socket"
+    local linked
+    linked, err = fs(state, "fs_link", { socket, state.alias }):await()
+    if not linked then
+        return nil, err
+    end
+    return verify(state)
+end
+
 function M.bind(runtime, options)
     local copied, validation_error = options_copy(options)
     local state = {
@@ -458,43 +497,8 @@ function M.bind(runtime, options)
             return nil, err
         end
         state.lease = lease
-        local stat
-        stat, err = fs(state, "fs_lstat", { copied.socket }):await()
-        if not stat or stat.type ~= "socket" then
-            return nil,
-                failure("invalid_endpoint", "endpoint path is not an accessible socket", err)
-        end
-        if not precise_integer(stat.dev) or not precise_integer(stat.ino) then
-            return nil,
-                failure("uncertain_generation", "socket identity is not represented precisely")
-        end
-        state.stat = { dev = stat.dev, ino = stat.ino }
-        local parent = copied.socket:match("^(.*)/[^/]+$")
-        local directory
-        directory, err = fs(
-            state,
-            "fs_mkdtemp",
-            { parent .. "/libtmux-lua-pin-XXXXXX" },
-            function(value)
-                state.directory = value
-            end
-        ):await()
-        if not directory then
-            return nil, err
-        end
-        stat, err = fs(state, "fs_lstat", { directory }):await()
-        if not stat or stat.type ~= "directory" or stat.mode % 512 ~= 448 then
-            return nil,
-                failure("filesystem_error", "endpoint pin directory must have mode 0700", err)
-        end
-        state.alias = directory .. "/socket"
-        local linked
-        linked, err = fs(state, "fs_link", { copied.socket, state.alias }):await()
-        if not linked then
-            return nil, err
-        end
         local valid
-        valid, err = verify(state)
+        valid, err = pin(state)
         if not valid then
             return nil, err
         end
