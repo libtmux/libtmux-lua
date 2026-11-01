@@ -15,3 +15,6 @@ supports it: `lua/libtmux/assets`, `packages/mcp/assets` and
 with the centered logo block and rejects art that belongs to another product.
 `.github/social-preview.png` is the cog sharing card, ready to upload under the
 repository's **Settings → Social preview**.
+
+The sharing card comes from `assets/lua/library/opengraph-light.png`
+at kit revision `c9688d9db25e4c522ff1255d0f3badaf27d780dd`.
