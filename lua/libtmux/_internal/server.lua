@@ -562,9 +562,30 @@ function M.connect(runtime, options)
     return request
 end
 
+--- Options for `libtmux.Runtime:connect`.
+---
+--- Name the server with `socket_path`, or leave it out and let the environment
+--- or tmux choose. With no `socket_path`, `LIBTMUX_SOCKET_PATH` names a socket
+--- path (tmux `-S`), else `LIBTMUX_SOCKET` names a socket (`-L`), and with
+--- neither set tmux gets no socket and picks the server itself: the one in
+--- `TMUX` inside tmux, otherwise its default socket. A `socket_path` option
+--- comes first and leaves both variables unread. A variable that is empty or
+--- only whitespace counts as unset, and `LIBTMUX_SOCKET_PATH` must be an
+--- absolute path.
+---
+--- The connection never starts a daemon. A connection that names no socket, or
+--- names one with `LIBTMUX_SOCKET`, fails with `invalid_endpoint` when tmux
+--- finds none running. A socket path, from the option or `LIBTMUX_SOCKET_PATH`,
+--- fails with `invalid_endpoint` when no file is there, and with
+--- `uncertain_generation` when the file outlived its server.
+---
+--- A socket path is pinned: commands go through a private link to the socket,
+--- so a replaced socket stops the handle. Every command also checks the
+--- daemon's pid, start time and release. A socket name or tmux's own choice has
+--- no path to pin, so that check is the only identity there.
 ---@class libtmux.ConnectOptions
 ---@field binary string Absolute tmux executable path.
----@field socket_path string Absolute existing daemon socket path.
+---@field socket_path? string Absolute existing daemon socket path.
 ---@field config_path? string Absolute configuration path.
 
 ---@class libtmux.SnapshotOptions
@@ -603,8 +624,9 @@ end
 --- A handle to one running tmux server, reached through a connected runtime.
 ---
 --- `libtmux.Runtime:connect` resolves to a server for a daemon that is already
---- running. The library neither starts a daemon nor picks a default one, and
---- closing the handle leaves the daemon running. A method that talks to tmux
+--- running. The library never starts a daemon, and closing the handle leaves
+--- the daemon running. With no socket named it passes tmux none, and tmux picks
+--- the server (see `libtmux.ConnectOptions`). A method that talks to tmux
 --- returns a `libtmux.Request`: call `libtmux.Request:await` from a task the
 --- runtime manages, or pass a callback to `libtmux.Request:on_complete`. A
 --- failed request reports a `libtmux.Error`. If the daemon restarts or its
@@ -615,8 +637,8 @@ end
 --- A tmux server does a great many things, so this class has a great many
 --- methods. They fall into a few groups:
 ---
---- **Connecting.** `libtmux.Runtime:connect` takes `libtmux.ConnectOptions`:
---- absolute paths to the tmux binary and to the daemon's socket.
+--- **Connecting.** `libtmux.Runtime:connect` takes `libtmux.ConnectOptions`: an
+--- absolute path to the tmux binary and, optionally, to the daemon's socket.
 --- `Server:close` closes the connections the handle owns. `Server:observe`
 --- takes a session handle and resolves to a `libtmux.Observation`, a
 --- control-mode view of that session whose watches report pane output,
