@@ -371,12 +371,14 @@ failures name variables, sockets and directories, never the values of
 environment variables.
 
 The [canary](../tests/integration/test_sandbox.py) shows that a client naming no
-socket looks only under the sandbox. Two tooling tests,
-[sandbox](../tests/tooling/test_sandbox.py) and
-[canary](../tests/tooling/test_canary.py), check the guard without tmux, using a
-[recording stand-in](../tests/support/recorder.py) that writes arguments and
-variable names, never values. Prove a change to the guard that way before
-running a suite.
+socket looks only under the sandbox. Three more tests check the guard without
+tmux, using a [recording stand-in](../tests/support/recorder.py) that writes
+arguments and variable names, never values: the
+[sandbox](../tests/tooling/test_sandbox.py) test in the mid loop, and the
+[canary runner](../tests/integration/test_canary_runner.py) and
+[launcher](../tests/integration/test_launcher.py) tests with the integration
+suite, since the tooling tests share a five-second limit in `scripts/check.py`.
+Prove a change to the guard that way before running a suite.
 
 ## Pull requests
 

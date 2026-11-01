@@ -45,7 +45,7 @@ import os, socket, sys
 sys.path.insert(0, sys.argv[1])
 from tests.support import sandbox
 directory = sandbox.enter()
-sandbox.STOP_SECONDS = 0.3
+sandbox.STOP_SECONDS = 0.03
 open(sys.argv[2], "w").write(directory)
 if sys.argv[3] == "leak":
     path = os.path.join(directory, *sys.argv[4:])
@@ -233,7 +233,7 @@ class SandboxTests(unittest.TestCase):
         stale = socket.socket(socket.AF_UNIX)
         self.addCleanup(stale.close)
         stale.bind(str(Path(directory) / "gone.sock"))
-        released = self.release(directory, server="stuck", wait=0.1)
+        released = self.release(directory, server="stuck", wait=0.03)
         self.assertEqual(released, sandbox.Release(["custom.sock", "gone.sock"], ["custom.sock"]))
         self.assertTrue(os.path.exists(Path(directory) / "custom.sock"), "removed the directory of a live server")
         message = sandbox.describe(released, directory)
@@ -245,7 +245,7 @@ class SandboxTests(unittest.TestCase):
         directory, _ = self.sandbox_of()
         self.addCleanup(shutil.rmtree, directory, ignore_errors=True)
         self.listen(directory, "custom.sock")
-        released = sandbox.release(directory, tmux=str(Path(self.root) / "missing-tmux"), wait=0.1)
+        released = sandbox.release(directory, tmux=str(Path(self.root) / "missing-tmux"), wait=0.03)
         self.assertEqual(released.answering, ["custom.sock"])
         self.assertTrue(os.path.exists(directory))
 

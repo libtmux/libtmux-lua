@@ -52,7 +52,7 @@ if [ -n "${FAKE_TMUX_SERVER-}" ] && [ -n "$target" ]; then
     *kill-server)
       case "$FAKE_TMUX_SERVER" in
         answers) rm -f -- "${target:?}" ;;
-        slow) (sleep 0.2; rm -f -- "${target:?}") >/dev/null 2>&1 </dev/null & ;;
+        slow) (sleep 0.04; rm -f -- "${target:?}") >/dev/null 2>&1 </dev/null & ;;
         deaf) echo "$$" > "$FAKE_TMUX_ROOT/client"; exec tail -f /dev/null ;;
       esac ;;
   esac
