@@ -46,6 +46,16 @@
       "stdout": "window: logs\n"
     },
     {
+      "id": "refresh",
+      "symbols": [
+        "libtmux.Entity:snapshot",
+        "libtmux.Window:rename"
+      ],
+      "file": "examples/api/refresh.lua",
+      "description": "Read a window again after tmux renamed it, keeping the record read before.",
+      "stdout": "editor build\n"
+    },
+    {
       "id": "query",
       "symbols": [
         "libtmux.Server:query"
