@@ -234,6 +234,35 @@ matched: demo
 
 `complete` reports no known inconsistency. The read is still not atomic.
 
+### [`Window:snapshot`][ref-window-snapshot]: read one object again
+
+A record is what tmux said when it was read. Lua has no `refresh` that updates
+one in place, as Python libtmux's `.refresh()` does. Call `snapshot` on the
+handle instead: [`Window:snapshot`][ref-window-snapshot] returns a new record
+and leaves the one you hold as it was.
+
+[`Session:snapshot`][ref-session-snapshot] and
+[`Pane:snapshot`][ref-pane-snapshot] work the same way.
+
+This reads a window, renames it with [`Window:rename`][ref-window-rename], and
+reads it again:
+
+<!-- excerpt: examples/api/refresh.lua -->
+
+```lua
+local window = created.window
+local held = must(window:snapshot():await())
+must(window:rename("build"):await())
+local fresh = must(window:snapshot():await())
+assert(held.name == "editor" and fresh.name == "build", "refresh did not read the rename")
+print(held.name .. " " .. fresh.name)
+```
+
+```console
+$ sh examples/api/run.sh examples/api/refresh.lua
+editor build
+```
+
 ## Create sessions, windows and panes
 
 ### [`Session:new_window`][ref-session-new-window]: add a window
@@ -609,6 +638,9 @@ MIT. See [`LICENSE`](LICENSE).
 [ref-observation-watch-pane]: https://libtmux.org/en/lua/latest/reference/libtmux-observation-watch_pane/
 [ref-query]: https://libtmux.org/en/lua/latest/reference/libtmux-query/
 [ref-runtime-connect]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-connect/
+[ref-window-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-window-snapshot/
+[ref-window-rename]: https://libtmux.org/en/lua/latest/reference/libtmux-window-rename/
+[ref-pane-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-snapshot/
 [ref-session-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-session-snapshot/
 [ref-request]: https://libtmux.org/en/lua/latest/reference/libtmux-request/
 [ref-request-await]: https://libtmux.org/en/lua/latest/reference/libtmux-request-await/
