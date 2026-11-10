@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import platform
 import subprocess
+import sys
 import tarfile
 import time
 import urllib.request
@@ -18,7 +19,26 @@ RELEASES = {
     "5.4.9": "2335b6c582a52654f94612bf10d2f4672805d05329aa6568b1d8cd9e5c6fb8e6",
     "5.5.1": "1c4b4068d67061f2a2231ad2b5422e77acea1487ea9890f6320af614f4373dce",
 }
+ATTEMPTS = 4
 LUAJIT_REVISION = "c6ffc141a8762b41703f9287d63d93622a13dd8f"
+
+
+def download(url):
+    """Fetch url, retrying a network failure a bounded number of times.
+
+    lua.org is a single slow host that times out from GitHub runners now and
+    then. The caller checks the SHA256, so a retry cannot weaken the pin.
+    """
+    for attempt in range(1, ATTEMPTS + 1):
+        try:
+            with urllib.request.urlopen(url, timeout=60) as response:
+                return response.read()
+        except OSError as error:
+            print(f"download of {url}: attempt {attempt} of {ATTEMPTS} failed: {error}",
+                  file=sys.stderr, flush=True)
+            if attempt == ATTEMPTS:
+                raise
+            time.sleep(5 * attempt)
 
 
 def build_luajit(source):
@@ -64,8 +84,7 @@ def main():
             continue
         archive = source / f"lua-{version}.tar.gz"
         if not archive.exists():
-            with urllib.request.urlopen(f"https://www.lua.org/ftp/{archive.name}", timeout=30) as response:
-                archive.write_bytes(response.read())
+            archive.write_bytes(download(f"https://www.lua.org/ftp/{archive.name}"))
         if hashlib.sha256(archive.read_bytes()).hexdigest() != RELEASES[version]:
             raise SystemExit(f"SHA256 mismatch: {archive.name}")
         with tarfile.open(archive) as packed:
