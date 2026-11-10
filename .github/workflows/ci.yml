@@ -132,6 +132,12 @@ jobs:
       - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
         with:
           version: 2026.9.9
+      # lua.org times out from runners now and then; the SHA256 pins in
+      # bootstrap_runtimes.py still verify a restored archive.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .cache/source/lua-*.tar.gz
+          key: lua-source-${{ hashFiles('scripts/bootstrap_runtimes.py') }}-${{ matrix.lua }}
       - name: Select Lua and install test dependencies
         run: |
           mkdir -p .cache/ci
