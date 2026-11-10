@@ -28,15 +28,43 @@ def copy_changelog_files(root):
         shutil.copy(ROOT / spec, root / spec)
 
 
+def prepare(root, *arguments):
+    """The `release.py prepare` command, through its CLI."""
+    return subprocess.run(
+        [sys.executable, str(ROOT / "scripts/release.py"), "prepare", *arguments],
+        cwd=root, text=True, capture_output=True,
+    )
+
+
+def prepare_in_process(root, *arguments):
+    """What `release.py prepare` does, without a Python start-up per call.
+
+    The tooling suite has a five second budget. The CLI wrapper adds only
+    argument parsing and the exit status, which test_prepare_and_check_keep_one_alpha_identity covers.
+    """
+    check = "--check" in arguments
+    versions = [argument for argument in arguments if argument != "--check"]
+    try:
+        release.prepare(root, versions[0] if versions else release.candidate(root), check=check)
+    except (OSError, ValueError, RuntimeError) as error:
+        return subprocess.CompletedProcess(arguments, 1, "", f"FAIL {error}")
+    return subprocess.CompletedProcess(arguments, 0, "", "")
+
+
 class PreparationTests(unittest.TestCase):
-    def setUp(self):
-        self.temporary = tempfile.TemporaryDirectory(prefix="libtmux-lua-release-")
-        self.addCleanup(self.temporary.cleanup)
-        self.root = Path(self.temporary.name)
-        (self.root / "rockspecs").mkdir()
-        (self.root / "lua/libtmux").mkdir(parents=True)
-        (self.root / "lua/libtmux/init.lua").write_text('return { _VERSION = "scm" }\n')
-        (self.root / "rockspecs/libtmux-scm-1.rockspec").write_text('''rockspec_format = "3.0"
+    @classmethod
+    def setUpClass(cls):
+        # Build the fixture once: each test copies it. `prepared` is the same tree
+        # after one real `prepare`, for the tests that start from a prepared release
+        # and would otherwise each pay for a luarocks and stylua run.
+        temporary = tempfile.TemporaryDirectory(prefix="libtmux-lua-release-")
+        cls.addClassCleanup(temporary.cleanup)
+        cls.template, cls.prepared = Path(temporary.name) / "base", Path(temporary.name) / "prepared"
+        root = cls.template
+        (root / "rockspecs").mkdir(parents=True)
+        (root / "lua/libtmux").mkdir(parents=True)
+        (root / "lua/libtmux/init.lua").write_text('return { _VERSION = "scm" }\n')
+        (root / "rockspecs/libtmux-scm-1.rockspec").write_text('''rockspec_format = "3.0"
 package = "libtmux"
 version = "scm-1"
 source = { url = "git+https://github.com/libtmux/libtmux-lua.git" }
@@ -44,23 +72,35 @@ description = { summary = "Lua tmux API", license = "MIT" }
 dependencies = { "lua >= 5.1, < 5.6" }
 build = { type = "builtin", modules = { libtmux = "lua/libtmux/init.lua" } }
 ''')
-        copy_changelog_files(self.root)
-        (self.root / "CHANGES.md").write_text(
+        copy_changelog_files(root)
+        (root / "CHANGES.md").write_text(
             "# Changelog\n\nNotable changes to `libtmux`.\n\n## Unreleased\n\n- Initial core.\n")
-        subprocess.run(["git", "init", "-q", str(self.root)], check=True)
+        subprocess.run(["git", "init", "-q", str(root)], check=True)
+        shutil.copytree(root, cls.prepared)
+        result = prepare(cls.prepared, "0.1.0alpha1-1")
+        if result.returncode:
+            raise RuntimeError(result.stderr)
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="libtmux-lua-release-")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name) / "checkout"
+        shutil.copytree(self.template, self.root)
+
+    def start_prepared(self):
+        """Replace the checkout with the one `prepare 0.1.0alpha1-1` produced."""
+        shutil.rmtree(self.root)
+        shutil.copytree(self.prepared, self.root)
 
     def prepare(self, *arguments):
-        return subprocess.run(
-            [sys.executable, str(ROOT / "scripts/release.py"), "prepare", *arguments],
-            cwd=self.root, text=True, capture_output=True,
-        )
+        return prepare_in_process(self.root, *arguments)
 
     def snapshot(self):
         return {str(p.relative_to(self.root)): p.read_bytes()
                 for p in self.root.rglob("*") if p.is_file() and ".git" not in p.parts}
 
     def test_prepare_and_check_keep_one_alpha_identity(self):
-        result = self.prepare("0.1.0alpha1-1")
+        result = prepare(self.root, "0.1.0alpha1-1")  # once through the real CLI
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads((self.root / "release.json").read_text()),
                          {"package": "libtmux", "version": "0.1.0alpha1-1"})
@@ -78,8 +118,7 @@ build = { type = "builtin", modules = { libtmux = "lua/libtmux/init.lua" } }
         self.assertEqual(self.snapshot(), before)
 
     def test_check_rejects_runtime_drift_without_repairing_it(self):
-        result = self.prepare("0.1.0alpha1-1")
-        self.assertEqual(result.returncode, 0, result.stderr)
+        self.start_prepared()
         (self.root / "lua/libtmux/init.lua").write_text('return { _VERSION = "wrong" }\n')
         before = self.snapshot()
         checked = self.prepare("0.1.0alpha1-1", "--check")
@@ -88,8 +127,7 @@ build = { type = "builtin", modules = { libtmux = "lua/libtmux/init.lua" } }
         self.assertEqual(self.snapshot(), before)
 
     def test_dated_release_preserves_notes_and_pending_changes(self):
-        result = self.prepare("0.1.0alpha1-1")
-        self.assertEqual(result.returncode, 0, result.stderr)
+        self.start_prepared()
         notes = self.root / "CHANGES.md"
         for pending in ("", "- Next release change.\n\n"):
             with self.subTest(pending=pending):
@@ -111,8 +149,7 @@ build = { type = "builtin", modules = { libtmux = "lua/libtmux/init.lua" } }
                 self.assertEqual(self.snapshot(), before)
 
     def test_publication_requires_a_canonical_tag_push_and_exact_commit(self):
-        result = self.prepare("0.1.0alpha1-1")
-        self.assertEqual(result.returncode, 0, result.stderr)
+        self.start_prepared()
         for args in (["add", "."], ["-c", "user.name=Fixture", "-c", "user.email=test@example.invalid",
                      "-c", "commit.gpgsign=false", "commit", "-qm", "Release"],
                      ["tag", "v0.1.0alpha1"], ["update-ref", "refs/remotes/origin/master", "HEAD"]):
@@ -138,8 +175,7 @@ build = { type = "builtin", modules = { libtmux = "lua/libtmux/init.lua" } }
                 release.verify_release(self.root, changed, commit)
 
     def test_upload_rejects_changed_bytes_and_unpublished_source_artifacts(self):
-        result = self.prepare("0.1.0alpha1-1")
-        self.assertEqual(result.returncode, 0, result.stderr)
+        self.start_prepared()
         directory = self.root / "artifacts"
         directory.mkdir()
         spec = "libtmux-0.1.0alpha1-1.rockspec"
@@ -163,8 +199,7 @@ build = { type = "builtin", modules = { libtmux = "lua/libtmux/init.lua" } }
             release.verify_artifacts(self.root, directory, "abc")
 
     def test_packaging_revision_keeps_the_source_version(self):
-        result = self.prepare("0.1.0alpha1-1")
-        self.assertEqual(result.returncode, 0, result.stderr)
+        self.start_prepared()
         notes = self.root / "CHANGES.md"
         notes.write_text(notes.read_text().replace("## Unreleased\n", "## Unreleased\n\n- Fix packaging.\n"))
         result = self.prepare("0.1.0alpha1-2")
