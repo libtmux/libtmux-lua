@@ -17,15 +17,10 @@ from scripts import package, release
 
 
 def copy_changelog_files(root):
-    """Copy what the changelog check reads: each rock's changelog and rockspec."""
-    for name, path in release.CHANGELOGS.items():
+    """Copy what the changelog check reads: each rock's changelog."""
+    for path in release.CHANGELOGS.values():
         (root / path).parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(ROOT / path, root / path)
-        if name == "libtmux":
-            continue
-        spec = Path("rockspecs") / f"{name}-scm-1.rockspec"
-        (root / spec).parent.mkdir(exist_ok=True)
-        shutil.copy(ROOT / spec, root / spec)
 
 
 def prepare(root, *arguments):
@@ -158,10 +153,10 @@ build = { type = "builtin", modules = { libtmux = "lua/libtmux/init.lua" } }
         event = {"ref": "refs/tags/v0.1.0alpha1", "deleted": False,
                  "repository": {"full_name": "libtmux/libtmux-lua"}}
         release.verify_release(self.root, event, head)
-        (self.root / "packages/mcp/CHANGELOG.md").unlink()
-        with self.assertRaisesRegex(ValueError, "packages/mcp/CHANGELOG.md: libtmux-mcp has no changelog"):
+        (self.root / "CHANGES.md").unlink()
+        with self.assertRaisesRegex(ValueError, "CHANGES.md: libtmux has no changelog"):
             release.verify_release(self.root, event, head)
-        subprocess.run(["git", "checkout", "--", "packages/mcp/CHANGELOG.md"], cwd=self.root, check=True)
+        subprocess.run(["git", "checkout", "--", "CHANGES.md"], cwd=self.root, check=True)
         for changed, commit in ((dict(event, ref="refs/heads/master"), head),
                                 (dict(event, repository={"full_name": "someone/fork"}), head),
                                 (dict(event, ref="refs/tags/v0.1.0"), head),
@@ -236,13 +231,13 @@ class ChangelogTests(unittest.TestCase):
         result = self.command()
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(release.changelog_failures(self.root), [])
-        self.assertEqual(set(release.CHANGELOGS), {"libtmux", "libtmux-mcp", "libtmux-workspace"})
+        self.assertEqual(set(release.CHANGELOGS), {"libtmux"})
 
     def test_the_command_names_what_it_refuses(self):
-        (self.root / "packages/mcp/CHANGELOG.md").unlink()
+        (self.root / "CHANGES.md").unlink()
         result = self.command()
         self.assertNotEqual(result.returncode, 0, result.stdout)
-        self.assertIn("packages/mcp/CHANGELOG.md: libtmux-mcp has no changelog", result.stderr)
+        self.assertIn("CHANGES.md: libtmux has no changelog", result.stderr)
 
     def test_a_missing_changelog_is_refused_for_every_rock(self):
         for name, path in release.CHANGELOGS.items():
@@ -266,35 +261,19 @@ class ChangelogTests(unittest.TestCase):
                 (self.root / path).write_text(text)
 
     def test_another_rocks_changelog_pasted_over_one_is_refused(self):
-        shutil.copy(self.root / "CHANGES.md", self.root / "packages/workspace/CHANGELOG.md")
-        self.refused("packages/workspace/CHANGELOG.md: is the changelog of libtmux, not libtmux-workspace")
+        path = self.root / "CHANGES.md"
+        path.write_text(path.read_text().replace("Notable changes to `libtmux`.", "Notable changes to `another`.", 1))
+        self.refused("CHANGES.md: is the changelog of another, not libtmux")
 
     def test_an_opening_sentence_that_is_not_first_is_refused(self):
-        path = self.root / "packages/mcp/CHANGELOG.md"
+        path = self.root / "CHANGES.md"
         path.write_text(path.read_text().replace("# Changelog\n\n", "# Changelog\n\nSomething else first.\n\n", 1))
-        self.refused('packages/mcp/CHANGELOG.md: does not open with "Notable changes to `libtmux-mcp`."')
-
-    def test_a_commented_out_install_entry_installs_nothing(self):
-        spec = self.root / "rockspecs/libtmux-mcp-scm-1.rockspec"
-        spec.write_text(re.sub(r"\n( *)(install = \{[^\n]*\},)", r"\n\1-- \2", spec.read_text()))
-        self.assertIn("-- install", spec.read_text())
-        self.refused("rockspecs/libtmux-mcp-scm-1.rockspec: does not install packages/mcp/CHANGELOG.md")
+        self.refused('CHANGES.md: does not open with "Notable changes to `libtmux`."')
 
     def test_a_changelog_without_the_opening_sentence_is_refused(self):
-        path = self.root / "packages/mcp/CHANGELOG.md"
+        path = self.root / "CHANGES.md"
         path.write_text(re.sub(r"Notable changes to `[^`]+`\.\n\n", "", path.read_text()))
-        self.refused('packages/mcp/CHANGELOG.md: does not open with "Notable changes to `libtmux-mcp`."')
-
-    def test_a_rockspec_that_does_not_install_the_changelog_is_refused(self):
-        for name, path in release.CHANGELOGS.items():
-            if name == "libtmux":
-                continue
-            with self.subTest(rock=name):
-                spec = self.root / "rockspecs" / f"{name}-scm-1.rockspec"
-                text = spec.read_text()
-                spec.write_text(re.sub(r"\n *install = \{[^\n]*\},", "", text))
-                self.refused(f"rockspecs/{spec.name}: does not install {path}")
-                spec.write_text(text)
+        self.refused('CHANGES.md: does not open with "Notable changes to `libtmux`."')
 
 
 class InstalledChangelogTests(unittest.TestCase):

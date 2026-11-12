@@ -27,19 +27,11 @@ else:
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DEPENDENCIES = {"luv": "1.52.1-0", "lunajson": "1.2.3-1", "lyaml": "6.2.9-1"}
+DEPENDENCIES = {"luv": "1.52.1-0"}
 # Where each rock's changelog lands inside its installed rock: LuaRocks copies the
-# core's root CHANGES.md into doc/, and the other rockspecs install theirs into conf/.
-INSTALLED_CHANGELOGS = {
-    "libtmux": "doc/CHANGES.md",
-    "libtmux-mcp": "conf/CHANGELOG.md",
-    "libtmux-workspace": "conf/CHANGELOG.md",
-}
-PACKAGES = {
-    "libtmux": ("lua", []),
-    "libtmux-mcp": ("packages/mcp/lua", ["luv", "lunajson"]),
-    "libtmux-workspace": ("packages/workspace/lua", ["luv", "lunajson", "lyaml"]),
-}
+# core's root CHANGES.md into doc/.
+INSTALLED_CHANGELOGS = {"libtmux": "doc/CHANGES.md"}
+PACKAGES = {"libtmux": ("lua", [])}
 
 
 def run(command, *, cwd, env, source=None):
@@ -113,18 +105,10 @@ local core = require("libtmux")
     source += f'assert(core._VERSION == "{source_version}", "installed source version mismatch")\n'
     if name == "libtmux":
         source += """
-for _, dep in ipairs({"luv", "lunajson", "lyaml", "libtmux_mcp", "libtmux_workspace"}) do
+for _, dep in ipairs({"luv", "lunajson"}) do
     assert(not pcall(require, dep), "core-only install includes " .. dep)
 end
 """
-    else:
-        consumer = "mcp" if name == "libtmux-mcp" else "workspace"
-        source += f"tests.test_{consumer}_import_without_effects()\n"
-        for dependency in PACKAGES[name][1]:
-            source += f'assert(type(require("{dependency}")) == "table")\n'
-        other = "libtmux_workspace" if consumer == "mcp" else "libtmux_mcp"
-        source += f'assert(not pcall(require, "{other}"), "consumer dependency leaked")\n'
-        source += 'assert(not require("luv").loop_alive(), "import started a loop")\n'
     run([lua, "-"], cwd=cwd, env=child_env, source=source)
     if name == "libtmux":
         output = run([lua, "-"], cwd=cwd, env=child_env, source="""

@@ -51,44 +51,34 @@ $ sh examples/api/run.sh examples/api/connect.lua
 connected
 {FENCE}
 
+{FENCE}console
+$ luarocks --local make \\
+    rockspecs/libtmux-scm-1.rockspec
+{FENCE}
+
+{FENCE}console
+$ lua -e 'print(require("libtmux")._VERSION)'
+1
+{FENCE}
+
 [Core](https://github.com/libtmux/libtmux-lua/tree/master/lua/libtmux)
 
 {SECTIONS}"""
-PACKAGE_README = LOGO.format(alt="libtmux for Lua MCP") + f"""# Package
-
-</div>
-
-## Quick start
-
-{FENCE}console
-$ luarocks --local make \\
-    rockspecs/libtmux-mcp-scm-1.rockspec
-{FENCE}
-
-{FENCE}console
-$ lua -e 'print(require("libtmux_mcp")._VERSION)'
-scm
-{FENCE}
-
-{SECTIONS}"""
+CORE_README = ROOT_README.replace("# Root", "# Core")
 FILES = {
     "README.md": ROOT_README,
-    "lua/libtmux/README.md": ROOT_README.replace("# Root", "# Core"),
-    "packages/mcp/README.md": PACKAGE_README,
+    "lua/libtmux/README.md": CORE_README,
     "assets/logo.svg": "<svg>library</svg>",
     "assets/logo.png": PNG,
     "lua/libtmux/assets/logo.svg": "<svg>library</svg>",
     "lua/libtmux/assets/logo.png": PNG,
-    "packages/mcp/assets/logo.svg": "<svg>mcp</svg>",
-    "packages/mcp/assets/logo.png": PNG,
     "examples/hello.lua": EXAMPLE,
     "examples/api/run.sh": "#!/bin/sh\n",
     "examples/api/connect.lua": 'print("connected")\n',
     "examples/api/manifest.json": json.dumps(
         {"examples": [{"file": "examples/api/connect.lua", "stdout": "connected\n"}]}
     ),
-    "rockspecs/libtmux-mcp-scm-1.rockspec": "package = 'libtmux-mcp'\n",
-    "packages/mcp/lua/libtmux_mcp/init.lua": 'return { _VERSION = "scm" }\n',
+    "rockspecs/libtmux-scm-1.rockspec": "package = 'libtmux'\n",
     "lua/libtmux/init.lua": 'return { _VERSION = "1" }\n',
 }
 
@@ -128,9 +118,9 @@ class ReadmeExamplesTest(unittest.TestCase):
     def test_every_readme_needs_a_marker_on_every_lua_block(self):
         unmarked = f"\n{FENCE}lua\nprint(1)\n{FENCE}\n"
         self.rejects("lacks an example or excerpt marker", **{
-            "packages/mcp/README.md": PACKAGE_README + unmarked,
+            "lua/libtmux/README.md": CORE_README + unmarked,
         })
-        self.write({"packages/mcp/README.md": PACKAGE_README})
+        self.write({"lua/libtmux/README.md": CORE_README})
         self.rejects("lacks an example or excerpt marker", **{"README.md": ROOT_README + unmarked})
 
     def test_accepts_an_excerpt_indented_in_its_source(self):
@@ -164,9 +154,9 @@ class ReadmeExamplesTest(unittest.TestCase):
         for title in ("What it leaves out", "Support and status"):
             with self.subTest(title=title):
                 self.rejects(f"missing the {title} section", **{
-                    "packages/mcp/README.md": PACKAGE_README.replace(f"## {title}", "## Elsewhere"),
+                    "lua/libtmux/README.md": CORE_README.replace(f"## {title}", "## Elsewhere"),
                 })
-                self.write({"packages/mcp/README.md": PACKAGE_README})
+                self.write({"lua/libtmux/README.md": CORE_README})
 
     def test_rejects_prose_that_reads_as_a_wall(self):
         wall = " ".join(["word"] * 60)
@@ -189,12 +179,12 @@ class ReadmeExamplesTest(unittest.TestCase):
         check_readmes(self.root)
 
     def test_rejects_a_command_naming_a_missing_file(self):
-        (self.root / "rockspecs/libtmux-mcp-scm-1.rockspec").unlink()
-        with self.assertRaisesRegex(ValueError, "missing file: rockspecs/libtmux-mcp-scm-1.rockspec"):
+        (self.root / "rockspecs/libtmux-scm-1.rockspec").unlink()
+        with self.assertRaisesRegex(ValueError, "missing file: rockspecs/libtmux-scm-1.rockspec"):
             check_readmes(self.root)
         self.rejects("missing file: examples/missing.lua", **{
             "README.md": ROOT_README.replace("lua examples/hello.lua", "lua examples/missing.lua"),
-            "rockspecs/libtmux-mcp-scm-1.rockspec": "",
+            "rockspecs/libtmux-scm-1.rockspec": "",
         })
 
     def test_rejects_output_that_differs_from_the_manifest(self):
@@ -203,8 +193,8 @@ class ReadmeExamplesTest(unittest.TestCase):
         })
 
     def test_rejects_a_printed_version_that_differs_from_the_source(self):
-        self.rejects("printed version differs from libtmux_mcp", **{
-            "packages/mcp/lua/libtmux_mcp/init.lua": 'return { _VERSION = "1.0" }\n',
+        self.rejects("printed version differs from libtmux", **{
+            "lua/libtmux/init.lua": 'return { _VERSION = "1.0" }\n',
         })
 
     def test_rejects_a_source_link_to_a_missing_path(self):
@@ -213,10 +203,10 @@ class ReadmeExamplesTest(unittest.TestCase):
         })
 
     def test_rejects_a_readme_that_does_not_open_with_the_logo_block(self):
-        body = PACKAGE_README.removeprefix(LOGO.format(alt="libtmux for Lua MCP"))
-        self.rejects("must open with the centered logo block", **{"packages/mcp/README.md": body})
+        body = CORE_README.removeprefix(LOGO.format(alt="libtmux for Lua"))
+        self.rejects("must open with the centered logo block", **{"lua/libtmux/README.md": body})
         self.rejects("must open with the centered logo block", **{
-            "packages/mcp/README.md": "# Title\n\n" + PACKAGE_README,
+            "lua/libtmux/README.md": "# Title\n\n" + CORE_README,
         })
 
     def test_rejects_a_paragraph_wrapper_and_a_changed_image_tag(self):
@@ -229,31 +219,29 @@ class ReadmeExamplesTest(unittest.TestCase):
         for old, new in wrappers:
             with self.subTest(old=old):
                 self.rejects("must open with the centered logo block", **{
-                    "packages/mcp/README.md": PACKAGE_README.replace(old, new, 1),
+                    "lua/libtmux/README.md": CORE_README.replace(old, new, 1),
                 })
-                self.write({"packages/mcp/README.md": PACKAGE_README})
+                self.write({"lua/libtmux/README.md": CORE_README})
 
     def test_rejects_the_wrong_alt_text_for_a_product(self):
-        self.rejects('alt text must be "libtmux for Lua MCP"', **{
-            "packages/mcp/README.md": PACKAGE_README.replace("libtmux for Lua MCP", "libtmux for Lua"),
+        self.rejects('alt text must be "libtmux for Lua"', **{
+            "lua/libtmux/README.md": CORE_README.replace('alt="libtmux for Lua"', 'alt="libtmux"', 1),
         })
 
     def test_rejects_missing_or_malformed_logo_assets(self):
         broken = {
-            "assets/logo.svg is missing": {"packages/mcp/assets/logo.svg": "not vector art"},
-            "512 x 512": {"packages/mcp/assets/logo.png": PNG.replace(struct.pack(">I", 512), struct.pack(">I", 256), 1)},
+            "assets/logo.svg is missing": {"lua/libtmux/assets/logo.svg": "not vector art"},
+            "512 x 512": {"lua/libtmux/assets/logo.png": PNG.replace(struct.pack(">I", 512), struct.pack(">I", 256), 1)},
         }
         for pattern, files in broken.items():
             with self.subTest(pattern=pattern):
                 self.rejects(pattern, **files)
                 self.write(FILES)
-        (self.root / "packages/mcp/assets/logo.png").unlink()
+        (self.root / "lua/libtmux/assets/logo.png").unlink()
         with self.assertRaisesRegex(ValueError, "512 x 512"):
             check_readmes(self.root)
 
-    def test_rejects_art_shared_across_products_or_split_within_one(self):
-        self.rejects('logo art belongs to "libtmux for Lua"', **{"packages/mcp/assets/logo.svg": "<svg>library</svg>"})
-        self.write(FILES)
+    def test_rejects_art_split_within_one_product(self):
         self.rejects('differs from the other "libtmux for Lua" README', **{
             "lua/libtmux/assets/logo.svg": "<svg>another</svg>",
         })

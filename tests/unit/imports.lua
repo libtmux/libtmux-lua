@@ -98,14 +98,4 @@ function tests.test_core_and_query_import_without_effects()
     pure_imports({ "libtmux", "libtmux.query", "libtmux.runtime.luv", "libtmux.runtime.nvim" })
 end
 
-function tests.test_mcp_import_without_effects()
-    pure_imports({ "libtmux_mcp" })
-    assert(require("libtmux_mcp")._VERSION == "scm")
-end
-
-function tests.test_workspace_import_without_effects()
-    pure_imports({ "libtmux_workspace" })
-    assert(require("libtmux_workspace")._VERSION == "scm")
-end
-
 return tests
