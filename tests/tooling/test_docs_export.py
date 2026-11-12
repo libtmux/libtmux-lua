@@ -70,14 +70,6 @@ class DocsExportTest(unittest.TestCase):
         )
         self.assertEqual(sorted(listed - declared), ["kill_server"])
 
-    def test_committed_product_scaffolds_are_not_export_inputs(self):
-        exporter = ROOT / "scripts/export-docs"
-        if not exporter.is_file():
-            self.fail("scripts/export-docs is missing")
-        source = exporter.read_text()
-        self.assertNotIn("packages/mcp", source)
-        self.assertNotIn("packages/workspace", source)
-
 
 if __name__ == "__main__":
     unittest.main()

@@ -28,13 +28,11 @@ Releases are numbered `0.1.N`, and each release increments `N`. The API is not
 settled: any release may change or remove exported identifiers, and the
 [changelog](CHANGES.md) marks each break. Pin an exact version to avoid one.
 
-The separate MCP and workspace packages are unpublished scaffolds.
-
 **Contents** — [Quick start](#quick-start) ·
 [Read tmux](#read-what-tmux-has-now) ·
 [Create](#create-sessions-windows-and-panes) ·
 [Type and read](#type-into-a-pane-and-read-the-answer) ·
-[Neovim](#use-it-from-neovim) · [Packages](#packages) ·
+[Neovim](#use-it-from-neovim) · [Library](#the-library) ·
 [Leaves out](#what-it-leaves-out) · [Support](#support-and-status) ·
 [Guides](#guides) ·
 [CI](https://github.com/libtmux/libtmux-lua/actions/workflows/ci.yml) ·
@@ -464,26 +462,11 @@ the `luv` rock is not needed here.
 The runtime closes its connections when the body finishes and leaves the tmux
 server running. See [runtime ownership and cancellation](docs/runtime.md).
 
-## Packages
+## The library
 
-| Package | Source | Reference | What it is |
-| --- | --- | --- | --- |
-| `libtmux` | [`lua/libtmux/`](https://github.com/libtmux/libtmux-lua/tree/master/lua/libtmux) | [libtmux.org](https://libtmux.org/en/lua/latest/reference/) | The library. Sessions, windows, panes, snapshots, queries and two event-loop adapters. |
-| `libtmux-workspace` | [`packages/workspace/`](https://github.com/libtmux/libtmux-lua/tree/master/packages/workspace) | [libtmux.org](https://libtmux.org/en/lua/latest/workspace/) | An unpublished scaffold for workspace operations. |
-| `libtmux-mcp` | [`packages/mcp/`](https://github.com/libtmux/libtmux-lua/tree/master/packages/mcp) | [libtmux.org](https://libtmux.org/en/lua/latest/mcp/) | An unpublished scaffold for the MCP server. |
-
-Each heading below links to its directory on GitHub, which LuaRocks does not
-show. Only `libtmux` is published. `libtmux-workspace` and `libtmux-mcp` are
-unpublished scaffolds with no public API.
-
-Each rock keeps its own changelog: [`libtmux`](CHANGES.md),
-[`libtmux-workspace`](packages/workspace/CHANGELOG.md) and
-[`libtmux-mcp`](packages/mcp/CHANGELOG.md).
-
-### [`libtmux`](https://github.com/libtmux/libtmux-lua/tree/master/lua/libtmux): the library
-
-Create sessions, windows and panes, capture pane output, query server state
-and watch pane output, on luv or Neovim's event loop. Reference:
+[`libtmux`](https://github.com/libtmux/libtmux-lua/tree/master/lua/libtmux)
+creates sessions, windows and panes, captures pane output, queries server state
+and watches pane output, on luv or Neovim's event loop. Reference:
 
 - [LuaRocks](https://luarocks.org/modules/tony/libtmux) and
   [libtmux.org](https://libtmux.org/en/lua/latest/reference/).
@@ -503,50 +486,6 @@ $ luarocks --local make rockspecs/libtmux-scm-1.rockspec
 The [core README](lua/libtmux/README.md) covers each module, with a complete
 program for the standalone loop, Neovim and tables without tmux.
 
-### [`libtmux-workspace`](https://github.com/libtmux/libtmux-lua/tree/master/packages/workspace): workspace scaffold
-
-A development package for planned workspace operations. It has no loader,
-command or builder API yet, and its module returns only a version.
-
-[libtmux.org](https://libtmux.org/en/lua/latest/workspace/) records that it
-is unpublished. After installing `libtmux`, build it from the checkout:
-
-```console
-$ luarocks --local make rockspecs/libtmux-workspace-scm-1.rockspec
-```
-
-With the local rocks tree on Lua's module paths, print its version:
-
-```console
-$ lua -e 'print(require("libtmux_workspace")._VERSION)'
-scm
-```
-
-The [package README](packages/workspace/README.md) lists the prerequisites,
-including LibYAML for `lyaml`.
-
-### [`libtmux-mcp`](https://github.com/libtmux/libtmux-lua/tree/master/packages/mcp): MCP scaffold
-
-A development package for the planned MCP server. It has no server,
-executable, tools or prompts yet, so there is nothing to register with an MCP
-client.
-
-[libtmux.org](https://libtmux.org/en/lua/latest/mcp/) records that it is
-unpublished. After installing `libtmux`, build it from the checkout:
-
-```console
-$ luarocks --local make rockspecs/libtmux-mcp-scm-1.rockspec
-```
-
-With the local rocks tree on Lua's module paths, print its version:
-
-```console
-$ lua -e 'print(require("libtmux_mcp")._VERSION)'
-scm
-```
-
-The [package README](packages/mcp/README.md) has the full build steps.
-
 ## What it leaves out
 
 - **Starting a server.** [`Runtime:connect`][ref-runtime-connect] never starts
@@ -562,8 +501,6 @@ The [package README](packages/mcp/README.md) has the full build steps.
 - **Your tmux configuration.** The library does not change a borrowed
   server's configuration, and your aliases and hooks still apply to
   [its commands](docs/commands.md).
-- **An MCP server or a workspace loader.** Both packages are
-  [scaffolds](#packages) with no public API.
 
 ## Support and status
 

@@ -47,8 +47,6 @@ def lua_environment(lua):
     library = tree / "lib" / "lua" / version
     env["LUA_PATH"] = ";".join(str(p) for p in (
         ROOT / "lua/?.lua", ROOT / "lua/?/init.lua",
-        ROOT / "packages/mcp/lua/?.lua", ROOT / "packages/mcp/lua/?/init.lua",
-        ROOT / "packages/workspace/lua/?.lua", ROOT / "packages/workspace/lua/?/init.lua",
         ROOT / "?.lua", ROOT / "?/init.lua", share / "?.lua", share / "?/init.lua"
     ))
     env["LUA_CPATH"] = str(library / "?.so")
@@ -59,7 +57,6 @@ def lua_environment(lua):
 
 def docs():
     files = [ROOT / "AGENTS.md", ROOT / "CHANGES.md", *ROOT.glob("README*.md"), *ROOT.glob("lua/*/README.md"),
-             *ROOT.glob("packages/*/README.md"), *ROOT.glob("packages/*/CHANGELOG.md"),
              *ROOT.glob(".github/*.md"), *ROOT.glob("docs/**/*.md")]
     files = [path for path in files if "_build" not in path.parts]
     anchors = {}
@@ -123,7 +120,7 @@ def main():
                 raise SystemExit("No unit suites discovered")
             run([lua, "tests/run.lua", *suites], env=env, timeout=5)
         elif gate == "format":
-            run([tool("stylua"), "--check", "--syntax", "Lua51", "lua", "packages", "tests", "examples", "rockspecs"], timeout=10)
+            run([tool("stylua"), "--check", "--syntax", "Lua51", "lua", "tests", "examples", "rockspecs"], timeout=10)
         elif gate == "lint":
             lint_lua = ROOT / ".cache/toolchains/lua-5.4.9/bin/lua"
             if not lint_lua.exists():
@@ -132,7 +129,7 @@ def main():
             executable = shutil.which("luacheck", path=lint_env["PATH"])
             if not executable:
                 raise SystemExit("Missing luacheck; run scripts/bootstrap.py first")
-            run([executable, "lua", "packages", "tests", "examples"], env=lint_env, timeout=10)
+            run([executable, "lua", "tests", "examples"], env=lint_env, timeout=10)
         elif gate == "docs":
             docs()
         elif gate == "generated":

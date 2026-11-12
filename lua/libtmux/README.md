@@ -31,8 +31,7 @@ shows a first tmux program, and the
 public symbol.
 
 **Contents** — [Quick start](#quick-start) · [Modules](#modules) ·
-[Other packages](#other-packages) · [Leaves out](#what-it-leaves-out) ·
-[Support](#support-and-status)
+[Leaves out](#what-it-leaves-out) · [Support](#support-and-status)
 
 ## Quick start
 
@@ -208,21 +207,6 @@ start program is the complete example. Reference:
 [`Server:query`][ref-server-query] applies criteria to a live server instead
 of a table. The [query guide](https://github.com/libtmux/libtmux-lua/blob/master/docs/query.md)
 lists the criteria both accept.
-
-## Other packages
-
-The repository also holds two unpublished scaffolds. Each heading links to its
-directory.
-
-### [`libtmux-workspace`](https://github.com/libtmux/libtmux-lua/tree/master/packages/workspace)
-
-A development package for planned workspace operations. It has no loader or
-builder yet.
-
-### [`libtmux-mcp`](https://github.com/libtmux/libtmux-lua/tree/master/packages/mcp)
-
-A development package for the planned MCP server. It has no server, tools or
-prompts yet.
 
 ## What it leaves out
 

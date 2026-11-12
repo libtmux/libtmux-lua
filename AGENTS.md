@@ -2,7 +2,7 @@
 
 This repository contains the libtmux Lua foundation: queries, explicit async
 requests, process execution, snapshots and private control observation.
-Domain coverage and the MCP/workspace products remain under development.
+Domain coverage remains under development.
 
 Follow the existing project conventions and keep changes scoped to the
 requested work. Prefer `rg`, `ag`, and `fd` for discovery.
@@ -26,9 +26,8 @@ requested work. Prefer `rg`, `ag`, and `fd` for discovery.
   [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
 - Documentation, user-facing text, comments, and commit messages:
   [.github/WRITING.md](.github/WRITING.md).
-- Changelog entries: one changelog per rock, and
-  [.github/WRITING.md](.github/WRITING.md#changelogs-and-release-notes) says
-  which file.
+- Changelog entries:
+  [.github/WRITING.md](.github/WRITING.md#changelogs-and-release-notes).
 
 Each guide is the single home for its subject. `CLAUDE.md` is a relative
 symlink to this file so both entry points use the same instructions.

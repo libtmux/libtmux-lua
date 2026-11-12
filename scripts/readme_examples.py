@@ -13,7 +13,7 @@ LOGO = re.compile(
     r'    <img src="assets/logo\.png" width="128" height="128" alt="([^"]*)">\n'
     r'  </picture>\n</div>\n<!-- /libtmux-logo -->\n\n<div align="center">\n\n# '
 )
-LOGO_ALT = {"packages/mcp": "libtmux for Lua MCP", "packages/workspace": "libtmux for Lua workspace"}
+LOGO_ALT = "libtmux for Lua"
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 EXAMPLE = re.compile(r"<!-- example: (\S+) -->\n\n```lua\n(.*?)```", re.DOTALL)
 EXCERPT = re.compile(r"<!-- excerpt: (\S+) -->\n\n```lua\n(.*?)```", re.DOTALL)
@@ -34,30 +34,27 @@ PROSE_LIMIT = 240
 
 
 def readmes(root):
-    candidates = [root / "README.md", root / "lua/libtmux/README.md", *sorted(root.glob("packages/*/README.md"))]
+    candidates = [root / "README.md", root / "lua/libtmux/README.md"]
     return [path for path in candidates if path.is_file()]
 
 
 def check_logo(root, readme, text, art, fail):
-    """Require the centered logo block and the package's own art beside the README."""
+    """Require the centered logo block and the library's art beside the README."""
     match = LOGO.match(text)
     if not match:
         fail("must open with the centered logo block, then a centered title")
-    expected = LOGO_ALT.get(readme.parent.relative_to(root).as_posix(), "libtmux for Lua")
-    if match.group(1) != expected:
-        fail(f'logo alt text must be "{expected}"')
+    if match.group(1) != LOGO_ALT:
+        fail(f'logo alt text must be "{LOGO_ALT}"')
     svg, png = readme.parent / "assets/logo.svg", readme.parent / "assets/logo.png"
     if not svg.is_file() or b"<svg" not in svg.read_bytes():
         fail("assets/logo.svg is missing or is not SVG")
     header = png.read_bytes()[:24] if png.is_file() else b""
     if header[:8] != PNG_SIGNATURE or header[12:16] != b"IHDR" or struct.unpack(">II", header[16:24]) != (512, 512):
         fail("assets/logo.png is missing or is not a 512 x 512 PNG")
-    # Art is keyed both ways: one product, one artwork, and no artwork shared across products.
+    # One product, one artwork: every README carries the same art.
     digest = hashlib.sha256(svg.read_bytes()).hexdigest()
-    if art.setdefault(digest, expected) != expected:
-        fail(f'logo art belongs to "{art[digest]}"')
-    if art.setdefault(expected, digest) != digest:
-        fail(f'logo art differs from the other "{expected}" README')
+    if art.setdefault(LOGO_ALT, digest) != digest:
+        fail(f'logo art differs from the other "{LOGO_ALT}" README')
 
 
 def dedent(lines):
@@ -135,11 +132,11 @@ def console_steps(block):
 
 def module_version(root, module):
     relative = module.replace(".", "/")
-    for base in (root / "lua", *sorted(root.glob("packages/*/lua"))):
-        for candidate in (base / f"{relative}.lua", base / relative / "init.lua"):
-            if candidate.is_file():
-                found = VERSION.search(candidate.read_text())
-                return found.group(1) if found else None
+    base = root / "lua"
+    for candidate in (base / f"{relative}.lua", base / relative / "init.lua"):
+        if candidate.is_file():
+            found = VERSION.search(candidate.read_text())
+            return found.group(1) if found else None
     return None
 
 
