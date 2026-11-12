@@ -1,7 +1,7 @@
 # Contributing
 
 This repository contains the Lua query, transport and package foundation for
-libtmux. Domain coverage and consumer features remain under development.
+libtmux. Domain coverage remains under development.
 Complete product compatibility remains unverified.
 
 [AGENTS.md](../AGENTS.md) governs scope and change discipline.
@@ -134,13 +134,12 @@ Integration includes real luv and Neovim loop ownership, process cancellation,
 post-exit pipe draining and metadata byte round-trips. These use the selected
 Lua interpreter and its own luv ABI; Neovim uses its embedded runtime.
 
-The package gate builds development rocks and installs each into its own
-temporary prefix. Consumer prerequisites are packed from the bootstrap cache;
-network servers and ambient Lua paths are disabled. Imports and the native
-query example execute outside the checkout. Missing dependencies fail locally.
-All three packages use the [MIT license](../LICENSE). The gate verifies each
-installed rockspec and license against the source files. No release artifacts
-are published.
+The package gate builds the development rock and installs it into its own
+temporary prefix. Network servers and ambient Lua paths are disabled. Imports
+and the native query example execute outside the checkout. Missing
+dependencies fail locally. The package uses the [MIT license](../LICENSE). The
+gate verifies the installed rockspec and license against the source files. No
+release artifacts are published.
 
 The same gate checks the core release candidate in [release.json](../release.json).
 It packs the committed release rockspec through an isolated local Git source,
@@ -427,9 +426,7 @@ when observable behavior changes.
 
 ## Releases
 
-Only `libtmux` is released. `libtmux-mcp` and `libtmux-workspace` remain
-unpublished development scaffolds; their independent package checks continue
-to run. Releases are numbered `0.1.N`: `0.1.0`, then `0.1.1`, `0.1.2` and so
+Releases are numbered `0.1.N`: `0.1.0`, then `0.1.1`, `0.1.2` and so
 on, with no alpha or other prerelease tag unless the maintainer asks for one.
 The API is not settled, so a release may change or remove exported
 identifiers; the changelog marks each break. The release covers the
@@ -438,12 +435,8 @@ implemented core, with the limits recorded in the
 
 ### Prepare a version
 
-Add user-visible changes under `Unreleased` in the changelog of the rock they
-change: [CHANGES.md](../CHANGES.md) for `libtmux` and for changes that span
-rocks, [packages/mcp/CHANGELOG.md](../packages/mcp/CHANGELOG.md) for
-`libtmux-mcp` and
-[packages/workspace/CHANGELOG.md](../packages/workspace/CHANGELOG.md) for
-`libtmux-workspace`. Then run this from the repository root:
+Add user-visible changes under `Unreleased` in [CHANGES.md](../CHANGES.md).
+Then run this from the repository root:
 
 ```console
 $ mise exec -- python scripts/release.py prepare 0.1.1-1
@@ -462,10 +455,9 @@ Check those files without changing them:
 $ mise exec -- python scripts/release.py prepare --check
 ```
 
-Check that every rock keeps its changelog, opening with its own name and
-holding an `## Unreleased` section, and that each rockspec other than the
-core's installs it. The generated gate and the publication guards run the
-same check:
+Check that the changelog opens with the name of its rock and holds an
+`## Unreleased` section. The generated gate and the publication guards run
+the same check:
 
 ```console
 $ mise exec -- python scripts/release.py changelogs

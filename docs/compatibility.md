@@ -22,10 +22,10 @@ under [optional features](#optional-features), and the same data is published as
 
 Pure-core tests run once per runtime/platform. Standalone and embedded live
 tests cover floor/current tmux for each runtime or host. The full tmux sweep
-uses PUC Lua 5.5.1 and current Neovim. Consumer imports and pure validation cover
-each runtime; floor/current combinations also run interoperability and workspace
-failure tests. Client/daemon version mismatches must report protocol failures
-truthfully instead of inferring daemon capabilities from the client executable.
+uses PUC Lua 5.5.1 and current Neovim. Floor/current combinations also run
+interoperability tests. Client/daemon version mismatches must report protocol
+failures truthfully instead of inferring daemon capabilities from the client
+executable.
 
 macOS and native Windows transport are outside the platform
 matrix. Results from builds outside the matrix, such as unreleased builds,
