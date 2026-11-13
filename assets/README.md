@@ -13,3 +13,6 @@ open with the centered logo block and rejects art that differs between the
 READMEs of one product.
 `.github/social-preview.png` is the cog sharing card, ready to upload under the
 repository's **Settings → Social preview**.
+
+The sharing card comes from `assets/lua/library/opengraph-light.png`
+at kit revision `4b86a9d9158d7c6d52cd635d59c92a04b48b960f`.
