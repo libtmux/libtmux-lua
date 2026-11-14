@@ -32,6 +32,47 @@ reproduction command.
 Link to the source of a rule instead of copying it across documents. Keep
 relative links valid when moving files or renaming headings.
 
+## README shape
+
+A README reads at a glance, like a sign passed at speed. Use bullets and short
+sections. Keep a paragraph only when a programmer would be glad to read it, and
+never past three lines.
+
+- **Header:** the centered logo and title, one sentence that links the API,
+  then the badges: CI, registry version, libtmux.org and license. Link a
+  registry or libtmux.org page only when it returns 200.
+- **Floors:** state requirements a reader can act on, such as "tmux 3.3a or
+  newer". Leave out the patch version of a toolchain you happened to use, the
+  CI matrix, and kernel or glibc detail. Link the compatibility guide instead.
+- **Task sections:** each `##` heading is a task in the reader's words, such
+  as "Read what tmux has now".
+- **API headings:** each `###` heading names an API, linked to its reference
+  page on libtmux.org, then a colon and its job in plain words.
+- **Under a heading:** a line or two linking sibling APIs, the example, what
+  it prints, at most one short note, and a `More:` link to the guide.
+- **No feature inventory.** The sections and their examples show what the
+  library does.
+- **Examples start with their imports,** so a reader can paste one into a file
+  and run it. Later excerpts in a section may continue from the first.
+- **Examples own their tmux server through the library,** not the shell. Where
+  the library cannot start or stop a server, as in Lua today, a launcher does
+  it, and "What it leaves out" says so.
+- **Every displayed example comes from a file CI runs.** Mark each Lua block
+  with the example or excerpt comment that names its source.
+- **Show the headline features the library has:** queries and filters, the
+  query planner, command groups and batches, and control-mode observation.
+  Each gets a linked API heading and a tested example.
+- **Packages:** a heading per package links its directory on the trunk branch
+  with an absolute URL, then one line of description and a line of links:
+  reference, registry, changelog. Never link or list a package that is not
+  published.
+- **"What it leaves out" and "Support and status"** are short bullets, each
+  with a bold lead.
+- **Cut what a reader would assume:** that examples are tested, how the docs
+  are built, what the checks cover.
+
+[CONTRIBUTING.md](CONTRIBUTING.md#validation) lists the README checks.
+
 ## Comments and errors
 
 Keep comments that explain a non-obvious invariant, protocol constraint,
