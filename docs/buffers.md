@@ -1,8 +1,8 @@
 # Read and paste named buffers
 
-Buffers hold bytes in the tmux daemon. Use an explicit name for every read,
-write, deletion and paste; these methods never infer the most recent buffer.
-Each live operation returns a Request through the PROCESS endpoint.
+Buffers hold bytes in the tmux daemon. Name a buffer for every read, write,
+delete and paste; these methods never pick the most recent one. Each live
+operation returns a Request.
 
 ```lua
 assert(server:set_buffer("build-output", "one\000two\n"):await())
@@ -14,87 +14,84 @@ assert(pane:paste_buffer("build-output", {
 }):await())
 ```
 
-The executable [integration fixture](../tests/integration/buffer.lua) includes
-connection setup, owned pane readers, output barriers and teardown.
-
 ## Storage and identity
 
-`server:set_buffer(name, bytes)` replaces the current value at that name.
-Input accepts one byte through one MiB, including NUL, invalid UTF-8 and
-trailing newlines. It uses native stdin loading, so no shell or argv decoder
-processes the value. Empty input is rejected with `invalid_argument`: tmux
-would accept it without creating or clearing a buffer. Delete explicitly to
-remove the value.
+`server:set_buffer(name, bytes)` replaces the value at that name.
 
-New names must be nonempty UTF-8, at most 4,096 bytes, without NUL, ASCII
-controls, DEL or backslash. The excluded creation forms return
-`unsupported_name`; some tmux releases accept them, while newer name cleaning
-can change their stored key. Further native name validation still applies.
-Spaces, leading dashes and `#{...}` are literal. Buffer names do not undergo
-tmux format expansion.
+- Input is 1 byte to 1 MiB, NUL, invalid UTF-8 and trailing newlines
+  included. It loads through tmux's stdin, so no shell or argv decoder touches
+  it.
+- Empty input is rejected with `invalid_argument`: tmux would accept it
+  without creating or clearing a buffer. Delete the buffer to remove its value.
+- A new name is nonempty UTF-8 of at most 4,096 bytes, with no NUL, ASCII
+  control, DEL or backslash. Other forms return `unsupported_name`: some tmux
+  releases accept them, but newer name cleaning can change the stored key.
+- Spaces, leading dashes and `#{...}` are literal. Names are never format
+  expanded.
 
-Use [`pane:capture_to_buffer(name, options)`](panes.md#capture-and-text) to
-store a native pane capture directly. It uses these creation-name rules;
-empty capture leaves the named slot unchanged. Native buffer capture does
-not add the newline used by capture's printed output.
+`server:show_buffer(name)` returns `{ name, bytes }` with a `text()` method.
 
-`server:show_buffer(name)` returns `{ name, bytes }` with a pure `text()`
-method. `bytes` preserves exact stdout. `text()` requires valid UTF-8 and
-performs no trimming, replacement or newline normalization. Invalid UTF-8
-returns `nil, err` with `invalid_utf8`. Mutating this returned record changes
-neither the daemon's value nor future Requests.
+- `bytes` is the exact stdout. `text()` needs valid UTF-8, does no trimming,
+  replacement or newline normalization, and otherwise returns `nil, err` with
+  `invalid_utf8`.
+- Changing the returned record changes nothing in the daemon or in later
+  Requests.
 
-`server:delete_buffer(name)` removes the current value on tmux 3.4 and later.
-It returns `unsupported` before dispatch on 3.3a: that release
-can delete the most recent buffer when the requested name is missing. Checking
-existence first would still race with other clients. A literal
-`delete-buffer -b` or `set-buffer -n` through `server:command` is refused on
-the same releases. This limitation does not
-affect `paste_buffer` with `delete_after`, whose native lookup rejects missing
-names before deletion.
+`server:delete_buffer(name)` removes the value on tmux 3.4 and later.
 
-Read, delete and paste accept broader exact observed names: nonempty NUL-free
-strings up to 4,096 bytes. On supported operations, a missing buffer retains
-tmux's error and native receipt.
+- On 3.3a it returns `unsupported` before sending: that release can delete
+  the most recent buffer when the name is missing, and checking first would
+  race with other clients.
+- A literal `delete-buffer -b` or `set-buffer -n` through `server:command` is
+  refused on the same releases. `paste_buffer` with `delete_after` is not
+  affected: its lookup rejects a missing name before deleting.
 
-A name identifies a current slot, not a persistent buffer incarnation. Another
-client can replace its value after a snapshot or read. These methods operate
-on the value present when tmux executes them; no preflight or transaction
-claim hides that possibility.
+Read, delete and paste accept any nonempty NUL-free name up to 4,096 bytes. For
+a missing buffer they keep tmux's error and receipt.
+
+[`pane:capture_to_buffer(name, options)`](panes.md#capture-and-text) stores a
+pane capture directly, under the same creation-name rules. An empty capture
+leaves the slot alone, and a buffer capture omits the newline a printed
+capture ends with.
+
+A name identifies the current slot, not a lasting buffer. Another client can
+replace the value after a snapshot or read, and these methods act on whatever
+is there when tmux runs them. There is no preflight or transaction.
 
 ## Paste behavior
 
-`pane:paste_buffer(name, options)` targets the handle's exact pane ID and adds
-no Enter. Completion means the native command finished; it does not prove an
-application received or consumed the bytes.
+`pane:paste_buffer(name, options)` targets the handle's exact pane and adds no
+Enter. Completion means tmux finished the command, not that a program received
+the bytes.
 
 | Option | Behavior |
 | --- | --- |
-| `bytes = "native"` | Default: preserve the connected daemon's native policy. tmux 3.7+ sanitizes control and invalid UTF-8 bytes; earlier releases paste raw bytes. |
-| `bytes = "raw"` | Disable that sanitization with `-S` on 3.7+; earlier releases already behave this way. Newline conversion remains separately controlled. |
-| `linefeed_separator = true` | Preserve LF. By default, tmux changes each LF to CR. |
-| `separator = text` | Replace each LF with this bounded NUL-free string, including empty. Excludes `linefeed_separator`, even explicit false. |
-| `bracket = true` | Add native bracketed-paste wrappers only when the pane has enabled that terminal mode. |
-| `delete_after = true` | Remove the named buffer after native paste processing. |
+| `bytes = "native"` | Default: the daemon's own policy. tmux 3.7+ sanitizes control and invalid UTF-8 bytes; earlier releases paste raw bytes. |
+| `bytes = "raw"` | Turn that sanitization off with `-S` on 3.7+; earlier releases already behave this way. Newline conversion is controlled separately. |
+| `linefeed_separator = true` | Keep LF. By default tmux changes each LF to CR. |
+| `separator = text` | Replace each LF with this NUL-free string, which may be empty. Excludes `linefeed_separator`, even `false`. |
+| `bracket = true` | Add bracketed-paste wrappers when the pane has enabled that terminal mode. |
+| `delete_after = true` | Remove the buffer after the paste is processed. |
 
-Input-disabled panes can accept paste without receiving bytes, including a
-successful `delete_after`. Paste does not use the send-keys dispatcher; do not
-assume its copy-mode or synchronized-pane routing. Native aliases and hooks
-remain observable as described in [command execution](commands.md).
+- An input-disabled pane can accept a paste without receiving bytes, a
+  successful `delete_after` included.
+- Paste does not use the `send-keys` path, so do not assume its copy-mode or
+  synchronized-pane routing.
+- Aliases and hooks still apply, as in [command execution](commands.md).
 
 ## Bounds and effects
 
-Options must be plain records and are copied before dispatch. The nested
-`process` options accept timeout, deadline, output limit and drain/kill limits
-from [Pane operations](panes.md). Buffer output defaults to one MiB and cannot
-be raised above that bound. Overflow returns an error with available partial
-output, never a successful truncated BufferValue.
+- Options are plain records, copied before sending. The nested `process`
+  options take the timeouts and output limit from
+  [commands](commands.md).
+- Output defaults to 1 MiB and cannot be raised. Overflow returns an error
+  with the partial output, never a truncated success.
+- Runtime input and output reservations stay charged until delivery.
+- A closed handle or stale generation rejects new work. If continuity is lost
+  after tmux succeeded, the result keeps `effect = "completed"` and the
+  receipt.
+- Cancelling after dispatch can leave the effect unknown. It never retries
+  the mutation or kills the pane.
 
-Runtime input and output reservations remain charged through delivery.
-Closed or stale generations reject new work; continuity lost after native
-success preserves `effect = "completed"` and the receipt. Cancellation after
-dispatch can have an unknown effect and never retries the mutation or kills
-the target pane.
-
-Binary append, buffer renaming and explicit file load/save remain pending
-typed APIs. No read-concatenate-write operation is presented as atomic.
+Binary append, buffer renaming and explicit file load and save are not
+implemented, and no read-concatenate-write is atomic.

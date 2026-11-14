@@ -1,106 +1,117 @@
 # Options and hooks
 
-Options and hooks return Requests through the process lane. Session, Window
-and Pane handles select their own storage scope. Server methods default to
-server options; use `scope = "global_session"` or `"global_window"` for global
-defaults. Server hook methods require one of those explicit global scopes.
-There is no global pane scope. A scope that conflicts with the handle or
-built-in definition fails before I/O.
+Options and hooks return Requests. Session, Window and Pane handles use their
+own storage scope.
 
-The [release catalog](options-reference.md) records exact names, types and
-scopes for supported tmux releases. Names do not accept tmux's abbreviations.
-Unknown releases fail with `unsupported_version`. User options support names
-such as `@project_name`, with ASCII letters, digits, underscores, dots and
-hyphens after `@`; broader native names return `unsupported_name`.
+- Server methods default to server options. Pass `scope = "global_session"` or
+  `"global_window"` for global defaults; server hook methods require one of
+  them. There is no global pane scope.
+- A scope that conflicts with the handle or the built-in definition fails
+  before I/O.
+
+The [release catalog](options-reference.md) lists exact names, types and scopes
+per tmux release. Names do not accept tmux's abbreviations, and an unknown
+release fails with `unsupported_version`. User options take names such as
+`@project_name`: ASCII letters, digits, underscores, dots and hyphens after
+`@`. Broader names return `unsupported_name`.
 
 ## Read a setting
 
 `get_option(name, options)` returns a record with `present`, `inherited`,
-`type`, requested `scope` and `target`. Scalar `value` preserves booleans,
-integers and bytes. Choice values use their canonical names. Keys, colours,
-styles and command options return native canonical text. Reads never execute
-that text. `list_options(options)` returns records sorted by name.
+`type`, the requested `scope` and `target`. `list_options(options)` returns
+records sorted by name.
 
-Reads include inherited values by default. Set `inherit = false` to inspect
-only the selected table. `present = false` distinguishes absence from an
-empty string, `false` or an explicit empty array. Local and inherited reads
-are separate observations; concurrent changes can occur between them.
-
-Arrays return ordered `entries`, each with a native zero-based `index` and
-`value`. Indices may have gaps. An `index` read option selects a slot after
-reading the complete array, preserving the distinction between an absent
-slot and an empty string. An absent slot has `present = false` and no entries.
+- Scalar `value` keeps booleans, integers and bytes. Choices use canonical
+  names. Keys, colours, styles and command options return tmux's canonical
+  text, which reads never execute.
+- Reads include inherited values. `inherit = false` inspects only the selected
+  table. Local and inherited reads are separate observations, and tmux can
+  change between them.
+- `present = false` tells absence from an empty string, `false` or an empty
+  array.
+- Arrays return ordered `entries`, each with tmux's zero-based `index` and a
+  `value`. Indices can have gaps. The `index` read option picks one slot after
+  the whole array is read, so an absent slot (`present = false`, no entries)
+  differs from an empty string.
 
 ## Change a setting
 
-`set_option(name, value, options)` accepts booleans for flags, integers within
-the release-specific range, exact choice names and NUL-free strings for
-string, key, colour and style options. Native key, colour and style grammar
-is still checked by tmux. Command values use the program record described
-below. Input structure, types, bounds and scopes are checked before I/O.
+`set_option(name, value, options)` accepts:
 
-Use `index` to write one array slot. To replace a sparse array, supply
-`{ entries = { { index = 0, value = "first" }, ... } }`. The library copies and
-validates the whole input, clears the local array, then writes slots in index
-order in one stop-on-error command group. Empty entries create an explicit
-empty local array. A first local indexed write also creates a local array;
-it does not copy inherited slots.
+- booleans for flags;
+- integers within the release's range;
+- exact choice names;
+- NUL-free strings for string, key, colour and style options (tmux still
+  checks their grammar);
+- a program record for command values (see hooks below).
 
-Replacement is not atomic. Native value validation or hooks may fail after
-an earlier write; the returned error preserves the process result without
-claiming which slots completed. tmux can run hooks between group commands.
+Structure, types, bounds and scopes are checked before I/O.
 
-`append = true` concatenates a scalar string or an indexed string-array value.
-Whole-array append is unsupported: native separator splitting cannot preserve
-arbitrary string elements. Indexed colour or command append is rejected
-because tmux replaces those values instead of appending.
+Arrays:
 
-`unset_option(name, options)` removes a local override, restoring inheritance.
-For global defaults it restores tmux's default. An optional `index` removes
-one array slot. The API never uses tmux's wider `-U` operation, which can also
-remove pane overrides.
+- `index` writes one slot.
+- `{ entries = { { index = 0, value = "first" }, ... } }` replaces a sparse
+  array. The library validates the whole input, clears the local array, then
+  writes the slots in index order as one stop-on-error group. Empty entries
+  make an explicit empty local array.
+- A first indexed write creates a local array and does not copy inherited
+  slots.
+- Replacement is not atomic. tmux validation or hooks can fail after an earlier
+  write, and the error does not say which slots completed. tmux can run hooks
+  between the commands of a group.
+- `append = true` concatenates a string, or an indexed string-array value.
+  Whole-array append is unsupported, since tmux's separator splitting cannot
+  keep arbitrary elements. Indexed colour or command append is rejected,
+  because tmux replaces those values.
+
+`unset_option(name, options)` removes a local override and restores
+inheritance; for global defaults it restores tmux's default. `index` removes
+one slot. The API never uses tmux's wider `-U`, which can also remove pane
+overrides.
 
 ## Store and run hook programs
 
-`set_hook(name, program, options)` stores a tmux command program. Supply exactly
-one of `commands`, a dense sequence of argv sequences, or `source`, explicit
-tmux program text. `commands` encodes each argument as literal tmux-parser
-data in one command group. Commands retain their own native format and shell
-semantics. `source` is not pre-parsed; tmux aliases and grammar are resolved
-by tmux. Neither form is evaluated as Lua.
+`set_hook(name, program, options)` stores a tmux command program. Give exactly
+one of:
 
-Use `index` for a built-in hook slot. Without an index, setting a built-in hook
-replaces its array with one program. `append = true` adds a program at the first
-free native slot. Indexed append is rejected because native command-array
-append replaces that slot. Invalid native source can clear an existing array
-before tmux reports failure; storing a hook is not transactional.
+- `commands`: a dense list of argv lists. Each argument is encoded as literal
+  tmux-parser data, in one command group. Commands keep their own format and
+  shell semantics.
+- `source`: tmux program text you write. It is not pre-parsed; tmux resolves
+  aliases and grammar.
 
-`get_hook` and `list_hooks` return the same presence and inheritance metadata
-as options. Built-in hooks have sparse `entries` containing `index` and
-canonical program `source`. Canonical text may expand aliases or reorder
-flags; it does not reconstruct the original argv. Custom `@` hooks return a
-single `source`. They can be retrieved by name but are omitted from
-`list_hooks`, since tmux cannot distinguish them from ordinary user options.
-`unset_hook` removes the selected hook or slot.
+Neither is evaluated as Lua.
 
-Session, Window and Pane handles offer `run_hook(name, options)`. Execution
-uses that live context's native hook lookup. Only process limits are accepted;
-storage scopes, indices, append and replacement source do not select a hook
-for execution. A successful
-process result means tmux completed its command; malformed custom source may
-still be ignored by tmux without an error.
+- `index` picks a built-in hook slot. Without one, setting a built-in hook
+  replaces its array with one program. `append = true` adds a program at the
+  first free slot; indexed append is rejected, since tmux replaces that slot.
+- Invalid source can clear an existing array before tmux reports the error.
+  Storing a hook is not transactional.
+
+`get_hook` and `list_hooks` return the same presence and inheritance data as
+options.
+
+- Built-in hooks have sparse `entries` with `index` and canonical `source`.
+  Canonical text may expand aliases or reorder flags, so it is not the
+  original argv.
+- Custom `@` hooks return one `source`. You can get one by name, but
+  `list_hooks` omits them, since tmux cannot tell them from user options.
+- `unset_hook` removes the hook or slot.
+
+Session, Window and Pane handles have `run_hook(name, options)`, which uses
+that live context's own hook lookup. Only process limits apply here. Success
+means tmux completed its command; malformed custom source may still be ignored
+without an error.
 
 ## Bounds and failures
 
-Settings use at most one MiB of encoded input and aggregate native output.
-Listings accept at most 4096 rows. Array replacement accepts at most 512
-entries and remains subject to the aggregate argv and byte limits. Programs
-accept at most 1024 commands, 4096 arguments and one MiB after encoding.
-
-`process` accepts deadline, timeout, output and cleanup limits. Caller-provided
-process environment, cwd and stdin are rejected. Output preserves bytes even
-when the caller uses a C locale. No operation changes the caller's environment.
-
-Canceling a client does not undo accepted tmux mutations. Errors distinguish
-`not_sent`, `unknown` and `completed` effects. A stale handle detected after a
-completed command retains that completed effect; it does not imply rollback.
+- At most 1 MiB of encoded input and total output, 4,096 listed rows, and 512
+  entries in an array replacement, within the aggregate argument and byte
+  limits.
+- A program takes at most 1,024 commands, 4,096 arguments and 1 MiB encoded.
+- `process` takes deadline, timeout, output and cleanup limits. Environment,
+  cwd and stdin overrides are rejected. Output keeps its bytes even in a C
+  locale. No operation changes your environment.
+- Cancelling a client does not undo a mutation tmux accepted. Errors tell
+  `not_sent`, `unknown` and `completed` apart. A stale handle found after a
+  completed command keeps `completed`; it does not imply a rollback.

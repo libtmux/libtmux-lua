@@ -1,11 +1,11 @@
 # Switch and detach clients
 
-Use an explicit client name and TTY from a snapshot. A selector addresses the
-current attachment at that name, including a replacement that attached after
-the snapshot. Client records do not prove attachment continuity.
+Name a client by its name and TTY from a snapshot. A selector addresses the
+attachment currently at that name, including a replacement that attached after
+the snapshot. A client record does not prove the attachment is the same one.
 
 Inside a [runtime task](runtime.md), with a connected `server`, choose the
-client and destination session by their observed names:
+client and the destination session by their observed names:
 
 ```lua
 local snapshot = assert(server:snapshot():await())
@@ -16,57 +16,53 @@ local selector = { name = observed.name, tty = observed.tty }
 assert(server:switch_client(selector, destination):await())
 ```
 
-`switch_client` requires a Session handle from the same Server. Its private
-session ID determines the destination; changing a returned reference cannot
-redirect the request. By default, switching preserves the destination's
-environment. Set `{ update_environment = true }` to apply the client's native
-`update-environment` values. Switching still triggers tmux's attachment,
-selection, sizing, focus and lifecycle effects.
-
-`server:detach_client(selector)` detaches that current client. It neither
-detaches all clients nor requests a parent-process signal or shell command.
-Success means the native detach command completed; it does not mean the
-borrowed terminal process was reaped. Closing the library connection leaves
-other attached clients running.
-
-Both methods return Requests that resolve to `true` on native completion.
-The [owned-terminal fixture](../tests/integration/test_client.py) runs these
-[public API operations](../tests/integration/client.lua) through standalone
-Lua and Neovim, including same-process reconnection and environment updates.
+- `switch_client` needs a Session handle from the same Server. Its private
+  session ID picks the destination, so editing a returned reference cannot
+  redirect it.
+- Switching keeps the destination's environment. Pass
+  `{ update_environment = true }` to apply the client's `update-environment`
+  values. tmux's attachment, selection, sizing, focus and lifecycle effects
+  still happen.
+- `server:detach_client(selector)` detaches that one client. It does not
+  detach all clients or signal a parent process or shell. Success means the
+  detach command completed, not that the client's terminal process exited.
+  Closing the library connection leaves other clients attached.
+- Both resolve to `true` on completion.
 
 ## Selection and failure
 
-The selector must be a plain record containing only `name` and `tty`.
-Both are exact NUL-free byte strings of at most 4,096 bytes. `name` must be
-nonempty; `tty` may be empty for a client without a terminal. No implicit
-current client or abbreviated name is selected.
+- The selector is a plain record with only `name` and `tty`, each an exact
+  NUL-free string of at most 4,096 bytes. `name` must be nonempty; `tty` may be
+  empty for a client without a terminal. There is no implicit current client
+  and no abbreviated name.
+- A fresh listing checks the full name and TTY pair and tmux's lookup aliases.
+  A missing pair returns `missing_target` and several matches return
+  `ambiguous_target`. Neither sends a mutation.
+- The listing and the mutation are separate commands, so another attachment
+  can replace the client between them. No PID or timestamp check can prove
+  continuity across a detach, exec and reconnect. Use these methods only when
+  you mean the current attachment.
+- Selectors and options are copied before I/O. A closed handle or stale
+  generation rejects the work.
+- A failure before dispatch has `effect = "not_sent"`. Cancelling after
+  dispatch may leave the effect unknown. If continuity is lost after success,
+  the result keeps the receipt and `effect = "completed"`. Mutations are never
+  retried. Aliases and hooks follow [command execution](commands.md).
 
-A fresh listing checks the complete name/TTY pair and native lookup aliases.
-Missing pairs return `missing_target`; multiple native matches return
-`ambiguous_target`. Neither dispatches a mutation. The listing and mutation
-are separate commands: another attachment can replace the selected client
-between them. No PID or timestamp check can prove continuity across native
-detach/exec/reconnect. Use these methods only when addressing the current
-attachment is the intended operation.
+`process` options: `timeout`, `deadline`, `max_output_bytes`, `drain_timeout`
+and `kill_timeout`.
 
-Selectors and options are copied before I/O. Closed handles and stale daemon
-generations reject work. A failure before mutation dispatch has
-`effect = "not_sent"`; cancellation after dispatch may have an unknown effect.
-Continuity loss after success retains the native receipt and
-`effect = "completed"`. Mutations are never retried automatically. Native
-aliases and hooks follow the [command execution contract](commands.md).
-
-The `process` options accept `timeout`, `deadline`, `max_output_bytes`,
-`drain_timeout` and `kill_timeout`. The output cap defaults to one MiB and
-cannot exceed it. Each subprocess has its own timeout; an absolute deadline
-also bounds later subprocesses. Preflight accepts at most 1,024 client rows.
-Malformed or oversized listings fail without mutating a target. Runtime byte
-capacity covers input, listing data and native receipts through delivery.
+- The output cap defaults to 1 MiB and cannot be raised.
+- Each subprocess has its own timeout, and an absolute deadline also bounds
+  the later ones.
+- Preflight accepts at most 1,024 client rows. A malformed or oversized
+  listing fails without touching a target.
+- Runtime byte capacity covers input, listing data and receipts until
+  delivery.
 
 ## Interactive attachment
 
-`session:attach()` returns `unsupported_tty` before spawning: the current luv
-and Neovim adapters do not own an interactive terminal. It does not borrow
-the editor's terminal or turn a control observation into an interactive
-attachment. Interactive terminal ownership, client navigation, key tables
-and read-only toggles remain pending capabilities.
+`session:attach()` returns `unsupported_tty` before spawning: the luv and
+Neovim adapters own no interactive terminal. It does not borrow the editor's
+terminal or turn a control observation into an attachment. Terminal ownership,
+client navigation, key tables and read-only toggles are not implemented.

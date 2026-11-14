@@ -1,62 +1,63 @@
 # Create sessions, windows and panes
 
 `Server:new_session`, `Session:new_window` and `Pane:split` return a
-`Request<Creation>`. Await inside the adapter's managed coroutine, or register
-`on_complete(value, err)`. See [connections](snapshots.md) and
-[runtime ownership](runtime.md) for setup and cancellation.
+`Request<Creation>`. Await it inside the adapter's coroutine, or register
+`on_complete(value, err)`. Setup and cancellation:
+[connections](snapshots.md), [runtime ownership](runtime.md).
 
-The receipt contains `session`, `window`, `pane` and `window_link` handles
-made from tmux's returned IDs. Its `created` sequence names the objects this
-operation created: all four for a session, window/pane/link for a window, and
-only the pane for a split. Other handles describe the containing context.
-Creating a pane proves neither application readiness nor command success.
+The receipt holds `session`, `window`, `pane` and `window_link` handles built
+from tmux's returned IDs. Its `created` list names what the call created:
+
+- A session: all four.
+- A window: the window, pane and link.
+- A split: the pane only.
+
+The other handles describe the containing context. A created pane proves
+neither that its program started nor that it succeeded.
 
 ## Commands and literal values
 
-Pass `argv` for a literal command, or `shell` for explicitly authored tmux
-shell text. They are mutually exclusive. Multiple arguments use tmux's native
-argument execution. A singleton executable uses `/usr/bin/env --` to avoid
-tmux's single-argument shell interpretation; it requires that utility and
-rejects executable names containing `=`. Use explicit shell text for that
-case. Omitting both fields uses tmux's configured default command or shell.
+- `argv` is a literal command. `shell` is tmux shell text you write. They are
+  mutually exclusive, and omitting both uses tmux's default command or shell.
+- Several `argv` items run natively. A single executable runs through
+  `/usr/bin/env --` so tmux does not read it as a shell string; that needs
+  `env` and rejects names containing `=`. Use `shell` for those.
+- Names, directories and environment values stay literal, even text that looks
+  like a tmux format.
+- Session names reject `:`, `.` and control bytes, which tmux would change.
+- `environment` maps portable variable names to strings and applies to the new
+  session or pane process (tmux `-e`). It does not change your environment.
+- `cwd` must be an absolute existing directory. A missing one is rejected
+  before the command is sent; later changes to the filesystem are still
+  possible.
 
-Names, directories and environment values stay literal, including tmux
-format-looking text. Session names reject `:`, `.`, and control bytes because
-tmux would otherwise change them. `environment` maps portable variable names
-to string values and applies to the created session or pane process through
-tmux's `-e` semantics. It does not change the caller's environment.
-
-An explicit `cwd` must be an absolute existing directory. The asynchronous
-preflight rejects a missing directory before sending the creation command.
-Filesystem changes after validation remain possible. Input is copied and
-validated before dispatch, including nested process options.
+Input is copied and validated before dispatch, nested process options
+included.
 
 ## Placement and selection
 
-Sessions start detached and accept `name`, `window_name`, `width` and
-`height`. Windows accept `name`, an optional nonnegative `index`, and
-`select`; their parent is the Session handle's exact ID. A supplied occupied
-index fails rather than replacing the existing window.
+- **Sessions** start detached and take `name`, `window_name`, `width` and
+  `height`.
+- **Windows** take `name`, an optional nonnegative `index` and `select`, under
+  the Session handle's exact ID. An occupied `index` fails instead of
+  replacing the window.
+- **Splits** take `direction` (`left`, `right`, `up` or `down`; default down),
+  a positive `size` in cells or a `percent` from 1 to 99, `full_size` and
+  `select`.
 
-Splits accept `direction` (`left`, `right`, `up` or `down`), optional positive
-`size` in cells or `percent` from 1 through 99, `full_size`, and `select`. The default
-direction is down. New windows and splits leave selection unchanged unless
-`select=true`. Handle references cannot be edited to redirect an operation.
+New windows and splits leave the selection alone unless `select = true`.
+Editing a handle's reference cannot redirect an operation.
 
 ## Errors and limits
 
-`process` accepts `timeout`, `deadline`, `max_output_bytes`, `kill_timeout`
-and `drain_timeout`; see [command completion](commands.md). It cannot replace
-the bound socket, process environment, input stream or working directory.
-Creation accepts at most 1024 argv items, 128 environment entries and one MiB
-of encoded input, subject to the runtime's shared byte capacity.
-
-Errors preserve whether the command was not sent, may have taken effect, or
-completed. A malformed receipt reports `invalid_result` with completed effect
-and retained command output. Canceling the tmux client cannot undo a creation
-already accepted by the daemon. Creation does not retry or remove partial
-state. Closing the Server connection leaves created sessions running.
-
-The [public creation fixture](../tests/integration/domain.lua) exercises the
-same API through luv and Neovim with literal arguments, environment and
-directory values, returned IDs, explicit shell text and missing directories.
+- `process` takes `timeout`, `deadline`, `max_output_bytes`, `kill_timeout`
+  and `drain_timeout` ([command completion](commands.md)). It cannot replace
+  the socket, environment, input stream or working directory.
+- One call accepts at most 1,024 `argv` items, 128 environment entries and
+  1 MiB of encoded input, within the runtime's shared byte capacity.
+- Errors say whether the command was not sent, may have taken effect, or
+  completed. A malformed receipt reports `invalid_result` with the command
+  output.
+- Cancelling the tmux client cannot undo a creation the daemon accepted.
+  Creation never retries or removes partial state.
+- Closing the Server handle leaves created sessions running.

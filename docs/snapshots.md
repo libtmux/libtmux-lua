@@ -1,118 +1,117 @@
 # Capture server state
 
-Use `runtime:connect(options):await()` to bind a borrowed tmux daemon, then
-`server:snapshot(options):await()` to capture its state. Every live operation
-returns a Request. The [snapshot example](../examples/snapshot.lua) prints
-each unique pane and its window ID using the public API.
+`runtime:connect(options):await()` binds a running tmux server.
+`server:snapshot(options):await()` captures its state. Every live call returns
+a Request. The [snapshot example](../examples/snapshot.lua) prints each pane
+and its window ID.
 
-Pass an absolute `binary` to `connect`, and usually an absolute `socket_path`.
-Optional `config_path` defaults to `/dev/null`. Connection options are copied
-before dispatch. The library never starts a server. Importing the library and
-inspecting captured records perform no I/O.
+## Connect to a server
 
-Without a `socket_path`, `connect` reads `LIBTMUX_SOCKET_PATH`, a socket path
-(tmux `-S`), then `LIBTMUX_SOCKET`, a socket name (`-L`). The path wins when
-both are set, and a variable that is empty or only whitespace counts as unset.
-A `socket_path` option leaves both unread. With neither variable set, tmux gets
-no socket and picks the server itself: the one in `TMUX` inside tmux, otherwise
-the default socket under `TMUX_TMPDIR`. `LIBTMUX_SOCKET_PATH` must be absolute
-and name a file.
+- Pass an absolute `binary` and, usually, an absolute `socket_path`.
+  `config_path` defaults to `/dev/null`.
+- The library never starts a server. Importing it and reading captured records
+  do no I/O.
+- Setup reads the daemon's version and identity and disables tmux autostart.
 
-`connect` starts no server. If tmux finds none running on the socket it picked,
-or on the `LIBTMUX_SOCKET` name, it fails with `invalid_endpoint`. A socket
-path, from the option or `LIBTMUX_SOCKET_PATH`, fails with `invalid_endpoint`
-when no file is there, and with `uncertain_generation` when the file outlived
-its server, which tmux leaves behind when it exits.
+Without a `socket_path`, `connect` picks the server in this order:
 
-Connection setup reads the actual daemon's version and identity and disables
-tmux autostart. Linux socket binding creates a private socket alias in the
-selected socket's parent directory; that directory must permit creation and
-hard links. Each command checks the original socket and alias, and reads
-bounded daemon evidence. A socket name, or tmux's own choice, has no path to
-alias, so nothing is created: the daemon's pid, start time and release, which
-every command carries as a fence, are its only identity. A restart, replaced
-socket or uncertain connection invalidates the handle. Reconnect explicitly;
-old references do not bind to reused IDs. The
-[compatibility matrix](compatibility.md) records Ubuntu CI coverage and local
-WSL2 checks; macOS remains outside the verified matrix.
+1. `LIBTMUX_SOCKET_PATH`: an absolute socket path (tmux `-S`).
+2. `LIBTMUX_SOCKET`: a socket name (tmux `-L`).
+3. Neither set: tmux chooses. That is the server in `TMUX` inside tmux, and
+   otherwise the default socket under `TMUX_TMPDIR`.
 
-`server:close():await()` closes the handle and its owned connections. It leaves
-the borrowed daemon running. The runtime also closes handles when its root
-scope finishes. Keep live work inside that scope; returning a handle from
-`adapter.run` does not keep its runtime alive.
+An empty or whitespace-only variable counts as unset. A `socket_path` option
+leaves both unread.
+
+| Situation | Error |
+| --- | --- |
+| No server on the socket tmux picked, or on the `LIBTMUX_SOCKET` name | `invalid_endpoint` |
+| No file at a socket path | `invalid_endpoint` |
+| A socket file that outlived its server | `uncertain_generation` |
+
+Identity:
+
+- Every command carries the daemon's pid, start time and release as a fence.
+  A restart, a replaced socket or an uncertain connection invalidates the
+  handle. Reconnect explicitly; old references never bind to reused IDs.
+- On Linux, a socket path gets a private alias beside it, so that directory
+  must allow creating hard links. A socket name, or tmux's own choice, has no
+  path to alias and creates nothing.
+
+`server:close():await()` closes the handle and leaves the daemon running. The
+runtime also closes handles when its root scope ends, so keep live work inside
+that scope.
 
 ## Collections and projections
 
-Snapshots contain `sessions`, `windows`, `panes`, `window_links`, `clients`
-and `buffers` as [native selections](query.md). Canonical entity collections
-deduplicate identity; `snapshot.raw` preserves contextual listing rows and
-their order. A window linked twice has two link rows and one canonical window.
-Relationships refer only to captured data. Clients are the attached clients
-that tmux exposes through `list-clients`.
+- A snapshot holds `sessions`, `windows`, `panes`, `window_links`, `clients`
+  and `buffers` as [native selections](query.md).
+- Collections deduplicate identity. `snapshot.raw` keeps the listing rows in
+  order: a window linked twice has two link rows and one window.
+- Relationships refer only to captured data. Clients are the ones
+  `list-clients` shows.
+- Window links own `session_id`, `window_id`, `index` and active context.
+  Pane and window IDs stay tmux strings; Lua positions are not tmux indexes.
+- A server with no sessions can still have buffers. Capture reads them without
+  creating a session.
 
-Window links own `session_id`, `window_id`, `index` and active context. Pane
-and window IDs remain tmux strings; Lua positions are not tmux indexes.
-A daemon with no sessions can still have buffers. Capture reads them without
-creating a session.
+By default, capture loads every field in the [catalog](fields.md). The
+`fields` option maps collection names to nonempty field-name lists; omitted
+collections keep their default projection, and required identity and
+relationship fields are added.
 
-By default, capture loads every supported field in the [catalog](fields.md).
-The `fields` option maps collection names to nonempty field-name sequences;
-omitted collections keep their default projection. Required identity and
-relationship fields are added. `requested_projections` records the caller's
-selection; `projections` records effective fields, including for empty
-collections. Both maps use singular entity names such as `pane` and
-`window_link`. `capabilities.fields` records availability for the observed
-daemon version; it does not claim every tmux command is supported.
+- `requested_projections` records your selection and `projections` the
+  effective fields, both keyed by singular entity names such as `pane` and
+  `window_link`.
+- `capabilities.fields` records which fields the observed tmux version has.
 
-Refresh by calling `snapshot` again. It returns fresh records. Tables remain
-mutable, so do not edit them during traversal. Editing a record does not
-refresh the server, another snapshot or its private identity index.
+Records are plain mutable tables. Refresh by calling `snapshot` again.
+Editing a record changes nothing in tmux or in another snapshot.
 
-Create a handle with `server:handle(snapshot, record)`. The record's kind picks
-the handle's class: a `SnapshotPane` gives a `libtmux.Pane`, a
-`SnapshotSession` a `libtmux.Session`, and so on, so LuaLS offers only the
-methods tmux accepts for that kind. It copies the record's
-private identity, so edits to exposed `id` or `ref` fields cannot redirect it.
-`handle:reference()` returns a separate reference table without I/O.
-`handle:snapshot():await()` explicitly captures fresh state and returns the
-matching record. A missing link/index, client/TTY or buffer name returns
-`target_missing`; stale server generations fail before capture. Same-name
-client or buffer reuse cannot establish continuous object identity.
+## Handles
+
+`server:handle(snapshot, record)` makes a handle from a record. The record's
+kind picks the class: a `SnapshotPane` gives a `libtmux.Pane`, a
+`SnapshotSession` a `libtmux.Session`, so LuaLS offers only the methods tmux
+accepts for that kind.
+
+- The handle copies the record's private identity. Editing the exposed `id`
+  or `ref` fields cannot redirect it.
+- `handle:reference()` returns a separate reference table, with no I/O.
+- `handle:snapshot():await()` captures fresh state and returns the matching
+  record.
+- A missing link index, client TTY or buffer name returns `target_missing`.
+  A stale server generation fails before capture.
+- A client or buffer that reuses a name is not treated as the same object.
 
 ## Consistency and limits
 
-Capture spans multiple commands. `acquisition.started` and `finished` are
-monotonic milliseconds. Normal capture reports observed relationship races
-in `races` and sets `complete` to false. Transport failures return an error.
+Capture spans several tmux commands and is not atomic.
 
-Set `strict = true` for one additional identity/topology verification pass.
-It compares membership and link context, ignoring listing order and volatile
-scalar values. A mismatch returns `inconsistent_snapshot` with the original
-snapshot in `err.partial`; capture never retries to manufacture consistency.
-`verification` records the pass and its result. Equal observations do not
-make capture atomic, prove continuous identity, or detect objects created
-and removed between reads. Replacing a named buffer can preserve every
-catalog field while changing its contents.
+- `acquisition.started` and `finished` are monotonic milliseconds.
+- A relationship race lands in `races` and sets `complete` to false. A
+  transport failure returns an error.
+- `strict = true` adds one verification pass that compares membership and
+  link context, ignoring order and volatile values. A mismatch returns
+  `inconsistent_snapshot` with the first snapshot in `err.partial`. Capture
+  never retries to manufacture consistency.
+- Equal passes do not prove continuous identity or catch objects created and
+  removed between reads. Replacing a named buffer can keep every catalog field
+  and change its contents.
 
-Each pass permits at most `max_rows` raw rows (default 65,536) across all
-collections, before deduplication. `max_bytes` (default 16 MiB) limits both
-total encoded output and retained scalar/key bytes per pass. Strict mode
-adds one bounded pass. Accumulated rows and the graph copy also consume the
-runtime's byte budget; exhaustion returns `queue_full`. These counters bound
-data, not exact Lua heap allocation.
+| Limit | Default | Effect |
+| --- | --- | --- |
+| `max_rows` | 65,536 | Raw rows across all collections, per pass |
+| `max_bytes` | 16 MiB | Encoded output and retained scalar and key bytes, per pass |
+| `timeout` | 750 ms | Each listing command; endpoint checks have their own 750 ms bound |
 
-`timeout` defaults to 750 milliseconds per listing command. Endpoint evidence
-checks have a separate bounded 750-millisecond deadline. Whole capture has
-a finite command count; cancel its Request for an earlier stop. Closing the
-server during capture prevents a successful current-reference result.
-Cancellation retires owned clients; it does not kill the daemon.
+Accumulated rows and the graph copy also draw on the runtime's byte budget;
+exhausting it returns `queue_full`. Cancel the Request to stop earlier.
+Cancellation retires owned clients and never kills the daemon. Closing the
+server during capture prevents a successful result.
 
-Run the example against an explicitly selected existing server:
+Run the example against an existing server:
 
 ```console
 $ TMUX_BIN=/usr/bin/tmux TMUX_SOCKET=/tmp/example-tmux.sock lua examples/snapshot.lua
 ```
-
-The package gate runs this file from installed core and luv outside the
-checkout, checks exact output, and verifies cleanup. Core-only installation
-still has no luv dependency; this standalone example selects it explicitly.

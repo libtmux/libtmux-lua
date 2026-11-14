@@ -1,10 +1,8 @@
 # Topology operations
 
-Session, Window, Pane and WindowLink handles perform explicit mutations through
-the PROCESS endpoint. Each operation returns a Request that resolves to
-`true` when tmux successfully processes it. Refresh or capture a snapshot
-explicitly to inspect the resulting state; existing records do not change
-in place.
+Session, Window, Pane and WindowLink handles run explicit mutations. Each
+returns a Request that resolves to `true` once tmux processes it. Existing
+records do not change in place: take a snapshot to see the result.
 
 ```lua
 assert(session:rename("build"):await())
@@ -12,198 +10,189 @@ assert(window:resize({ width = 120, height = 40 }):await())
 assert(window:layout({ named = "tiled" }):await())
 ```
 
-The [integration fixture](../tests/integration/topology.lua) includes setup,
-native-state assertions and cleanup through both runtime adapters.
-
 ## Names and removal
 
-`session:rename(name)` and `window:rename(name)` use their stable native IDs.
-Names are nonempty NUL-free strings up to 1,024 bytes. Session names also
-exclude dots, colons, ASCII controls and DEL. Format markers remain literal;
-native name validation and cleaning still apply. Releases differ in accepted
-bytes and escaping, so success does not promise byte-exact storage. Exact
-tmux 3.7 also rejects dots and colons in Window names. Renaming a Window turns
-off its automatic rename option.
+`session:rename(name)` and `window:rename(name)` use the stable native ID.
 
-`session:kill()` destroys that session and its links. A linked window can
+- A name is a nonempty NUL-free string of at most 1,024 bytes. Session names
+  also exclude dots, colons, ASCII controls and DEL; exactly tmux 3.7 excludes
+  dots and colons from window names too.
+- Format markers stay literal. tmux still validates and cleans names, and
+  releases differ in the bytes they accept, so success does not promise
+  byte-exact storage.
+- Renaming a window turns off its automatic rename.
+
+`session:kill()` destroys the session and its links. A linked window can
 survive in another session. `window:kill()` destroys the window and **every**
-link to it, potentially removing sessions left without windows. Neither
-method targets all other sessions or windows. Use these only for intended
-mutations; Request cancellation never implies either operation.
+link to it, which can remove sessions left without windows. Cancelling a
+Request never implies either.
 
 ## Window navigation
 
-`session:navigate_window(direction)` accepts `"next"`, `"previous"` or
-`"last"`. Next/previous support `activity = true` to select a window with a
-native alert. Last rejects the `activity` option, including explicit false.
-Navigation changes the session's active window and follows native hooks and
-grouped-session behavior.
-
-`session:renumber_windows()` renumbers from the session's `base-index` option.
-It preserves Window IDs but invalidates captured link indices. It is a
-separate operation from moving one window.
+- `session:navigate_window(direction)` takes `"next"`, `"previous"` or
+  `"last"`. Next and previous accept `activity = true` to pick a window with
+  an alert; `last` rejects `activity`, even `false`. It changes the session's
+  active window and follows hooks and grouped-session behavior.
+- `session:renumber_windows()` renumbers from the session's `base-index`. Window
+  IDs stay and captured link indices go stale. It is separate from moving one
+  window.
 
 ## Window placements
 
-A WindowLink identifies one placement by session, index and Window ID. Use
-`creation.window_link` or a handle from `snapshot.window_links` when an
-operation needs that exact placement, including duplicate links in one
-session. `link:select()` selects its index within its session.
+A WindowLink names one placement by session, index and window ID. Use
+`creation.window_link`, or a handle from `snapshot.window_links`, when an
+operation needs that exact placement, duplicates in one session included.
+`link:select()` selects its index within its session.
 
-`link:link(destination)` creates another placement;
-`link:move(destination)` also removes this source placement. Destinations
-accept one of these plain records:
+`link:link(destination)` creates another placement. `link:move(destination)`
+also removes this one. A destination is one plain record:
 
-- `{ session = session, index = 5 }` chooses an explicit index. Omitting
-  `index` requests a native free index from `base-index`, not append.
-- `{ link = anchor, position = "before"|"after" }` inserts relative to an
-  existing placement and may shift indices.
-- `{ link = victim, position = "at" }` requires `{ replace = true }` as the
-  operation options. Replacement can destroy the victim Window if it has no
-  other links. A numeric index alone never authorizes replacement.
+- `{ session = session, index = 5 }`: an explicit index. Without `index`, tmux
+  picks a free one from `base-index`; it does not append.
+- `{ link = anchor, position = "before"|"after" }`: next to an existing
+  placement, which may shift indices.
+- `{ link = victim, position = "at" }`: needs `{ replace = true }` as the
+  options, and can destroy the victim window if it has no other links. A
+  numeric index alone never replaces.
 
-Both operations default to `select = false`. Removal of an active source or
-replacement of an active destination can still force native selection.
-Occupied numeric destinations return native errors; the library never
-searches for a different destination or retries.
+Both default to `select = false`, though removing an active source or replacing
+an active destination can still force a selection. An occupied numeric
+destination returns tmux's error; the library never looks elsewhere or retries.
 
-`link:swap(other)` exchanges the Windows in two placements. By default,
-selected **slots** remain selected, although their Window identities change.
-`select = true` selects the destination slot, and the source slot when the
-sessions differ. Swapping two placements of the same Window is a native no-op.
+- `link:swap(other)` exchanges the windows in two placements. By default the
+  selected **slots** stay selected while their windows change. `select = true`
+  selects the destination slot, and the source slot when the sessions differ.
+  Swapping two placements of one window does nothing.
+- `link:unlink()` removes only this placement and refuses tmux's last-link
+  destruction unless `kill_if_last = true`. Grouped sessions keep tmux's
+  synchronization and last-link rules. A tmux refusal is not a rollback:
+  insertion can shift indices before a later grouped-session error.
 
-`link:unlink()` removes only this placement and refuses native last-link
-destruction. `kill_if_last = true` permits that destruction. Grouped sessions
-retain tmux's synchronization and last-link rules. Native refusal is not
-rollback: insertion can shift indices before a later grouped-session error.
+Guards:
 
-Each operation checks the stored source tuple, and any destination link
-tuple, in the native command queue immediately before the mutation. A
-recognized mismatch returns `stale_target`, `effect = "not_sent"`, and the
-native receipt. Old handles never rebind automatically after index reuse,
-movement or swapping. Recreating the identical tuple cannot be distinguished
-from continuous identity; native command aliases can also change these checks.
-The [native-command contract](commands.md) applies to the generated guards
-and their mutation branches. They are not a transaction or an unconditional
-compare-and-swap guarantee.
-
-Success returns `true`; capture a new snapshot explicitly to find resulting
-placements. No predicted index or hidden post-mutation read constructs a new
-WindowLink handle.
+- Each operation checks the stored source tuple, and any destination tuple, in
+  tmux's command queue just before mutating. A recognized mismatch returns
+  `stale_target` with `effect = "not_sent"` and the receipt.
+- Old handles never rebind after an index is reused, moved or swapped.
+  Recreating the same tuple cannot be told from continuity, and aliases can
+  change the checks. The guards are not a transaction or an unconditional
+  compare-and-swap. See [commands](commands.md).
+- Success returns `true`. Take a snapshot to find the new placements; no
+  predicted index or hidden read builds a new WindowLink.
 
 ## Window size and layout
 
-`window:resize(options)` accepts exactly one form:
+`window:resize(options)` takes exactly one form:
 
-- `width` and/or `height`, integers from 1 to 10,000.
-- `direction = "left"|"right"|"up"|"down"`, with `amount` from 1 to
-  10,000, defaulting to one.
-- `largest = true` or `smallest = true`, using tmux's native client-size rule.
+- `width` and `height`, either or both, integers from 1 to 10,000.
+- `direction = "left"|"right"|"up"|"down"` with `amount` from 1 to 10,000,
+  default 1.
+- `largest = true` or `smallest = true`, by tmux's client-size rule.
 
-Native resizing sets `window-size` to manual. Layout constraints and available
-client sizes can affect the result; the command's success is not a dimensions
-oracle. Resizing affects every link to the Window.
+Resizing sets `window-size` to manual, applies to every link to the window,
+and can be constrained by the layout and client sizes, so success does not
+tell you the dimensions.
 
-`window:layout(options)` also accepts exactly one form:
+`window:layout(options)` also takes exactly one form:
 
 - `named`: `even-horizontal`, `even-vertical`, `main-horizontal`,
-  `main-vertical` or `tiled`. The mirrored main layouts require tmux 3.5+.
-- `layout`: an exported native layout string, bounded at 65,536 bytes: the
-  checksum form (four hexadecimal digits, comma and body), or on tmux 3.8 and
-  later the JSON form.
+  `main-vertical` or `tiled`. The mirrored main layouts need tmux 3.5 or
+  later.
+- `layout`: an exported layout string of at most 65,536 bytes. It is the
+  checksum form (four hex digits, a comma, the body), or on tmux 3.8 and later
+  the JSON form.
 - `next = true`, `previous = true` or `restore = true`.
 
-Malformed custom-layout headers return `invalid_layout` before dispatch.
-This avoids faulty error handling in tmux 3.3a and short-header reads in
-older native parsers. Use `named` for standard layout names. A JSON layout
-also returns `invalid_layout` on tmux older than 3.8, the first release that
-accepts one (see [compatibility](compatibility.md)). tmux 3.8 exports
+A malformed layout header returns `invalid_layout` before sending, which avoids
+tmux 3.3a's faulty error handling and short-header reads in older parsers. A
+JSON layout also returns `invalid_layout` below 3.8, the first release that
+accepts one ([compatibility](compatibility.md)). tmux 3.8 exports
 `window_layout` as JSON, except to a control-mode client that has not set the
-`new-layouts` flag, which still receives the checksum form
+`new-layouts` flag, which still gets the checksum form
 ([tmux 3.8 CHANGES](https://github.com/tmux/tmux/blob/7f2a35ad3321f9ba57a1062ca73b1f3ff26aca53/CHANGES#L38-L40)).
 
-Layout operations unzoom before native checksum and body validation. A rejected
-layout can therefore change zoom state. A nonzero native exit carries its receipt
-and `effect = "completed"`; it does not establish rollback. Custom layout
-syntax is tmux's grammar and is not evaluated as Lua or shell text.
+- Layout operations unzoom before tmux validates the checksum and body, so a
+  rejected layout can still change zoom.
+- A nonzero exit carries its receipt and `effect = "completed"`; it is not a
+  rollback.
+- Layout syntax is tmux's grammar, never evaluated as Lua or shell text.
 
 ## Restart a window
 
-`window:respawn({ context = link, ... })` requires a WindowLink naming this
-Window. Its session supplies the native launch context, including inherited
-environment. The link is checked in the native queue before respawn; the
-method never chooses an arbitrary session from a global Window ID.
+`window:respawn({ context = link, ... })` needs a WindowLink naming this
+window. Its session supplies the launch context, inherited environment
+included. The link is checked in tmux's queue first; the method never picks a
+session from a global window ID.
 
-Launch options match [creation](creation.md): literal `argv` or explicit
-`shell`, absolute `cwd` and a per-process `environment` map. Omitting launch
-text reuses the previous command. Working-directory validation is asynchronous
-and completes before dispatch. `kill = true` permits replacement of running
-processes; otherwise tmux refuses an active window.
-
-Respawn retains the Window ID and its first Pane, removes sibling panes, and
-resets layout through every link to the Window. It can fail after destructive
-preparation; a native error does not establish rollback. Existing sibling
-Pane handles do not become references to the restarted first Pane.
+- Launch options match [creation](creation.md): literal `argv` or explicit
+  `shell`, an absolute `cwd` and a per-process `environment` map. Without
+  launch text it reuses the previous command. The `cwd` check completes before
+  sending.
+- `kill = true` replaces running processes; otherwise tmux refuses an active
+  window.
+- Respawn keeps the window ID and its first pane, removes the other panes and
+  resets the layout through every link. It can fail after destructive
+  preparation, and an error is not a rollback. Handles to the removed panes do
+  not become references to the first one.
 
 ## Move a pane
 
-`pane:move_to(target, options)` moves the same Pane into the target Pane's
-Window. It defaults to a vertical split with `select = false`. Choose
-`direction = "horizontal"`, `size` from 1 to 10,000 cells, or `percent` from
-1 to 100. Size and percent exclude one another. `before = true` changes native
-geometry; it does not promise a matching pane-index order. `full_size = true`
-extends the split across the Window.
+`pane:move_to(target, options)` moves the same pane into the target pane's
+window.
 
-`select = true` requires `target_link = link`, identifying the exact placement
-whose session and index will be selected. An optional target link also checks
-membership when selection is disabled. The library checks that placement and
-the target Pane's current Window separately in the native queue, then submits
-the compound target. A moved target Pane produces `stale_target`; a target
-that tmux cannot resolve can instead retain its native command error.
+- It splits vertically by default, with `select = false`. Pick
+  `direction = "horizontal"`, a `size` of 1 to 10,000 cells, or a `percent`
+  of 1 to 100; size and percent exclude each other.
+- `before = true` changes tmux's geometry, not a promised pane-index order.
+  `full_size = true` spans the whole window.
+- `select = true` needs `target_link = link`, naming the placement whose
+  session and index get selected. A target link also checks membership when
+  selection is off. The library checks that placement and the target pane's
+  window separately in tmux's queue, then sends the compound target. A moved
+  target pane returns `stale_target`; one tmux cannot resolve can keep tmux's
+  own error.
 
-Movement changes global pane membership through all Window links. Moving the
-last Pane destroys the old Window and all its placements. Native layout and
-selection changes can happen before a later error. Moving a Pane preserves
-its ID and running process; it does not restart that process.
+Moving changes pane membership through every window link. Moving the last pane
+destroys the old window and all its placements. Layout and selection changes
+can happen before a later error. The pane keeps its ID and running process.
 
 ## Break a pane into a window
 
-`pane:break_out(source_link, destination, options)` requires the Pane's exact
-source WindowLink. Destinations accept a Session with an optional numeric
-index, or an anchor WindowLink with `position = "before"|"after"`, as described
-under [window placements](#window-placements). Replacement is not supported;
-an occupied numeric destination returns the native error.
+`pane:break_out(source_link, destination, options)` needs the pane's exact
+source WindowLink. A destination is a session with an optional numeric index,
+or an anchor WindowLink with `position = "before"|"after"` (see
+[window placements](#window-placements)). Replacement is not supported, and an
+occupied numeric destination returns tmux's error.
 
-The source placement and current Pane membership are checked in the native
-queue, along with any destination anchor. The operation preserves the Pane ID
-and running process. With multiple panes, tmux creates a new Window and keeps
-the source Window's links. With one pane, it moves the specified placement of
-the existing Window; other links to that Window survive. `select` defaults to
-false, though removal of an active placement can force native selection.
+- The source placement, the pane's membership and any anchor are checked in
+  tmux's queue. The pane keeps its ID and running process.
+- With several panes, tmux creates a new window and the source window keeps its
+  links. With one pane, it moves that placement of the existing window, and
+  other links survive.
+- `select` defaults to false, though removing an active placement can force a
+  selection.
+- `name` follows the window name rules above. Without it, a lone pane keeps its
+  window's name and options, and a new window takes tmux's default name and
+  inherited options. An explicit name turns off automatic rename.
 
-`name` follows the Window name rules above. Omitting it preserves native
-naming: a singleton retains its existing Window name and options; a newly
-created Window takes the native default name and inherited options. An
-explicit name disables automatic rename for the resulting Window.
+Exactly tmux 3.7 has a multi-pane naming defect, so a literal `break-pane`
+through `server:command` is refused there ([commands](commands.md)). The typed
+operation repairs it:
 
-Exact tmux 3.7 has a native multi-pane naming defect, so a literal
-`break-pane` through `server:command` is refused there (see
-[commands](commands.md)). The typed operation keeps its repair: it supplies a
-placeholder when no name is requested, avoiding the faulty native null-name
-path. For a named multi-pane break, it follows the break with a rename of the
-same Pane's Window. This repair fires native rename notifications and
-`after-rename-window` hooks. Singleton breaks and other releases need no
-repair. A repair failure can occur after the Pane has moved; it is not rollback.
+- With no name requested, it supplies a placeholder to avoid the faulty null
+  name path.
+- For a named multi-pane break, it renames the pane's window afterward. The
+  repair fires rename notifications and `after-rename-window` hooks. Lone
+  panes and other releases need no repair.
+- A repair failure can happen after the pane moved, and it is not a rollback.
 
 ## Effects and boundaries
 
-Options are copied before dispatch and must be plain records. These methods
-accept the same nested `process` limits as [Pane operations](panes.md).
-Input is bounded at one MiB per operation. A stale generation or invalid
-target fails before dispatch. If continuity is lost after successful native
-completion, the error preserves `effect = "completed"` and that receipt.
-Mutations are never retried automatically.
-
-Native [aliases and hooks](commands.md) remain observable. These APIs do not
-promise transactions or protection against aliases that replace a built-in
-command.
+- Options are plain records, copied before sending. The nested `process`
+  limits are those of [pane operations](panes.md). Input is at most 1 MiB per
+  operation.
+- A stale generation or invalid target fails before dispatch. If continuity is
+  lost after tmux succeeded, the error keeps `effect = "completed"` and the
+  receipt. Mutations are never retried.
+- [Aliases and hooks](commands.md) still apply. Nothing here is a transaction
+  or protects against an alias that replaces a built-in command.
