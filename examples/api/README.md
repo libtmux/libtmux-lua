@@ -1,15 +1,14 @@
 # Complete API examples
 
-Each Lua file is a standalone program. Save it beside [run.sh](run.sh), which
-starts a private tmux daemon and stops it after the program finishes or fails.
-No existing session is required. The connection closes without stopping the
-daemon; the launcher checks that its bootstrap session still exists before
-cleanup. A failed daemon shutdown keeps the socket directory and reports it.
+Each Lua file is a standalone program. [run.sh](run.sh) runs one on a private
+tmux server and stops that server afterward, even when the program fails. No
+existing session is needed. If the server will not stop, the launcher keeps the
+socket directory and says so.
 
-Use Lua 5.5.1, LuaRocks, Git, tmux 3.3a or newer, a C compiler, CMake and
-perl on Linux. The launcher uses perl to confirm that the daemon stopped. From
-the checked-out repository root, install the library and its standalone
-runtime dependency into a local tree:
+Needs Lua, LuaRocks, Git, tmux 3.3a or newer, a C compiler, CMake and perl on
+Linux. The launcher uses perl to confirm the server stopped. From the
+repository root, install the library and its standalone runtime dependency
+into a local tree:
 
 ```console
 $ luarocks --tree ./rocks install luv 1.52.1-0 && \
@@ -25,18 +24,19 @@ $ sh examples/api/run.sh examples/api/connect.lua
 
 | Program | Task | Expected output |
 | --- | --- | --- |
-| [connect.lua](connect.lua) | Connect to the launcher's daemon | `connected` |
+| [connect.lua](connect.lua) | Connect to the launcher's server | `connected` |
 | [snapshot.lua](snapshot.lua) | List sessions, windows, and panes | Two of each |
 | [new_session.lua](new_session.lua) | Create a session | `session: demo` |
 | [new_window.lua](new_window.lua) | Create a window in that session | `window: logs` |
+| [refresh.lua](refresh.lua) | Read a window again after renaming it | `editor build` |
 | [query.lua](query.lua) | Select sessions by name | `matched: demo` |
+| [explain.lua](explain.lua) | Show what a pane query runs in tmux and what stays local | Two plans, `never` and `auto` |
+| [group.lua](group.lua) | Create a session and two windows in one tmux call | `windows: main, build, test` |
 | [send_keys.lua](send_keys.lua) | Send text and press Enter | `lua input ready` |
 | [capture.lua](capture.lua) | Read a completed command's output | `lua capture ready` |
 | [wait_for_text.lua](wait_for_text.lua) | Wait for text on the visible screen | `lua wait ready` |
+| [watch_pane.lua](watch_pane.lua) | Stream a pane's output over control mode (tmux 3.7 or newer) | `output: watched` |
 | [unsupported_version.lua](unsupported_version.lua) | Handle a tmux below the minimum | `unsupported_version` and its message |
 
-The [manifest](manifest.json) attaches whole files to existing API symbols and
-records exact expected output. The native documentation export validates the
-targets and includes both files needed for each program. Installed-package
-checks run those files outside the checkout; no test helper is imported by
-the examples.
+The [manifest](manifest.json) ties each program to the API symbols it shows
+and its exact output.

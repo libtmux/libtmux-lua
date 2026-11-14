@@ -19,14 +19,12 @@ panes][ref-concepts].
 
 </div>
 
-It is published on
-[LuaRocks](https://luarocks.org/modules/tony/libtmux).
-Releases are numbered `0.1.N`, and each release increments `N`. The API is not
-settled: any release may change or remove exported identifiers, and the
-[changelog][changes] marks each break. Pin an exact version to avoid one.
+Needs Lua 5.1 to 5.5 or LuaJIT, and tmux 3.3a or newer. Before 1.0, any
+release may change an API: pin an exact version and read the
+[changelog][changes].
 
 The [root README](https://github.com/libtmux/libtmux-lua/blob/master/README.md#quick-start)
-shows a first tmux program, and the
+shows a first tmux program. The
 [API reference](https://libtmux.org/en/lua/latest/reference/) lists every
 public symbol.
 
@@ -91,16 +89,16 @@ $ lua examples/native_query.lua
 
 ## Modules
 
-Each heading links to its source on GitHub. `require("libtmux")` returns only
-the rock's `_VERSION`; the entry points are these modules.
+`require("libtmux")` returns only the rock's `_VERSION`; the entry points are
+these modules.
 
-### [`libtmux.runtime.luv`](https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/runtime/luv.lua): the standalone loop
+### [`libtmux.runtime.luv`][ref-runtime-luv]: the standalone loop
 
-[`run(body, limits)`][ref-luv-run] drives a luv loop for a standalone Lua
-process and returns `value, err` after the work it owns has retired. It needs
-the `luv` rock; importing the module starts no loop. Reference:
-[`libtmux.runtime.luv`](https://libtmux.org/en/lua/latest/reference/libtmux-runtime-luv/)
-and [`libtmux.Server`](https://libtmux.org/en/lua/latest/reference/libtmux-server/).
+[`run(body, limits)`][ref-luv-run] drives a luv loop for a standalone script
+and returns `value, err` once its work has finished. It needs the `luv` rock;
+importing the module starts no loop. Related:
+[`libtmux.Server`][ref-server]. Source:
+[`luv.lua`](https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/runtime/luv.lua).
 
 This is the complete
 [`new_session.lua`](https://github.com/libtmux/libtmux-lua/blob/master/examples/api/new_session.lua)
@@ -145,19 +143,19 @@ end))
 After the
 [setup for the complete examples](https://github.com/libtmux/libtmux-lua/blob/master/examples/api/README.md),
 run this from the repository root. The launcher starts a private tmux server
-and stops it when the program exits:
+and stops it when the program ends:
 
 ```console
 $ sh examples/api/run.sh examples/api/new_session.lua
 session: demo
 ```
 
-### [`libtmux.runtime.nvim`](https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/runtime/nvim.lua): Neovim's loop
+### [`libtmux.runtime.nvim`][ref-runtime-nvim]: Neovim's loop
 
 [`start(body, on_done, limits)`][ref-nvim-start] returns at once and borrows
-the editor's loop. It calls `on_done(value, err)` after the work it owns has
-retired, and handles it did not create stay open. Reference:
-[`libtmux.runtime.nvim`](https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim/).
+the editor's loop. It calls `on_done(value, err)` once its work has finished,
+and handles it did not create stay open. Source:
+[`nvim.lua`](https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/runtime/nvim.lua).
 
 This is the complete
 [`nvim_snapshot.lua`](https://github.com/libtmux/libtmux-lua/blob/master/examples/nvim_snapshot.lua)
@@ -197,12 +195,12 @@ $ TMUX_SOCKET=/path/to/tmux.sock nvim \
     -c 'luafile examples/nvim_snapshot.lua'
 ```
 
-### [`libtmux.query`](https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/query.lua): tables without tmux
+### [`libtmux.query`][ref-query]: tables without tmux
 
 [`select`][ref-query-select] wraps a list of Lua tables in a
 [`Selection`][ref-selection], the same type as a snapshot's `panes`. The quick
-start program is the complete example. Reference:
-[`libtmux.query`](https://libtmux.org/en/lua/latest/reference/libtmux-query/).
+start program is the complete example. Source:
+[`query.lua`](https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/query.lua).
 
 [`Server:query`][ref-server-query] applies criteria to a live server instead
 of a table. The [query guide](https://github.com/libtmux/libtmux-lua/blob/master/docs/query.md)
@@ -220,18 +218,18 @@ lists the criteria both accept.
 
 ## Support and status
 
-- **Versions.** Releases are numbered `0.1.N`, and each release increments
-  `N`. The API is not settled: any release may change or remove exported
-  identifiers, and the [changelog][changes] marks each break. Pin an exact
-  version to avoid one.
-- **Lua 5.1 to 5.5, and LuaJIT.** CI runs the unit suites on each.
-- **tmux 3.3a or newer.** An older server is refused with `unsupported_version`
-  before caller operations run. Connection setup may probe the daemon's release.
-- **Neovim.** CI runs the Neovim tests on 0.10.0 and 0.12.5.
-- **Linux, including WSL.** CI runs on Ubuntu 24.04. No CI job runs on macOS,
-  so macOS is untested.
+- **Before 1.0.** Any release may change or remove an exported name. Pin an
+  exact version; the [changelog][changes] marks each break.
+- **Lua.** 5.1 to 5.5, and LuaJIT.
+- **tmux.** 3.3a or newer. An older server is refused with
+  `unsupported_version` before any operation runs.
+- **Neovim.** 0.10 or newer.
+- **Linux, WSL included.** macOS is not tested.
 
 [ref-concepts]: https://libtmux.org/en/lua/latest/concepts/server-session-window-pane/
+[ref-runtime-luv]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-luv/
+[ref-runtime-nvim]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim/
+[ref-server]: https://libtmux.org/en/lua/latest/reference/libtmux-server/
 [ref-luv-run]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-luv-run/
 [ref-runtime-connect]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-connect/
 [ref-server-new-session]: https://libtmux.org/en/lua/latest/reference/libtmux-server-new_session/
