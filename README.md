@@ -24,15 +24,17 @@ Neovim's event loop.
 
 </div>
 
-Releases are numbered `0.1.N`, and each release increments `N`. The API is not
-settled: any release may change or remove exported identifiers, and the
-[changelog](CHANGES.md) marks each break. Pin an exact version to avoid one.
+Needs Lua 5.1 to 5.5 or LuaJIT, and tmux 3.3a or newer. Before 1.0, any
+release may change an API: pin an exact version and read the
+[changelog](CHANGES.md).
 
 **Contents** — [Quick start](#quick-start) ·
 [Read tmux](#read-what-tmux-has-now) ·
 [Create](#create-sessions-windows-and-panes) ·
 [Type and read](#type-into-a-pane-and-read-the-answer) ·
-[Neovim](#use-it-from-neovim) · [Library](#the-library) ·
+[Run together](#run-several-commands-together) ·
+[Watch](#watch-a-pane-as-it-prints) ·
+[Neovim](#use-it-from-neovim) · [Packages](#packages) ·
 [Leaves out](#what-it-leaves-out) · [Support](#support-and-status) ·
 [Guides](#guides) ·
 [CI](https://github.com/libtmux/libtmux-lua/actions/workflows/ci.yml) ·
@@ -40,20 +42,17 @@ settled: any release may change or remove exported identifiers, and the
 
 ## Quick start
 
-Standalone scripts run on `luv`, the event loop. Building `luv` needs a C
-compiler, make and CMake. Install them first:
+Standalone scripts run on `luv`, the event loop. It builds with a C compiler,
+make and CMake:
 
 - Debian and Ubuntu: `build-essential` and `cmake`.
 - Fedora: `gcc`, `make` and `cmake`.
-- macOS (not a CI platform): the Xcode command line tools
-  (`xcode-select --install`) and `cmake`.
+- macOS: the Xcode command line tools and `cmake`.
 
-If the `luv` build fails, use a system package where one exists, such as
-`lua-luv` on Debian and Ubuntu. It serves only the distribution's own Lua,
-not one built elsewhere.
+If the build fails, install `lua-luv` on Debian or Ubuntu instead. It serves
+only the distribution's own Lua.
 
-Install the core rock, then `luv`, skipping `luv` if you installed the
-system package:
+Install the rock, then `luv` (skip it if you installed `lua-luv`):
 
 ```console
 $ luarocks --local install libtmux
@@ -111,71 +110,105 @@ starts a server.
 [`Session:snapshot`][ref-session-snapshot] reads it back.
 
 Live calls return [Requests][ref-request]. [`:await()`][ref-request-await]
-yields inside the [runtime][ref-runtime] body and returns `value, err`; the
-`must` helper turns an error into a raised one.
+yields inside the [runtime][ref-runtime] body and returns `value, err`; `must`
+raises the error.
 
-The program reads `TMUX_BIN` and `TMUX_SOCKET`, absolute paths to tmux and a
-socket. To run it without touching a tmux you use, clone the repository:
+The program needs `TMUX_BIN` and `TMUX_SOCKET`, absolute paths to tmux and a
+socket. The repository's launcher sets both on a private server, runs the
+program, then stops the server:
 
 ```console
 $ git clone https://github.com/libtmux/libtmux-lua.git && cd libtmux-lua
 ```
 
-Its launcher starts a tmux server on a private socket, runs the program, and
-stops the server. It needs `perl` to confirm the stop:
+The launcher needs `perl` to confirm the stop:
 
 ```console
 $ sh examples/api/run.sh examples/api/new_session.lua
 session: demo
 ```
 
-Every Lua block on this page is quoted from a program under
-[`examples/`](examples/) that CI runs, against a real tmux wherever the block
-uses one. Excerpts that talk to tmux run inside the same runtime body, with
-`server` and `must` in hand.
+Every Lua block here comes from a program under [`examples/`](examples/).
+Excerpts continue inside the same runtime body, with `server` and `must` in
+hand.
 
 ## Read what tmux has now
 
 ### [`Server:snapshot`][ref-server-snapshot]: what tmux has now
 
-One call reads every session, window and pane the server holds.
+One call reads every session, window and pane.
 [`snapshot.sessions`][ref-snapshot-sessions],
 [`snapshot.windows`][ref-snapshot-windows] and
 [`snapshot.panes`][ref-snapshot-panes] list them. This prints each pane and
 its window:
 
-<!-- excerpt: examples/snapshot.lua -->
+<!-- example: examples/snapshot.lua -->
 
 ```lua
-local snapshot = must(server:snapshot({ strict = true }):await())
-for _, pane in ipairs(snapshot.panes) do
-    io.stdout:write(pane.id, "\t", pane.window_id, "\n")
+local adapter = require("libtmux.runtime.luv")
+
+local function must(value, err)
+    if err ~= nil then
+        error(err, 0)
+    end
+    return value
 end
+
+must(adapter.run(function(runtime)
+    local server = must(runtime
+        :connect({
+            binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable"),
+            socket_path = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to an explicit socket"),
+        })
+        :await())
+    local snapshot = must(server:snapshot({ strict = true }):await())
+    for _, pane in ipairs(snapshot.panes) do
+        io.stdout:write(pane.id, "\t", pane.window_id, "\n")
+    end
+    must(server:close():await())
+    return true
+end))
 ```
 
-The launcher's server has one pane, so the complete
-[`snapshot.lua`](examples/snapshot.lua) prints its pane ID and window ID:
+The launcher's server has one pane, so it prints that pane's ID and its
+window's ID:
 
 ```console
 $ sh examples/api/run.sh examples/snapshot.lua
 %0	@0
 ```
 
-A [snapshot][ref-snapshot] is a record of what tmux held when it was read. It
-does not change when tmux does, and it spans several tmux commands, so it is
-not an atomic view. `strict = true` adds a verification pass. Call
-[`Server:snapshot`][ref-server-snapshot] again to refresh.
+A [snapshot][ref-snapshot] is what tmux held when it was read, across several
+tmux commands: not live and not atomic. `strict = true` adds a verification
+pass. Call [`Server:snapshot`][ref-server-snapshot] again to refresh.
+
+More: [Snapshots](docs/snapshots.md).
 
 ### [`Selection:where`][ref-selection-where]: narrow what you read
 
 [`Selection:where`][ref-selection-where] narrows a collection by structured
 criteria, and [`Selection:filter`][ref-selection-filter] by a Lua function.
 Both work on [`snapshot.panes`][ref-snapshot-panes] and on any list you give
-[`query.select`][ref-query-select], and neither calls tmux:
+[`query.select`][ref-query-select], and neither calls tmux. This program needs
+only Lua:
 
-<!-- excerpt: examples/native_query.lua -->
+<!-- example: examples/native_query.lua -->
 
 ```lua
+local query = require("libtmux.query")
+
+local schema = {
+    fields = {
+        id = { type = "string" },
+        active = { type = "boolean" },
+        current_command = { type = "string" },
+    },
+}
+local rows = {
+    { id = "%1", active = true, current_command = "nvim" },
+    { id = "%2", active = false, current_command = "sh" },
+    { id = "%3", active = false, current_command = "vim" },
+}
 local panes = query.select(rows, schema)
 local editors = panes:where({ current_command = { one_of = { "nvim", "vim" } } })
 assert(#editors == 2 and editors[1] == rows[1] and editors[2] == rows[3])
@@ -189,8 +222,7 @@ for _, pane in ipairs(editors) do
 end
 ```
 
-[`native_query.lua`](examples/native_query.lua) defines `rows` and `schema`
-and needs only Lua. It prints the panes whose command is `nvim` or `vim`:
+It prints the panes whose command is `nvim` or `vim`:
 
 ```console
 $ lua examples/native_query.lua
@@ -198,8 +230,8 @@ $ lua examples/native_query.lua
 %3	vim
 ```
 
-[Criteria and relationships](docs/query.md) and the
-[field reference](docs/fields.md) list what `where` accepts.
+More: [criteria and relationships](docs/query.md), the
+[field reference](docs/fields.md).
 
 ### [`Server:query`][ref-server-query]: read and filter in one call
 
@@ -231,6 +263,45 @@ matched: demo
 ```
 
 `complete` reports no known inconsistency. The read is still not atomic.
+
+More: [live queries](docs/query.md#query-live-state-explicitly).
+
+### [`Server:explain_panes`][ref-server-explain-panes]: see what runs in tmux
+
+[`Server:explain_panes`][ref-server-explain-panes] and
+[`Server:explain`][ref-server-explain] return the plan for a query without
+contacting tmux: its commands, the criteria sent to tmux as a filter, and the
+ones kept local. `pushdown` picks the mode: `never`, `auto` or `require`:
+
+<!-- excerpt: examples/api/explain.lua -->
+
+```lua
+    local where = { active = true, current_command = "cat" }
+    for _, mode in ipairs({ "never", "auto" }) do
+        -- Explaining sends nothing to tmux.
+        local plan = must(server:explain_panes({ where = where, pushdown = mode }):await())
+        local filter = plan.filter or "none"
+        print(mode .. ": " .. #plan.commands .. " tmux commands, filter " .. filter)
+        for _, left in ipairs(plan.residual) do
+            print("  local: " .. left.path .. " (" .. left.reason .. ")")
+        end
+    end
+```
+
+`never` keeps every criterion local. `auto` sends `active` to tmux and keeps
+`current_command` local:
+
+```console
+$ sh examples/api/run.sh examples/api/explain.lua
+never: 6 tmux commands, filter none
+  local: $ (pushdown_disabled)
+auto: 7 tmux commands, filter #{==:#{pane_active},1}
+  local: $.current_command.eq (nullable_field_remains_local)
+```
+
+`auto` adds a tmux-side listing; it does not make the query faster.
+
+More: [live queries](docs/query.md#query-live-state-explicitly).
 
 ### [`Window:snapshot`][ref-window-snapshot]: read one object again
 
@@ -271,20 +342,38 @@ Like [`Server:new_session`][ref-server-new-session], it returns a
 [`window`][ref-window], [`pane`][ref-pane] and
 [`window_link`][ref-windowlink] handles:
 
-<!-- excerpt: examples/api/new_window.lua -->
+<!-- example: examples/api/new_window.lua -->
 
 ```lua
-local created = must(server
-    :new_session({
-        name = "demo",
-        window_name = "main",
-        argv = { "/bin/cat" },
-    })
-    :await())
-local logs = must(created.session:new_window({ name = "logs", argv = { "/bin/cat" } }):await())
-local snapshot = must(logs.window:snapshot():await())
-assert(snapshot.name == "logs", "created window has the wrong name")
-print("window: " .. snapshot.name)
+local adapter = require("libtmux.runtime.luv")
+
+local function must(value, err)
+    if err ~= nil then
+        error(tostring(err), 0)
+    end
+    return value
+end
+
+local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
+local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+
+must(adapter.run(function(runtime)
+    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
+    local created = must(server
+        :new_session({
+            name = "demo",
+            window_name = "main",
+            argv = { "/bin/cat" },
+        })
+        :await())
+    local logs = must(created.session:new_window({ name = "logs", argv = { "/bin/cat" } }):await())
+    local snapshot = must(logs.window:snapshot():await())
+    assert(snapshot.name == "logs", "created window has the wrong name")
+    print("window: " .. snapshot.name)
+
+    must(server:close():await())
+    return true
+end))
 ```
 
 `argv` is the literal command the pane runs. Leave it out for tmux's default
@@ -297,6 +386,8 @@ window: logs
 
 Creation does not wait for the program to start or report whether it
 succeeds. Closing the server handle leaves what you created running.
+
+More: [Creation](docs/creation.md).
 
 ### [`Pane:split`][ref-pane-split]: divide a window
 
@@ -331,22 +422,55 @@ Success means tmux accepted the input while the command may still be running.
 The example waits on a tmux `wait-for` channel with
 [`Server:command`][ref-server-command]:
 
-<!-- excerpt: examples/api/send_keys.lua -->
+<!-- example: examples/api/send_keys.lua -->
 
 ```lua
--- Signal completion on this socket; do not guess when the shell has printed.
-local command = "printf '\\nlua input ready\\n'; "
-    .. quote(binary)
-    .. " -S "
-    .. quote(socket)
-    .. " wait-for -S example-ready"
-must(pane:send_text(command):await())
-must(pane:send_keys({ "Enter" }):await())
-must(server:command({ "wait-for", "example-ready" }, { timeout = 1000 }):await())
+local adapter = require("libtmux.runtime.luv")
+
+local function must(value, err)
+    if err ~= nil then
+        error(tostring(err), 0)
+    end
+    return value
+end
+
+local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
+local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+
+must(adapter.run(function(runtime)
+    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
+    local created = must(server:new_session({ name = "demo", argv = { "/bin/sh" } }):await())
+    local pane = created.pane
+    local function quote(text)
+        return "'" .. text:gsub("'", "'\\''") .. "'"
+    end
+
+    -- Signal completion on this socket; do not guess when the shell has printed.
+    local command = "printf '\\nlua input ready\\n'; "
+        .. quote(binary)
+        .. " -S "
+        .. quote(socket)
+        .. " wait-for -S example-ready"
+    must(pane:send_text(command):await())
+    must(pane:send_keys({ "Enter" }):await())
+    must(server:command({ "wait-for", "example-ready" }, { timeout = 1000 }):await())
+    local capture = must(pane:capture({ history_lines = 20 }):await())
+    local found = false
+    for line in must(capture:text()):gmatch("[^\r\n]+") do
+        if line == "lua input ready" then
+            found = true
+        end
+    end
+    assert(found, "completed command did not print the expected line")
+    print("lua input ready")
+
+    must(server:close():await())
+    return true
+end))
 ```
 
 `quote` shell-quotes the tmux path and socket for the pane's shell. The
-program goes on to capture the pane and print the line the command wrote:
+program captures the pane and prints the line the command wrote:
 
 ```console
 $ sh examples/api/run.sh examples/api/send_keys.lua
@@ -355,6 +479,8 @@ lua input ready
 
 [`Server:command`][ref-server-command] runs any tmux command from literal
 arguments. A nonzero exit is part of the result.
+
+More: [Pane operations](docs/panes.md).
 
 ### [`Pane:capture`][ref-pane-capture]: read the screen
 
@@ -388,11 +514,10 @@ joined lines to escape sequences.
 
 ### [`Pane:wait_for_text`][ref-pane-wait-for-text]: wait for text on screen
 
-[`Pane:wait_for_text`][ref-pane-wait-for-text] polls the visible screen on
-every supported tmux release until it holds the literal text.
-
-The result has the matching screen and `matched_at_entry`, true when the
-first read already matched. Pass `timeout` or `deadline` to bound the wait.
+[`Pane:wait_for_text`][ref-pane-wait-for-text] polls the visible screen until
+it holds the literal text. The result has the matching screen and
+`matched_at_entry`, true when the first read already matched. Pass `timeout`
+or `deadline` to bound the wait:
 
 <!-- excerpt: examples/api/wait_for_text.lua -->
 
@@ -411,8 +536,123 @@ lua wait ready
 ```
 
 If the pane exits first, the wait ends with `pane_died` and the text seen so
-far. See [waiting for pane text](docs/panes.md#wait-for-text) for the read,
-the hooks it runs and every end state.
+far. More: [waiting for pane text](docs/panes.md#wait-for-text).
+
+## Run several commands together
+
+### [`Server:group`][ref-server-group]: several commands, one tmux call
+
+[`Server:group`][ref-server-group] runs commands in order in one tmux call.
+[`Server:batch`][ref-server-batch] runs independent commands and reports each
+outcome. This group creates a session and two windows, then lists them:
+
+<!-- example: examples/api/group.lua -->
+
+```lua
+local adapter = require("libtmux.runtime.luv")
+
+local function must(value, err)
+    if err ~= nil then
+        error(tostring(err), 0)
+    end
+    return value
+end
+
+local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
+local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+
+must(adapter.run(function(runtime)
+    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
+    -- One tmux process runs all four commands, in order.
+    local done = must(server
+        :group({
+            { "new-session", "-d", "-s", "demo", "-n", "main", "/bin/cat" },
+            { "new-window", "-d", "-t", "demo:", "-n", "build", "/bin/cat" },
+            { "new-window", "-d", "-t", "demo:", "-n", "test", "/bin/cat" },
+            { "list-windows", "-t", "demo", "-F", "#{window_name}" },
+        })
+        :await())
+    assert(done.exit_code == 0, "the group failed")
+    local names = {}
+    for name in done.stdout:gmatch("[^\n]+") do
+        names[#names + 1] = name
+    end
+    assert(#names == 3, "the group did not create three windows")
+    print("windows: " .. table.concat(names, ", "))
+
+    must(server:close():await())
+    return true
+end))
+```
+
+```console
+$ sh examples/api/run.sh examples/api/group.lua
+windows: main, build, test
+```
+
+A group is not a transaction: a failing command skips the rest, and commands
+that already ran stay done.
+
+More: [commands and batches](docs/commands.md).
+
+## Watch a pane as it prints
+
+### [`Server:observe`][ref-server-observe]: keep a control-mode client open
+
+[`Server:observe`][ref-server-observe] holds one control-mode client for a
+session. [`Observation:watch_pane`][ref-observation-watch-pane] streams a
+pane's output, and
+[`Observation:watch_notifications`][ref-observation-watch-notifications]
+streams tmux's own events. [`watch:next`][ref-watch-next] returns the next
+event. This needs tmux 3.7 or newer:
+
+<!-- example: examples/api/watch_pane.lua -->
+
+```lua
+local adapter = require("libtmux.runtime.luv")
+
+local function must(value, err)
+    if err ~= nil then
+        error(tostring(err), 0)
+    end
+    return value
+end
+
+local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
+local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+
+must(adapter.run(function(runtime)
+    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
+    local created = must(
+        server:new_session({ name = "demo", window_name = "main", argv = { "/bin/cat" } }):await()
+    )
+    -- Observation holds one control-mode client open; it needs tmux 3.7 or newer.
+    local observation = must(server:observe(created.session):await())
+    local watch = must(observation:watch_pane(created.pane):await())
+
+    must(created.pane:send_text("watched"):await())
+    local output = ""
+    while not output:find("watched", 1, true) do
+        output = output .. must(watch:next({ timeout = 5000 }):await()).data
+    end
+    print("output: watched")
+
+    must(observation:close():await())
+    must(server:close():await())
+    return true
+end))
+```
+
+```console
+$ sh examples/api/run.sh examples/api/watch_pane.lua
+output: watched
+```
+
+Each event carries the pane's bytes and a sequence number. A slow reader loses
+events: the watch ends with `observation_gap` instead of dropping them
+silently.
+
+More: [observing a session](docs/control.md).
 
 ## Use it from Neovim
 
@@ -456,35 +696,33 @@ $ TMUX_SOCKET=/path/to/tmux.sock nvim \
     -c 'luafile examples/nvim_snapshot.lua'
 ```
 
-Neovim then shows the server's pane count. It has its own libuv binding, so
-the `luv` rock is not needed here.
+Neovim shows the server's pane count. It has its own libuv binding, so the
+`luv` rock is not needed.
 
-The runtime closes its connections when the body finishes and leaves the tmux
-server running. See [runtime ownership and cancellation](docs/runtime.md).
+More: [runtime ownership and cancellation](docs/runtime.md).
 
-## The library
+## Packages
 
-[`libtmux`](https://github.com/libtmux/libtmux-lua/tree/master/lua/libtmux)
-creates sessions, windows and panes, captures pane output, queries server state
-and watches pane output, on luv or Neovim's event loop. Reference:
+### [`libtmux`](https://github.com/libtmux/libtmux-lua/tree/master/lua/libtmux): the library
 
-- [LuaRocks](https://luarocks.org/modules/tony/libtmux) and
-  [libtmux.org](https://libtmux.org/en/lua/latest/reference/).
-- [`libtmux.Server`](https://libtmux.org/en/lua/latest/reference/libtmux-server/),
-  [`libtmux.runtime.luv`](https://libtmux.org/en/lua/latest/reference/libtmux-runtime-luv/),
-  [`libtmux.runtime.nvim`](https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim/)
-  and [`libtmux.query`](https://libtmux.org/en/lua/latest/reference/libtmux-query/).
+Sessions, windows, panes, queries and pane watches on luv or Neovim's event
+loop. Importing a module starts neither tmux nor an event loop, and
+[local queries][ref-query] need only Lua.
 
-Importing a module starts neither tmux nor an event loop, and
-[local queries][ref-query] need only Lua. To install from a checkout instead
-of LuaRocks:
+Reference: [LuaRocks](https://luarocks.org/modules/tony/libtmux),
+[libtmux.org](https://libtmux.org/en/lua/latest/reference/),
+[`libtmux.Server`](https://libtmux.org/en/lua/latest/reference/libtmux-server/),
+[`libtmux.runtime.luv`](https://libtmux.org/en/lua/latest/reference/libtmux-runtime-luv/),
+[`libtmux.runtime.nvim`](https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim/),
+[`libtmux.query`](https://libtmux.org/en/lua/latest/reference/libtmux-query/).
+Changelog: [`CHANGES.md`](CHANGES.md). Module by module: the
+[core README](lua/libtmux/README.md).
+
+To install from a checkout instead of LuaRocks:
 
 ```console
 $ luarocks --local make rockspecs/libtmux-scm-1.rockspec
 ```
-
-The [core README](lua/libtmux/README.md) covers each module, with a complete
-program for the standalone loop, Neovim and tables without tmux.
 
 ## What it leaves out
 
@@ -504,53 +742,46 @@ program for the standalone loop, Neovim and tables without tmux.
 
 ## Support and status
 
-- **Versions.** Releases are numbered `0.1.N`, and each release increments
-  `N`. The API is not settled: any release may change or remove exported
-  identifiers, and the changelog marks each break. Pin an exact version to
-  avoid one.
-- **Lua 5.1 to 5.5, and LuaJIT.** CI runs the unit suites on each.
-- **tmux 3.3a or newer.** Connection setup may probe the daemon's release,
-  then refuse an older server with
+- **Before 1.0.** Any release may change or remove an exported name. Pin an
+  exact version; the [changelog](CHANGES.md) marks each break.
+- **Lua.** 5.1 to 5.5, and LuaJIT.
+- **tmux.** 3.3a or newer. An older server is refused with
   [`unsupported_version`](docs/compatibility.md#minimum-tmux-release).
-  The [compatibility matrix](docs/compatibility.md) lists CI's integration releases.
-- **tmux release candidates are not supported.** A feature can require one
-  only until its release ships, and a candidate such as `X.Y-rcN` ranks below
-  `X.Y`, so one below the floor is refused.
-  See [Release candidates](https://libtmux.org/en/tmux/guides/tmux-support/#release-candidates).
-- **Pane-output watches and control observation need tmux 3.7 or newer.**
-  `observe` returns `unsupported` on an older server. See
-  [control](docs/control.md).
-- **Waiting for text polls the visible screen.**
-  [`Pane:wait_for_text`][ref-pane-wait-for-text] works on every release. Each
-  read runs the `after-capture-pane` hook and never searches scrollback.
-- **Nested commands are not checked.** A refused command inside another,
-  such as `if-shell -F 1 'break-pane -d'`, reaches tmux and can stop the
-  server on exactly 3.7. See the [limit and its advice](docs/commands.md).
-- **Optional features.** Some commands and options need a newer release than
-  3.3a. The [optional-feature table](docs/compatibility.md#optional-features)
-  lists each, and [`capabilities.json`](capabilities.json) holds the same
-  data for tools.
-- **Neovim.** CI runs the Neovim tests on 0.10.0 and 0.12.5.
-- **Linux, including WSL.** CI runs on Ubuntu 24.04 and local checks run under
-  WSL2. No CI job runs on macOS, so macOS is untested.
-- **Releases.** The [changelog](CHANGES.md) records each one, and the
-  [release instructions](.github/CONTRIBUTING.md#releases) cover verification.
+  [Compatibility matrix](docs/compatibility.md).
+- **Optional features.** Some commands and options need a newer tmux. The
+  [table](docs/compatibility.md#optional-features) and
+  [`capabilities.json`](capabilities.json) list each.
+- **Control mode.** [`observe`][ref-server-observe] needs tmux 3.7 or newer
+  and returns `unsupported` below it. [Control guide](docs/control.md).
+- **Polling.** [`Pane:wait_for_text`][ref-pane-wait-for-text] works on every
+  release. It reads the visible screen, never scrollback, and each read runs
+  the `after-capture-pane` hook.
+- **Nested commands are not checked.** `if-shell -F 1 'break-pane -d'` reaches
+  tmux unchecked and can stop a 3.7 server. [Details](docs/commands.md).
+- **No release candidates.** An `X.Y-rcN` build ranks below `X.Y`.
+  [Policy](https://libtmux.org/en/tmux/guides/tmux-support/#release-candidates).
+- **Neovim.** 0.10 or newer.
+- **Linux, WSL included.** macOS is not tested.
+- **Changelog.** [`CHANGES.md`](CHANGES.md) records each release;
+  [release steps](.github/CONTRIBUTING.md#releases).
 
 ## Guides
 
-- **Clients:** [switch sessions and detach terminals](docs/clients.md).
-- **Read and watch:** [snapshots](docs/snapshots.md),
-  [session notifications and pane streams](docs/control.md).
+- **Read and query:** [snapshots](docs/snapshots.md),
+  [queries](docs/query.md), [field reference](docs/fields.md).
+- **Create and type:** [creation](docs/creation.md),
+  [pane operations](docs/panes.md).
 - **Run and arrange:** [commands and batches](docs/commands.md),
-  [session/window topology](docs/topology.md), [binary buffers](docs/buffers.md).
+  [topology](docs/topology.md), [binary buffers](docs/buffers.md),
+  [clients](docs/clients.md).
+- **Watch:** [session notifications and pane streams](docs/control.md).
 - **Configure:** [options and hooks](docs/settings.md),
   [option reference](docs/options-reference.md),
   [environment values](docs/environment.md).
+- **Runtime and compatibility:** [runtime ownership](docs/runtime.md),
+  [compatibility matrix](docs/compatibility.md).
 - **Contribute:** [setup and validation](.github/CONTRIBUTING.md),
   [writing conventions](.github/WRITING.md).
-
-Live tests use private sockets and clean up their own servers. See the
-contributing guide for the same offline checks that run in CI.
 
 ## AI policy
 
@@ -612,3 +843,10 @@ MIT. See [`LICENSE`](LICENSE).
 [ref-capture-text]: https://libtmux.org/en/lua/latest/reference/libtmux-capture-text/
 [ref-session-attach]: https://libtmux.org/en/lua/latest/reference/libtmux-session-attach/
 [ref-nvim-start]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim-start/
+[ref-server-explain-panes]: https://libtmux.org/en/lua/latest/reference/libtmux-server-explain_panes/
+[ref-server-explain]: https://libtmux.org/en/lua/latest/reference/libtmux-server-explain/
+[ref-server-group]: https://libtmux.org/en/lua/latest/reference/libtmux-server-group/
+[ref-server-batch]: https://libtmux.org/en/lua/latest/reference/libtmux-server-batch/
+[ref-server-observe]: https://libtmux.org/en/lua/latest/reference/libtmux-server-observe/
+[ref-observation-watch-notifications]: https://libtmux.org/en/lua/latest/reference/libtmux-observation-watch_notifications/
+[ref-watch-next]: https://libtmux.org/en/lua/latest/reference/libtmux-watch-next/
