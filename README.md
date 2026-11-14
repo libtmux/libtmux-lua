@@ -32,6 +32,7 @@ release may change an API: pin an exact version and read the
 [Read tmux](#read-what-tmux-has-now) ·
 [Create](#create-sessions-windows-and-panes) ·
 [Type and read](#type-into-a-pane-and-read-the-answer) ·
+[Resize](#resize-remove-and-configure) ·
 [Run together](#run-several-commands-together) ·
 [Watch](#watch-a-pane-as-it-prints) ·
 [Neovim](#use-it-from-neovim) · [Packages](#packages) ·
@@ -538,6 +539,73 @@ lua wait ready
 If the pane exits first, the wait ends with `pane_died` and the text seen so
 far. More: [waiting for pane text](docs/panes.md#wait-for-text).
 
+## Resize, remove and configure
+
+### [`Pane:resize`][ref-pane-resize]: set a size
+
+[`Pane:resize`][ref-pane-resize] sets a pane's `width` and `height`, or
+adjusts it by a `direction` and an `amount`.
+[`Window:resize`][ref-window-resize] takes `width` and `height`. tmux can clamp
+both to the layout, so read the sizes back:
+
+<!-- example: examples/api/resize.lua -->
+
+```lua
+local adapter = require("libtmux.runtime.luv")
+
+local function must(value, err)
+    if err ~= nil then
+        error(tostring(err), 0)
+    end
+    return value
+end
+
+local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
+local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+
+must(adapter.run(function(runtime)
+    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
+    local created = must(server:new_session({ name = "demo", argv = { "/bin/cat" } }):await())
+    local split = must(created.pane:split({ direction = "right", argv = { "/bin/cat" } }):await())
+
+    must(created.window:resize({ width = 100, height = 30 }):await())
+    must(split.pane:resize({ width = 30 }):await())
+
+    -- A resize can clamp to the layout, so read the sizes tmux settled on.
+    local window = must(created.window:snapshot():await())
+    local pane = must(split.pane:snapshot():await())
+    assert(window.width == 100 and window.height == 30, "the window kept its old size")
+    assert(pane.width == 30, "the pane kept its old width")
+    print(("window %dx%d, pane %d wide"):format(window.width, window.height, pane.width))
+
+    must(server:close():await())
+    return true
+end))
+```
+
+```console
+$ sh examples/api/run.sh examples/api/resize.lua
+window 100x30, pane 30 wide
+```
+
+More: [pane operations](docs/panes.md#resize-kill-and-respawn),
+[window size](docs/topology.md#window-size-and-layout).
+
+### [`Pane:kill`][ref-pane-kill]: remove what you made
+
+[`Pane:kill`][ref-pane-kill], [`Window:kill`][ref-window-kill] and
+[`Session:kill`][ref-session-kill] remove the object they are called on.
+Removing a window's last pane removes the window too. More:
+[removal](docs/topology.md#names-and-removal).
+
+### [`Window:set_option`][ref-window-set-option]: change a setting
+
+[`Window:set_option`][ref-window-set-option] and
+[`Window:get_option`][ref-window-get-option] write and read one option. Server,
+session and pane handles have them too, and
+[`Window:set_hook`][ref-window-set-hook] stores a command for a hook. More:
+[options and hooks](docs/settings.md).
+
 ## Run several commands together
 
 ### [`Server:group`][ref-server-group]: several commands, one tmux call
@@ -850,3 +918,11 @@ MIT. See [`LICENSE`](LICENSE).
 [ref-server-observe]: https://libtmux.org/en/lua/latest/reference/libtmux-server-observe/
 [ref-observation-watch-notifications]: https://libtmux.org/en/lua/latest/reference/libtmux-observation-watch_notifications/
 [ref-watch-next]: https://libtmux.org/en/lua/latest/reference/libtmux-watch-next/
+[ref-pane-resize]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-resize/
+[ref-window-resize]: https://libtmux.org/en/lua/latest/reference/libtmux-window-resize/
+[ref-pane-kill]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-kill/
+[ref-window-kill]: https://libtmux.org/en/lua/latest/reference/libtmux-window-kill/
+[ref-session-kill]: https://libtmux.org/en/lua/latest/reference/libtmux-session-kill/
+[ref-window-set-option]: https://libtmux.org/en/lua/latest/reference/libtmux-window-set_option/
+[ref-window-get-option]: https://libtmux.org/en/lua/latest/reference/libtmux-window-get_option/
+[ref-window-set-hook]: https://libtmux.org/en/lua/latest/reference/libtmux-window-set_hook/

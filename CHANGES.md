@@ -4,6 +4,10 @@ Notable changes to `libtmux`.
 
 ## Unreleased
 
+- Docs: the README shows `Pane:resize` and `Window:resize` with a new tested
+  program, `examples/api/resize.lua`, and links the kill, option and hook
+  methods.
+
 ## 0.1.1-1 (2026-11-01)
 
 - Connect: `socket_path` is optional. Without it, `Runtime:connect` reads
