@@ -16,6 +16,7 @@ TARGETS = {
     "libtmux.Pane:send_keys", "libtmux.Pane:capture", "libtmux.Pane:wait_for_text", "libtmux.Error.code", "libtmux.Error.message",
     "libtmux.Entity:snapshot", "libtmux.Window:rename", "libtmux.Server:explain_panes",
     "libtmux.Server:group", "libtmux.Server:observe", "libtmux.Observation:watch_pane",
+    "libtmux.Pane:resize", "libtmux.Window:resize",
 }
 
 
@@ -33,7 +34,7 @@ class CompleteApiExamplesTest(unittest.TestCase):
 
     def test_complete_programs_cover_their_existing_targets(self):
         manifest = load_examples(self.root, TARGETS)
-        self.assertEqual(len(manifest["examples"]), 13)
+        self.assertEqual(len(manifest["examples"]), 14)
         self.assertEqual({symbol for example in manifest["examples"]
                           for symbol in example["symbols"]}, TARGETS)
         for example in manifest["examples"]:

@@ -46,6 +46,16 @@
       "stdout": "window: logs\n"
     },
     {
+      "id": "resize",
+      "symbols": [
+        "libtmux.Pane:resize",
+        "libtmux.Window:resize"
+      ],
+      "file": "examples/api/resize.lua",
+      "description": "Resize a window and one of its panes, then read the sizes tmux settled on.",
+      "stdout": "window 100x30, pane 30 wide\n"
+    },
+    {
       "id": "refresh",
       "symbols": [
         "libtmux.Entity:snapshot",

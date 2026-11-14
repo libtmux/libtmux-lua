@@ -28,6 +28,7 @@ $ sh examples/api/run.sh examples/api/connect.lua
 | [snapshot.lua](snapshot.lua) | List sessions, windows, and panes | Two of each |
 | [new_session.lua](new_session.lua) | Create a session | `session: demo` |
 | [new_window.lua](new_window.lua) | Create a window in that session | `window: logs` |
+| [resize.lua](resize.lua) | Resize a window and a pane | `window 100x30, pane 30 wide` |
 | [refresh.lua](refresh.lua) | Read a window again after renaming it | `editor build` |
 | [query.lua](query.lua) | Select sessions by name | `matched: demo` |
 | [explain.lua](explain.lua) | Show what a pane query runs in tmux and what stays local | Two plans, `never` and `auto` |
