@@ -93,6 +93,35 @@
       "stdout": "lua wait ready\n"
     },
     {
+      "id": "explain",
+      "symbols": [
+        "libtmux.Server:explain_panes"
+      ],
+      "file": "examples/api/explain.lua",
+      "description": "Show which parts of a pane query run in tmux and which stay local, without contacting tmux.",
+      "stdout": "never: 6 tmux commands, filter none\n  local: $ (pushdown_disabled)\nauto: 7 tmux commands, filter #{==:#{pane_active},1}\n  local: $.current_command.eq (nullable_field_remains_local)\n"
+    },
+    {
+      "id": "group",
+      "symbols": [
+        "libtmux.Server:group"
+      ],
+      "file": "examples/api/group.lua",
+      "description": "Create a session and two windows, then list them, in one ordered tmux call.",
+      "stdout": "windows: main, build, test\n"
+    },
+    {
+      "id": "watch_pane",
+      "symbols": [
+        "libtmux.Server:observe",
+        "libtmux.Observation:watch_pane"
+      ],
+      "file": "examples/api/watch_pane.lua",
+      "description": "Stream a pane's output from a control-mode observation and wait for typed text to arrive.",
+      "min_tmux": "3.7",
+      "stdout": "output: watched\n"
+    },
+    {
       "id": "unsupported_version",
       "symbols": [
         "libtmux.Error.code",

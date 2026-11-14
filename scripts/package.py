@@ -143,6 +143,15 @@ def live_example(prefix, version, *, lua, cwd, env):
     print("PASS installed public snapshot/quickstart examples and borrowed-server cleanup", flush=True)
 
 
+def tmux_release(binary):
+    """The (major, minor) release a tmux executable reports, such as (3, 7) for 3.7c."""
+    banner = subprocess.run([binary, "-V"], capture_output=True, text=True, check=True).stdout
+    found = re.search(r"(\d+)\.(\d+)", banner)
+    if not found:
+        raise RuntimeError(f"cannot read the release from {banner!r}")
+    return int(found.group(1)), int(found.group(2))
+
+
 def complete_api_examples(prefix, version, *, lua, cwd, env):
     manifest = load_examples(ROOT)
     directory = cwd / "complete-api-examples"
@@ -155,7 +164,14 @@ def complete_api_examples(prefix, version, *, lua, cwd, env):
                      TMUX_BIN=shutil.which(env.get("TMUX_BIN", "tmux")))
     child_env["LUA_PATH"] = f"{prefix}/share/lua/{version}/?.lua;{prefix}/share/lua/{version}/?/init.lua"
     child_env["LUA_CPATH"] = f"{prefix}/lib/lua/{version}/?.so"
+    release = tmux_release(child_env["TMUX_BIN"])
+    ran = 0
     for example in manifest["examples"]:
+        needed = example.get("min_tmux")
+        if needed and release < tuple(int(part) for part in needed.split(".")):
+            print(f"SKIP {example['id']}: needs tmux {needed}, found {release[0]}.{release[1]}", flush=True)
+            continue
+        ran += 1
         program = directory / Path(example["file"]).name
         shutil.copyfile(ROOT / example["file"], program)
         output = run(["sh", str(launcher), str(program)], cwd=directory, env=child_env)
@@ -178,7 +194,7 @@ def complete_api_examples(prefix, version, *, lua, cwd, env):
         if list(temporary.iterdir()):
             raise RuntimeError(f"{name}: failing example left a socket directory")
     temporary.rmdir()
-    print("PASS seven complete API programs and import/runtime failure cleanup", flush=True)
+    print(f"PASS {ran} complete API programs and import/runtime failure cleanup", flush=True)
 
 
 def source_rock(spec, work, env, *, rocks, public_tag):

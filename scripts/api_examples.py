@@ -26,8 +26,8 @@ def load_examples(root, symbols=None):
         if not condition:
             raise ValueError("Invalid complete API examples: " + message)
 
-    def keys(value, expected):
-        require(isinstance(value, dict) and set(value) == set(expected),
+    def keys(value, expected, optional=()):
+        require(isinstance(value, dict) and set(expected) <= set(value) <= set(expected) | set(optional),
                 "unexpected or missing manifest fields")
 
     def file(path, expected):
@@ -51,7 +51,7 @@ def load_examples(root, symbols=None):
     require(isinstance(manifest["examples"], list) and bool(manifest["examples"]), "no examples")
     ids, targets = set(), set()
     for example in manifest["examples"]:
-        keys(example, ("id", "symbols", "file", "description", "stdout"))
+        keys(example, ("id", "symbols", "file", "description", "stdout"), optional=("min_tmux",))
         name = example["id"]
         require(isinstance(name, str) and re.fullmatch(r"[a-z][a-z_]*", name), "invalid example id")
         require(name not in ids, "duplicate example id")
@@ -61,6 +61,8 @@ def load_examples(root, symbols=None):
                 "missing task description")
         require(isinstance(example["stdout"], str) and bool(example["stdout"].strip())
                 and example["stdout"].endswith("\n"), "missing expected output")
+        require("min_tmux" not in example or (isinstance(example["min_tmux"], str)
+                and re.fullmatch(r"\d+\.\d+", example["min_tmux"])), "min_tmux must be a release such as 3.7")
         require(isinstance(example["symbols"], list) and bool(example["symbols"]), "missing API targets")
         for symbol in example["symbols"]:
             require(isinstance(symbol, str) and re.fullmatch(r"libtmux\.[\w.]+[:.]\w+", symbol),
