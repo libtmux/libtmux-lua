@@ -3,6 +3,13 @@ local uv = require("support.uv")
 
 local M = {}
 
+-- A write to a pipe whose reader has exited raises SIGPIPE, which kills a process that leaves it at
+-- its default. A child that exits without reading its input is ordinary, so the write fails with
+-- EPIPE instead: libuv handles the signal once something listens for it.
+local sigpipe = assert(uv.new_signal())
+sigpipe:unref()
+sigpipe:start("sigpipe", function() end)
+
 ---@param env table<string, string>
 ---@return string[]
 local function environment_list(env)

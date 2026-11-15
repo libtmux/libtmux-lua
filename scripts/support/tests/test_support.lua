@@ -1,6 +1,7 @@
 local test = require("luaunit")
 local files = require("support.files")
 local json = require("support.json")
+local proc = require("support.proc")
 local repo = require("support.repo")
 local M = {}
 
@@ -92,6 +93,15 @@ end
 function M.test_the_root_holds_the_scripts_and_the_rock_tree_is_on_the_path()
     test.assertNotNil(io.open(repo.root .. "/scripts/support/repo.lua"))
     test.assertNotNil(package.path:find(repo.root .. "/.cache/rocks/luajit-", 1, true))
+end
+
+-- A write to a pipe whose reader has gone raises SIGPIPE, which ends a process that does not
+-- ignore it. A child that exits at once, such as the stand-in the sandbox stops, is the usual one.
+function M.test_a_child_that_never_reads_its_input_does_not_kill_the_writer()
+    local input = ("x"):rep(1048576)
+    for _ = 1, 100 do
+        test.assertEquals(proc.run({ "true" }, { stdin = input }).code, 0)
+    end
 end
 
 return M
