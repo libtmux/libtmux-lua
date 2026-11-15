@@ -16,7 +16,7 @@ local function directory_of(owned)
     return assert(owned.socket_path:match("^(.*)/[^/]+$"))
 end
 
--- The Python side reads these lines to check the directory and socket independently.
+-- test_owned_server reads these lines to check the directory and socket independently.
 local function announce(owned)
     io.stdout:write("DIR ", directory_of(owned), "\n", "SOCKET ", owned.socket_path, "\n")
     io.stdout:flush()

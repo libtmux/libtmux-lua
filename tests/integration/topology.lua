@@ -259,7 +259,7 @@ local function work(runtime)
                 cwd = assert(os.getenv("LIBTMUX_TEST_DIRECTORY")),
                 environment = { VALUE = "literal#{pid};" },
                 argv = {
-                    assert(os.getenv("LIBTMUX_TEST_PYTHON")),
+                    assert(os.getenv("LIBTMUX_TEST_LUA")),
                     assert(os.getenv("LIBTMUX_RESPAWN_SCRIPT")),
                     assert(os.getenv("TMUX_BIN")),
                     assert(os.getenv("TMUX_SOCKET")),

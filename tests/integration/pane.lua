@@ -13,8 +13,10 @@ local function work(runtime)
     local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
     local mode = assert(os.getenv("LIBTMUX_PANE_CASE"))
     local argv = {
-        assert(os.getenv("LIBTMUX_TEST_PYTHON")),
+        assert(os.getenv("LIBTMUX_TEST_LUA")),
         assert(os.getenv("LIBTMUX_PANE_SCRIPT")),
+        binary,
+        socket,
         assert(os.getenv("LIBTMUX_PANE_REPORT")),
     }
     local created = must(server

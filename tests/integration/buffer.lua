@@ -70,7 +70,7 @@ local function work(runtime)
             must(pane:respawn({
                 kill = true,
                 argv = {
-                    assert(os.getenv("LIBTMUX_TEST_PYTHON")),
+                    assert(os.getenv("LIBTMUX_TEST_LUA")),
                     assert(os.getenv("LIBTMUX_BUFFER_SCRIPT")),
                     assert(os.getenv("TMUX_BIN")),
                     assert(os.getenv("TMUX_SOCKET")),

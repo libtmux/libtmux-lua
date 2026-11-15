@@ -3,8 +3,9 @@
 --   luajit scripts/check/check.lua GATE [SUITE...] [--lua PATH] [--nvim PATH]
 --
 -- Gates: unit, mid, format, lint, generated, docs, integration, refusal, package, types and outer.
--- SUITE names select unit suites. The process makes the tmux sandbox first, so nothing a gate
--- starts can reach a server of the developer's, and fails the run when a socket is left in it.
+-- SUITE names select unit suites, or integration suites such as `integration buffer`. The process
+-- makes the tmux sandbox first, so nothing a gate starts can reach a server of the developer's, and
+-- fails the run when a socket is left in it.
 -- Each command prints one JSON line with its exit code and wall time; the gate prints its own
 -- and fails when it exceeds its budget. See README.md.
 local here = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") or "."
@@ -19,7 +20,7 @@ local sandbox_host = require("tests.support.sandbox_host")
 
 local cli = argparse("check.lua", "Timed, offline development gates.")
 cli:argument("gate", "the gate to run"):choices(gates.GATES)
-cli:argument("suites", "unit suite names"):args("*")
+cli:argument("suites", "unit or integration suite names"):args("*")
 cli:option("--lua", "interpreter executable"):default("lua")
 cli:option("--nvim", "Neovim executable for embedded integration tests")
 local parsed, arguments = cli:pparse({ ... })
@@ -27,8 +28,8 @@ if not parsed then
     io.stderr:write(cli:get_usage(), "\ncheck.lua: error: ", arguments, "\n")
     os.exit(2)
 end
-if #arguments.suites > 0 and arguments.gate ~= "unit" then
-    io.stderr:write("check.lua: error: suite names apply only to the unit gate\n")
+if #arguments.suites > 0 and arguments.gate ~= "unit" and arguments.gate ~= "integration" then
+    io.stderr:write("check.lua: error: suite names apply only to the unit and integration gates\n")
     os.exit(2)
 end
 

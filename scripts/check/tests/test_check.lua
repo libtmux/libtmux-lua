@@ -77,13 +77,13 @@ function M.test_the_docs_gate_names_a_broken_link_and_a_broken_anchor()
     test.assertTrue(ok)
 end
 
-function M.test_the_mid_gate_keeps_the_tooling_suite_alive_to_the_mid_budget()
+function M.test_the_mid_gate_keeps_the_script_suites_alive_to_the_mid_budget()
     local steps = gates.steps("mid", { lua = "lua", suites = {} })
     local longest = 0
     for _, step in ipairs(steps) do
         longest = math.max(longest, step.timeout or 0)
     end
-    test.assertTrue(longest >= 30, "the tooling suite is killed before the mid budget")
+    test.assertTrue(longest >= 30, "the script suites are killed before the mid budget")
     test.assertEquals(gates.budget("mid"), 30)
     test.assertEquals(gates.budget("unit"), 5)
     test.assertEquals(gates.budget("outer"), 300)
@@ -101,10 +101,37 @@ function M.test_the_mid_gate_runs_every_script_suite_including_this_one()
     test.assertStrContains(argv, "scripts/ci_plan/tests/test_ci_plan.lua")
 end
 
-function M.test_suite_names_apply_only_to_the_unit_gate()
+function M.test_the_integration_gates_run_the_lua_runner_and_pass_suite_names_on()
+    local function runner(gate, suites)
+        local argv = assert(gates.steps(gate, { lua = "lua", suites = suites })[1].argv)
+        test.assertEquals(argv[1], LUAJIT)
+        return { unpack(argv, 2) }
+    end
+    test.assertEquals(runner("integration", {}), { "tests/run_integration.lua" })
+    test.assertEquals(
+        runner("integration", { "buffer", "pane" }),
+        { "tests/run_integration.lua", "buffer", "pane" }
+    )
+    test.assertEquals(runner("refusal", {}), { "tests/run_integration.lua", "version_check" })
+end
+
+function M.test_the_outer_gate_runs_every_integration_suite_not_the_unit_suite_names()
+    local found
+    for _, step in ipairs(gates.steps("outer", { lua = "lua", suites = {} })) do
+        if step.argv and (step.argv[2] or ""):find("run_integration.lua", 1, true) then
+            found = step.argv
+        end
+    end
+    test.assertEquals({ unpack(assert(found), 2) }, { "tests/run_integration.lua" })
+end
+
+function M.test_suite_names_apply_only_to_the_unit_and_integration_gates()
     local result = proc.run({ LUAJIT, CHECK, "format", "query" }, { cwd = repo.root })
     test.assertEquals(result.code, 2)
-    test.assertStrContains(result.stderr, "suite names apply only to the unit gate")
+    test.assertStrContains(
+        result.stderr,
+        "suite names apply only to the unit and integration gates"
+    )
 end
 
 function M.test_check_enters_the_sandbox_before_it_looks_for_a_tool()

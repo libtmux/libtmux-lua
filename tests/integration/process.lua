@@ -1,6 +1,7 @@
 local process = require("libtmux._internal.process")
 local host = rawget(_G, "vim")
-local python = assert(os.getenv("LIBTMUX_PYTHON"))
+local lua = assert(os.getenv("LIBTMUX_TEST_LUA"))
+local helper = "tests/support/programs/process.lua"
 local mode = assert(os.getenv("LIBTMUX_PROCESS_CASE"))
 local module = require(host and "libtmux.runtime.nvim" or "libtmux.runtime.luv")
 
@@ -13,9 +14,9 @@ end
 local function work(runtime)
     if mode == "bytes" then
         local argv = {
-            python,
-            "-c",
-            "import os,sys;os.write(1,b'|'.join(os.fsencode(a) for a in sys.argv[1:]))",
+            lua,
+            helper,
+            "arguments",
             "",
             "quote'\"",
             "slash\\",
@@ -26,15 +27,9 @@ local function work(runtime)
         }
         local result = command(runtime, argv)
         assert(result.stdout == "|quote'\"|slash\\|semi;|$literal|line\nreturn\r|\255")
-        result = command(
-            runtime,
-            { python, "-c", "import os;os.write(1,os.read(0,100));os.write(2,b'err\\x00\\xff')" },
-            { stdin = "in\000\255" }
-        )
+        result = command(runtime, { lua, helper, "echo" }, { stdin = "in\000\255" })
         assert(result.stdout == "in\000\255" and result.stderr == "err\000\255")
-        local value, err = process
-            .execute(runtime, { python, "-c", "import os;os.write(1,b'partial');os._exit(17)" })
-            :await()
+        local value, err = process.execute(runtime, { lua, helper, "partial" }):await()
         assert(value == nil and err.code == "exit_failed" and err.partial.exit_code == 17)
         assert(err.partial.stdout == "partial" and err.effect == "completed")
         value, err = process.execute(runtime, { "/libtmux-lua-missing-executable" }):await()
@@ -57,11 +52,7 @@ local function work(runtime)
         return "tmux passed"
     elseif mode == "drain" then
         local value, err = process
-            .execute(
-                runtime,
-                { python, "-c", assert(os.getenv("LIBTMUX_DESCENDANT_CODE")) },
-                { drain_timeout = 20 }
-            )
+            .execute(runtime, { lua, helper, "drain" }, { drain_timeout = 20 })
             :await()
         assert(value == nil and err.code == "drain_timeout" and err.effect == "completed")
         assert(err.partial.stdout:match("^%d+\n$"))

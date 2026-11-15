@@ -22,8 +22,10 @@ local function work(runtime)
             width = 80,
             height = 20,
             argv = {
-                assert(os.getenv("LIBTMUX_TEST_PYTHON")),
+                assert(os.getenv("LIBTMUX_TEST_LUA")),
                 assert(os.getenv("LIBTMUX_CAPTURE_SCRIPT")),
+                assert(os.getenv("TMUX_BIN")),
+                assert(os.getenv("TMUX_SOCKET")),
                 case,
             },
         })

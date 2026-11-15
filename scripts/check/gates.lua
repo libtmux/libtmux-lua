@@ -243,7 +243,7 @@ function M.steps(gate, options)
     end
     local plans = {
         unit = function()
-            local suites = options.suites
+            local suites = { unpack(options.suites) }
             if #suites == 0 then
                 for _, name in ipairs(fs.list(ROOT .. "/tests/unit")) do
                     if name:match("%.lua$") then
@@ -304,7 +304,12 @@ function M.steps(gate, options)
             }
         end,
         integration = function()
-            return { { argv = { "python", "tests/run_integration.py" }, env = env } }
+            local argv = { luajit, "tests/run_integration.lua" }
+            -- The `outer` gate names none, and the unit gate's own are not integration suites.
+            for _, name in ipairs(gate == "integration" and options.suites or {}) do
+                argv[#argv + 1] = name
+            end
+            return { { argv = argv, env = env } }
         end,
         refusal = function()
             local refuse = {}
@@ -314,12 +319,7 @@ function M.steps(gate, options)
             refuse.LIBTMUX_REQUIRE_REFUSED = "1"
             return {
                 {
-                    argv = {
-                        "python",
-                        "tests/run_integration.py",
-                        "--pattern",
-                        "test_version_check.py",
-                    },
+                    argv = { luajit, "tests/run_integration.lua", "version_check" },
                     env = refuse,
                 },
             }
@@ -363,11 +363,6 @@ function M.steps(gate, options)
     }
     if gate == "mid" then
         local steps = {}
-        -- Mid-loop work, so the mid budget: the Python tooling that remains is subprocess-bound.
-        steps[#steps + 1] = {
-            argv = { "python", "-m", "unittest", "discover", "-s", "tests/tooling", "-v" },
-            timeout = 30,
-        }
         local suites = {}
         for _, directory in ipairs(fs.list(ROOT .. "/scripts")) do
             local tests = ROOT .. "/scripts/" .. directory .. "/tests"

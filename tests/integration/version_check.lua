@@ -1,6 +1,6 @@
 local mode = assert(os.getenv("LIBTMUX_VERSION_CHECK_CASE"))
 if mode == "ranks" then
-    -- The grammar has one home, fields.lua; the Python test asks it.
+    -- The grammar has one home, fields.lua; test_version_check asks it.
     local fields = require("libtmux._internal.fields")
     local ranked = {}
     for required in assert(os.getenv("LIBTMUX_RANK_REQUIRED")):gmatch("[^,]+") do

@@ -22,8 +22,10 @@ local function work(runtime)
             cwd = assert(os.getenv("LIBTMUX_CREATE_CWD")),
             environment = { LIBTMUX_LITERAL = "#{pid};$(not-a-shell)" },
             argv = {
-                assert(os.getenv("LIBTMUX_TEST_PYTHON")),
+                assert(os.getenv("LIBTMUX_TEST_LUA")),
                 assert(os.getenv("LIBTMUX_CREATE_SCRIPT")),
+                assert(os.getenv("TMUX_BIN")),
+                assert(os.getenv("TMUX_SOCKET")),
                 assert(os.getenv("LIBTMUX_CREATE_REPORT")),
                 "literal;$(not-a-shell)\n#{pid}",
             },
