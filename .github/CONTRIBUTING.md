@@ -332,7 +332,7 @@ names, and otherwise to the default socket under `TMUX_TMPDIR`. The
 every `LIBTMUX_SOCKET*` variable and sets `TMUX_TMPDIR` to an owner-only
 `libtmux-lua-sb-` directory, so a test that forgets `-S` finds nothing.
 
-`scripts/check.py`, `scripts/package.py`, `tests/run_integration.py`, the tmux
+`scripts/check.py`, `scripts/package/main.lua`, `tests/run_integration.py`, the tmux
 fixture and the `tests.integration` package enter the sandbox, and their
 children join it. Importing the package covers a direct `python3 -m unittest`
 run of one of its modules; discovering a module by path does not, and the canary
@@ -405,7 +405,7 @@ Add user-visible changes under `Unreleased` in [CHANGES.md](../CHANGES.md).
 Then run this from the repository root:
 
 ```console
-$ mise exec -- python scripts/release.py prepare 0.1.1-1
+$ luajit scripts/release/main.lua prepare 0.1.1-1
 ```
 
 The command uses [LuaRocks new_version](https://github.com/luarocks/luarocks/blob/v3.13.0/src/luarocks/cmd/new_version.lua)
@@ -418,7 +418,7 @@ Date the prepared changelog heading when cutting the release; leave
 Check those files without changing them:
 
 ```console
-$ mise exec -- python scripts/release.py prepare --check
+$ luajit scripts/release/main.lua prepare --check
 ```
 
 Check that the changelog opens with the name of its rock and holds an
@@ -426,7 +426,7 @@ Check that the changelog opens with the name of its rock and holds an
 the same check:
 
 ```console
-$ mise exec -- python scripts/release.py changelogs
+$ luajit scripts/release/main.lua changelogs
 ```
 
 `0.1.N` is the source/runtime version; `-R` is the rockspec revision.
@@ -439,7 +439,7 @@ Run the timed mid and outer gates documented above. To retain the candidate
 and its SHA256 checksums, choose an empty output directory:
 
 ```console
-$ mise exec -- python scripts/package.py \
+$ luajit scripts/package/main.lua \
     --release \
     --output dist
 ```

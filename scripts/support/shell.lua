@@ -97,4 +97,15 @@ function M.check(argv, opts)
     return output
 end
 
+--- The SHA256 of a file, through whichever of sha256sum and shasum the host has.
+---@param path string
+---@return string
+function M.sha256(path)
+    local code, output = M.run({ "sha256sum", path })
+    if code ~= 0 then
+        output = M.check({ "shasum", "-a", "256", path })
+    end
+    return assert(output:match("^(%x+)"), "cannot read a digest of " .. path)
+end
+
 return M

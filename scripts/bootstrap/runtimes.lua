@@ -66,16 +66,7 @@ function M.download_command(url, destination)
     }
 end
 
---- The SHA256 of a file, through whichever of sha256sum and shasum the host has.
----@param path string
----@return string
-function M.sha256(path)
-    local code, output = shell.run({ "sha256sum", path })
-    if code ~= 0 then
-        output = shell.check({ "shasum", "-a", "256", path })
-    end
-    return assert(output:match("^(%x+)"), "cannot read a digest of " .. path)
-end
+M.sha256 = shell.sha256
 
 local function build_lua(version, source, toolchains)
     local prefix = toolchains .. "/lua-" .. version

@@ -251,10 +251,10 @@ jobs:
         run: |
           source_args=()
           if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF_TYPE" == tag ]]; then
-            python scripts/release.py verify --event "$GITHUB_EVENT_PATH" --commit "$GITHUB_SHA"
+            luajit scripts/release/main.lua verify --event "$GITHUB_EVENT_PATH" --commit "$GITHUB_SHA"
             source_args+=(--public-tag)
           fi
-          python scripts/package.py --release --output dist "${source_args[@]}"
+          luajit scripts/package/main.lua --release --lua "$TEST_LUA" --output dist "${source_args[@]}"
       - name: Retain release candidate
         if: matrix.name == 'Outer current'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -132,15 +132,16 @@ def main():
             luajit = shutil.which("luajit") or str(ROOT / ".cache/toolchains/luajit-2.1/bin/luajit")
             run([luajit, "scripts/generate/generate.lua", "fields", "--check"], env=env, timeout=5)
             run([luajit, "scripts/generate/generate.lua", "options", "--check"], env=env, timeout=5)
-            run([sys.executable, "scripts/release.py", "prepare", "--check"], timeout=5)
-            run([sys.executable, "scripts/release.py", "changelogs"], timeout=5)
+            run([luajit, "scripts/release/main.lua", "prepare", "--check"], timeout=5)
+            run([luajit, "scripts/release/main.lua", "changelogs"], timeout=5)
         elif gate == "integration":
             run([sys.executable, "tests/run_integration.py"], env=env)
         elif gate == "refusal":
             env["LIBTMUX_REQUIRE_REFUSED"] = "1"
             run([sys.executable, "tests/run_integration.py", "--pattern", "test_version_check.py"], env=env)
         elif gate == "package":
-            run([sys.executable, "scripts/package.py", "--lua", lua], env=env)
+            luajit = shutil.which("luajit") or str(ROOT / ".cache/toolchains/luajit-2.1/bin/luajit")
+            run([luajit, "scripts/package/main.lua", "--lua", lua], env=env)
         elif gate == "types":
             executable = ROOT / ".cache/tools/luals-3.19.1/bin/lua-language-server"
             if not executable.exists():
