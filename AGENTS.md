@@ -26,6 +26,8 @@ requested work. Prefer `rg`, `ag`, and `fd` for discovery.
   [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md).
 - Documentation, user-facing text, comments, and commit messages:
   [.github/WRITING.md](.github/WRITING.md).
+- Support scripts: what may stay, their language, layout and checks:
+  [.github/SCRIPTS.md](.github/SCRIPTS.md).
 - Changelog entries:
   [.github/WRITING.md](.github/WRITING.md#changelogs-and-release-notes).
 
