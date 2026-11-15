@@ -194,6 +194,24 @@ $ git diff --cached --check
 Report which checks ran and which remain unavailable. Missing or skipped
 compatibility, examples and CI evidence remain open gates.
 
+### Clean the checkout
+
+The [justfile](../justfile) removes build output and caches that
+`.gitignore` names. `.env` and untracked files stay. Preview what it deletes:
+
+```console
+$ just clean-dry
+```
+
+Delete it:
+
+```console
+$ just clean
+```
+
+`just nuke` also removes untracked files, after a confirmation, and still keeps
+`.env`.
+
 ### GitHub Actions
 
 [CI](workflows/ci.yml) runs on pull requests, pushes to `master` and manual
