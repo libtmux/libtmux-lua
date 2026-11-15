@@ -5,24 +5,22 @@ that session's local store. Each method returns a Request, and reads never
 evaluate shell text. Window and Pane handles reject these operations with
 `invalid_scope`.
 
-Use a disposable server with at least one session at `/tmp/example-tmux.sock`.
-This example changes `APP_MODE` in its global and session stores.
+This example starts a private server and changes `APP_MODE` in its global and
+session stores.
 
 ```lua
 local adapter = require("libtmux.runtime.luv")
 local result, err = adapter.run(function(runtime)
-    local server = assert(runtime:connect({
-        binary = "/usr/bin/tmux",
-        socket_path = "/tmp/example-tmux.sock",
-        config_path = "/dev/null",
-    }):await())
-    local snapshot = assert(server:snapshot():await())
-    local session = assert(server:handle(snapshot, snapshot.sessions[1]))
+    local owned = assert(runtime:start_server({ binary = "/usr/bin/tmux" }):await())
+    local server = owned.server
+    local created = assert(server:new_session({ name = "demo", argv = { "/bin/cat" } }):await())
+    local session = created.session
     assert(server:set_environment("APP_MODE", "global"):await())
     assert(session:set_environment("APP_MODE", "local"):await())
     local local_value = assert(session:get_environment("APP_MODE"):await())
     assert(session:unset_environment("APP_MODE"):await())
     local inherited = assert(session:get_environment("APP_MODE", { inherit = true }):await())
+    assert(owned:stop():await())
     return { local_value = local_value, inherited = inherited }
 end)
 assert(result, tostring(err))

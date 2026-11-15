@@ -2,15 +2,16 @@
 
 `runtime:connect(options):await()` binds a running tmux server.
 `server:snapshot(options):await()` captures its state. Every live call returns
-a Request. The [snapshot example](../examples/snapshot.lua) prints each pane
-and its window ID.
+a Request. The [snapshot example](../examples/snapshot.lua) starts a server
+and prints each pane and its window ID.
 
 ## Connect to a server
 
 - Pass an absolute `binary` and, usually, an absolute `socket_path`.
   `config_path` defaults to `/dev/null`.
-- The library never starts a server. Importing it and reading captured records
-  do no I/O.
+- `connect` never starts a server;
+  [`start_server`](runtime.md#start-a-private-server) starts a private one.
+  Importing the library and reading captured records do no I/O.
 - Setup reads the daemon's version and identity and disables tmux autostart.
 
 Without a `socket_path`, `connect` picks the server in this order:
@@ -110,8 +111,10 @@ exhausting it returns `queue_full`. Cancel the Request to stop earlier.
 Cancellation retires owned clients and never kills the daemon. Closing the
 server during capture prevents a successful result.
 
-Run the example against an existing server:
+Run the example. It starts a private server, creates a session and prints the
+pane:
 
 ```console
-$ TMUX_BIN=/usr/bin/tmux TMUX_SOCKET=/tmp/example-tmux.sock lua examples/snapshot.lua
+$ lua examples/snapshot.lua
+%0	@0
 ```

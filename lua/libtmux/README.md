@@ -102,9 +102,10 @@ importing the module starts no loop. Related:
 
 This is the complete
 [`new_session.lua`](https://github.com/libtmux/libtmux-lua/blob/master/examples/api/new_session.lua)
-program. It connects with [`Runtime:connect`][ref-runtime-connect], creates a
-session with [`Server:new_session`][ref-server-new-session] and reads it back
-with [`Session:snapshot`][ref-session-snapshot]:
+program. It starts a private server with
+[`Runtime:start_server`](https://github.com/libtmux/libtmux-lua/blob/master/docs/runtime.md#start-a-private-server),
+creates a session with [`Server:new_session`][ref-server-new-session], reads it
+back with [`Session:snapshot`][ref-session-snapshot] and stops the server:
 
 <!-- example: examples/api/new_session.lua -->
 
@@ -118,12 +119,12 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
-    local created = must(server
+    local owned = must(runtime:start_server({ binary = binary }):await())
+    local created = must(owned.server
         :new_session({
             name = "demo",
             window_name = "main",
@@ -135,18 +136,17 @@ must(adapter.run(function(runtime)
     assert(snapshot.name == "demo", "created session has the wrong name")
     print("session: " .. snapshot.name)
 
-    must(server:close():await())
+    must(owned:stop():await())
     return true
 end))
 ```
 
 After the
 [setup for the complete examples](https://github.com/libtmux/libtmux-lua/blob/master/examples/api/README.md),
-run this from the repository root. The launcher starts a private tmux server
-and stops it when the program ends:
+run this from the repository root:
 
 ```console
-$ sh examples/api/run.sh examples/api/new_session.lua
+$ lua examples/api/new_session.lua
 session: demo
 ```
 
@@ -159,7 +159,8 @@ and handles it did not create stay open. Source:
 
 This is the complete
 [`nvim_snapshot.lua`](https://github.com/libtmux/libtmux-lua/blob/master/examples/nvim_snapshot.lua)
-program. It reads the server's snapshot and shows the pane count:
+program. It starts a private server, creates a session and shows the pane
+count:
 
 <!-- example: examples/nvim_snapshot.lua -->
 
@@ -167,16 +168,24 @@ program. It reads the server's snapshot and shows the pane count:
 local adapter = require("libtmux.runtime.nvim")
 
 adapter.start(function(runtime)
-    local server, err = runtime
-        :connect({
-            binary = vim.fn.exepath("tmux"),
-            socket_path = assert(os.getenv("TMUX_SOCKET")),
-        })
-        :await()
-    if not server then
+    local owned, err = runtime:start_server({ binary = vim.fn.exepath("tmux") }):await()
+    if not owned then
         return nil, err
     end
-    return server:snapshot({ strict = true }):await()
+    local created
+    created, err = owned.server:new_session({ name = "demo", argv = { "/bin/cat" } }):await()
+    local snapshot
+    if created then
+        snapshot, err = owned.server:snapshot({ strict = true }):await()
+    end
+    local stopped, stop_err = owned:stop():await()
+    if not snapshot then
+        return nil, err
+    end
+    if not stopped then
+        return nil, stop_err
+    end
+    return snapshot
 end, function(snapshot, err)
     if err then
         vim.notify(tostring(err), vim.log.levels.ERROR)
@@ -186,11 +195,10 @@ end, function(snapshot, err)
 end)
 ```
 
-From the repository root, with `TMUX_SOCKET` set to the absolute path of a
-server's socket:
+From the repository root, with `tmux` on Neovim's `PATH`:
 
 ```console
-$ TMUX_SOCKET=/path/to/tmux.sock nvim \
+$ nvim \
     --cmd 'set runtimepath+=.' \
     -c 'luafile examples/nvim_snapshot.lua'
 ```
@@ -208,8 +216,10 @@ lists the criteria both accept.
 
 ## What it leaves out
 
-- **Starting a server.** [`Runtime:connect`][ref-runtime-connect] never starts
-  one. Without a `socket_path`, `LIBTMUX_SOCKET_PATH` or `LIBTMUX_SOCKET` names
+- **Starting a server on connect.** [`Runtime:connect`][ref-runtime-connect]
+  never starts one;
+  [`start_server`](https://github.com/libtmux/libtmux-lua/blob/master/docs/runtime.md#start-a-private-server)
+  does. Without a `socket_path`, `LIBTMUX_SOCKET_PATH` or `LIBTMUX_SOCKET` names
   the server, and otherwise tmux picks it.
 - **Live records.** A [snapshot][ref-snapshot] holds what tmux said when it
   was read. Capture again to see a change.

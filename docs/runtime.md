@@ -18,6 +18,60 @@ Choose an adapter:
   callbacks outside fast events. `on_done(value, err)` runs after owned cleanup;
   unrelated host handles stay open.
 
+## Start a private server
+
+`runtime:start_server(options):await()` starts a tmux server this runtime owns
+and resolves to an `OwnedServer`. [`connect`](snapshots.md) only binds a server
+that already runs. The tested programs are
+[`start_server.lua`](../examples/api/start_server.lua) and
+[`with_server.lua`](../examples/api/with_server.lua).
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `binary` | required | Absolute tmux executable |
+| `config` | `/dev/null` | Absolute configuration file; the default loads none |
+| `root` | system temporary directory | Absolute directory that holds the private one |
+| `environment` | none | `NAME = value` entries for the daemon and its panes |
+| `timeout` | 5000 | Milliseconds that starting and stopping each wait for tmux |
+
+- The server lives in a new `libtmux-XXXXXX` directory under `root`, with its
+  socket `tmux.sock` inside. The directory is private to the caller.
+- The daemon inherits your environment without `TMUX`, `TMUX_PANE` and every
+  `LIBTMUX_SOCKET*` variable. `environment` is added, and `TMUX_TMPDIR` names
+  the private directory. `environment` cannot set those names.
+- The daemon runs with `exit-empty off`, so it stays up with no session. The
+  call resolves once the server answers; create sessions with
+  [`new_session`](creation.md).
+- The directory name and tmux's socket alias must fit `sun_path`: 107 bytes on
+  Linux, 103 on macOS and the BSDs. A `root` more than 45 bytes under that
+  limit fails with `invalid_endpoint` before anything is created. Without
+  `root`, the system temporary directory is used, or `/tmp` when it is too long.
+
+`OwnedServer` has `server`, the same handle `connect` returns, and
+`socket_path`, which a second handle can connect to.
+`server:close()` releases the handle and leaves the daemon running.
+
+`owned:stop():await()` ends the server:
+
+- It runs `kill-server`, connects to the socket until it is refused or gone,
+  and removes the directory. Each wait is bounded by `timeout`.
+- A daemon that still answers fails with `stop_failed`. The directory stays and
+  `err.directory` names it. Calling `stop` again tries once more.
+- A server the program left under the directory is stopped too, and `stop` fails
+  with `leaked_server`. `err.sockets` lists each socket, relative to the
+  directory.
+- After a successful stop, calling it again returns `true`.
+
+The runtime stops every owned server that is still running when it ends,
+whether the body returned, failed or was cancelled. A stop that fails then
+fails the run with `cleanup_failed`. Cleanup does not run when the process is
+killed with `SIGKILL`: the daemon and its directory stay.
+
+`runtime:with_server(options, body)` starts a server, calls
+`body(server, owned)` and stops the server whether the body returns a value or
+an error or raises one. It resolves to what the body returns. The body runs in
+the calling task, so it can await.
+
 ## Tasks and results
 
 The body receives its runtime. `runtime:spawn(body)` creates a child task and

@@ -7,6 +7,10 @@ local versions = require("libtmux._internal.support.versions")
 local process = require("libtmux._internal.process")
 local unpack_values = rawget(table, "unpack") or unpack
 local M, Bound = {}, {}
+local PIN_DIRECTORY, PIN_SOCKET = "/libtmux-lua-pin-XXXXXX", "/socket"
+-- What pinning a socket adds to the directory that holds it. The pinned alias is
+-- the longest socket path libtmux makes, so it bounds a directory's length.
+M.PIN_BYTES = #PIN_DIRECTORY + #PIN_SOCKET
 local bindings = setmetatable({}, { __mode = "kv" })
 
 local function failure(code, message, cause)
@@ -492,14 +496,9 @@ local function pin(state)
     state.stat = { dev = stat.dev, ino = stat.ino }
     local parent = socket:match("^(.*)/[^/]+$")
     local directory
-    directory, err = fs(
-        state,
-        "fs_mkdtemp",
-        { parent .. "/libtmux-lua-pin-XXXXXX" },
-        function(value)
-            state.directory = value
-        end
-    ):await()
+    directory, err = fs(state, "fs_mkdtemp", { parent .. PIN_DIRECTORY }, function(value)
+        state.directory = value
+    end):await()
     if not directory then
         return nil, err
     end
@@ -507,7 +506,7 @@ local function pin(state)
     if not stat or stat.type ~= "directory" or stat.mode % 512 ~= 448 then
         return nil, failure("filesystem_error", "endpoint pin directory must have mode 0700", err)
     end
-    state.alias = directory .. "/socket"
+    state.alias = directory .. PIN_SOCKET
     local linked
     linked, err = fs(state, "fs_link", { socket, state.alias }):await()
     if not linked then

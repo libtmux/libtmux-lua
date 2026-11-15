@@ -1007,6 +1007,14 @@ function Runtime:connect(options)
     return require("libtmux._internal.server").connect(self, options)
 end
 
+function Runtime:start_server(options)
+    return require("libtmux._internal.server").start(self, options)
+end
+
+function Runtime:with_server(options, body)
+    return require("libtmux._internal.server").scoped(self, options, body)
+end
+
 function Runtime:errors()
     local result = {}
     for i, err in ipairs(self._errors) do
@@ -1045,6 +1053,14 @@ end
 ---@class libtmux.Runtime
 ---@field connect fun(self:libtmux.Runtime,
 --- options:libtmux.ConnectOptions):libtmux.Request<libtmux.Server>
+--- Starts a private tmux server and resolves to the `libtmux.OwnedServer` that owns it.
+---@field start_server fun(self:libtmux.Runtime,
+--- options:libtmux.StartServerOptions):libtmux.Request<libtmux.OwnedServer>
+--- Starts a private server, runs `body(server, owned)` and stops the server
+--- however the body ends. The request resolves to what the body returns.
+---@field with_server fun<T>(self:libtmux.Runtime, options:libtmux.StartServerOptions,
+--- body:fun(server:libtmux.Server, owned:libtmux.OwnedServer):T?,
+--- libtmux.Error?):libtmux.Request<T>
 ---@field spawn fun<T>(self:libtmux.Runtime,
 --- body:fun(runtime:libtmux.Runtime):T?, libtmux.Error?):libtmux.Request<T>
 ---@field close fun(self:libtmux.Runtime, reason?:string):libtmux.Request<unknown>
