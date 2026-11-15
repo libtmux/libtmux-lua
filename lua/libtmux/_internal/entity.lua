@@ -418,6 +418,69 @@ end
 --- libtmux.Request<boolean> Runs one hook now.
 
 --- A tmux session.
+---
+--- A session handle is bound to the snapshot generation it came from. A method
+--- that talks to tmux returns a `libtmux.Request`; a failed request reports a
+--- `libtmux.Error`.
+---
+--- # What is on here
+---
+--- The methods fall into a few groups:
+---
+--- **Finding the session.** Take one record from a `libtmux.Snapshot` with
+--- `libtmux.Selection:one`, which reports no match or several as errors, and pass
+--- it with its snapshot to `libtmux.Server:handle`, which returns the handle
+--- directly rather than as a request. `libtmux.Entity:reference` names the
+--- handle's identity without sending a command, and `libtmux.Entity:snapshot`
+--- reads the session's record again, reporting `target_missing` when it is gone.
+---
+--- `libtmux.Selection:one`, `libtmux.Server:handle`, `libtmux.Entity:reference`
+--- and `libtmux.Entity:snapshot`
+---
+--- **Looking inside a session.** A handle holds no children. Read them from the
+--- snapshot record, which leads to each relation without another command.
+---
+--- `libtmux.SnapshotSession.window_links`, `libtmux.SnapshotWindowLink.window`
+--- and `libtmux.SnapshotWindow.panes`
+---
+--- **Creating a window.** `libtmux.Session:new_window` resolves to a
+--- `libtmux.Creation` with handles for the window and its pane. The new window
+--- is detached unless `select = true`. `name` takes up to 1024 bytes without NUL,
+--- `index` takes a nonnegative integer, and the command comes from `argv`, a
+--- literal argument list, or from an explicit `shell`, never both.
+---
+--- `libtmux.Session:new_window`
+---
+--- **Renaming and moving between windows.** A session name takes up to 1024 bytes
+--- and cannot contain dots, colons or control bytes, which fail as
+--- `invalid_argument`. Navigation selects the next,
+--- previous or last window, and renumbering closes gaps in window indexes.
+---
+--- `libtmux.Session:rename`, `libtmux.Session:navigate_window` and
+--- `libtmux.Session:renumber_windows`
+---
+--- **Options, hooks and environment.** Options and hooks are limited to the
+--- session's own scope; the global scopes belong to the Server. In the
+--- environment, unset marks a name as removed from new processes, and remove
+--- deletes it from the session.
+---
+--- `libtmux.Configurable:get_option`, `libtmux.Configurable:list_options`,
+--- `libtmux.Configurable:set_option`, `libtmux.Configurable:unset_option`,
+--- `libtmux.Configurable:get_hook`, `libtmux.Configurable:list_hooks`,
+--- `libtmux.Configurable:set_hook`, `libtmux.Configurable:unset_hook`,
+--- `libtmux.Configurable:run_hook`, `libtmux.Session:get_environment`,
+--- `libtmux.Session:list_environment`, `libtmux.Session:set_environment`,
+--- `libtmux.Session:unset_environment` and `libtmux.Session:remove_environment`
+---
+--- **Things that need a terminal.** `libtmux.Session:attach` returns
+--- `unsupported_tty`, because the luv and Neovim adapters do not own an
+--- interactive terminal.
+---
+--- `libtmux.Session:attach`
+---
+--- **Removing the session.** Killing removes this session.
+---
+--- `libtmux.Session:kill`
 ---@class libtmux.Session: libtmux.Configurable<libtmux.SnapshotSession>
 ---@field new_window fun(self:libtmux.Session,options?:libtmux.NewWindowOptions):
 --- libtmux.Request<libtmux.Creation> Creates a window in this session.
@@ -447,6 +510,63 @@ end
 --- libtmux.Request<boolean> Deletes one variable from this session's environment.
 
 --- A tmux window. Placement in a session belongs to its window links.
+---
+--- A window handle is bound to the snapshot generation it came from. A method
+--- that talks to tmux returns a `libtmux.Request`; a failed request reports a
+--- `libtmux.Error`.
+---
+--- # What is on here
+---
+--- The methods fall into a few groups:
+---
+--- **Finding the window.** Take one record from a `libtmux.Snapshot` with
+--- `libtmux.Selection:one` and pass it with its snapshot to
+--- `libtmux.Server:handle`, which returns the handle directly rather than as a
+--- request. A window link's record leads to its window.
+--- `libtmux.Entity:snapshot` reads the window's record again, reporting
+--- `target_missing` when it is gone.
+---
+--- `libtmux.Selection:one`, `libtmux.Server:handle`,
+--- `libtmux.SnapshotWindowLink.window` and `libtmux.Entity:snapshot`
+---
+--- **Looking inside a window.** A handle holds no children. Read panes and
+--- placements from the snapshot record, which leads to each relation without
+--- another command.
+---
+--- `libtmux.SnapshotWindow.panes`, `libtmux.SnapshotWindow.window_links` and
+--- `libtmux.SnapshotPane.window`
+---
+--- **Arranging.** A resize takes exactly one of dimensions, from 1 to 10000, a
+--- direction with an optional amount, `largest` or `smallest`. A layout takes
+--- exactly one of a named layout, an exported layout string, `next`, `previous`
+--- or `restore`. Respawning needs the `context` window link of this window in
+--- the same snapshot generation, and replaces running processes only with
+--- `kill = true`.
+---
+--- `libtmux.Window:resize`, `libtmux.Window:layout` and `libtmux.Window:respawn`
+---
+--- **Placing in sessions.** A window link is one placement, so these methods live
+--- on `libtmux.WindowLink`. Linking, moving and unlinking take a destination,
+--- and unlinking the last placement destroys the window only with
+--- `kill_if_last = true`.
+---
+--- `libtmux.WindowLink:select`, `libtmux.WindowLink:swap`,
+--- `libtmux.WindowLink:link`, `libtmux.WindowLink:move` and
+--- `libtmux.WindowLink:unlink`
+---
+--- **Changing things.** A window name takes up to 1024 bytes without NUL. Killing
+--- removes the window from every session that links it.
+---
+--- `libtmux.Window:rename` and `libtmux.Window:kill`
+---
+--- **Options and hooks.** Limited to the window's own scope; the global scopes
+--- belong to the Server.
+---
+--- `libtmux.Configurable:get_option`, `libtmux.Configurable:list_options`,
+--- `libtmux.Configurable:set_option`, `libtmux.Configurable:unset_option`,
+--- `libtmux.Configurable:get_hook`, `libtmux.Configurable:list_hooks`,
+--- `libtmux.Configurable:set_hook`, `libtmux.Configurable:unset_hook` and
+--- `libtmux.Configurable:run_hook`
 ---@class libtmux.Window: libtmux.Configurable<libtmux.SnapshotWindow>
 ---@field rename fun(self:libtmux.Window,name:string,options?:libtmux.TopologyOptions):
 --- libtmux.Request<boolean> Renames this window.
@@ -473,6 +593,67 @@ end
 --- libtmux.Request<boolean> Removes this placement.
 
 --- A tmux pane.
+---
+--- A pane handle is bound to the snapshot generation it came from. A method that
+--- talks to tmux returns a `libtmux.Request`; a failed request reports a
+--- `libtmux.Error`.
+---
+--- # What is on here
+---
+--- The methods fall into a few groups:
+---
+--- **Finding the pane.** Take one record from a `libtmux.Snapshot` with
+--- `libtmux.Selection:one` and pass it with its snapshot to
+--- `libtmux.Server:handle`, which returns the handle directly rather than as a
+--- request. A window's record lists its panes. `libtmux.Entity:snapshot` reads
+--- the pane's record again, reporting `target_missing` when it is gone.
+---
+--- `libtmux.Selection:one`, `libtmux.Server:handle`, `libtmux.SnapshotWindow.panes`
+--- and `libtmux.Entity:snapshot`
+---
+--- **Sending input.** Text goes to the pane literally. Keys are names as tmux's
+--- send-keys reads them, and `repeat_count` runs from 1 to 1000.
+---
+--- `libtmux.Pane:send_text` and `libtmux.Pane:send_keys`
+---
+--- **Reading output.** A capture resolves to a `libtmux.Capture` whose `bytes`
+--- are the exact stdout and whose `text` method checks strict UTF-8. It reads
+--- the visible screen unless `history_lines`, or `start_line` and `end_line`,
+--- ask for more; the two ways are mutually exclusive. Several options need a
+--- newer tmux, such as `mode_screen` on 3.6. Waiting polls the visible screen
+--- for literal text and returns `deadline_exceeded` when `timeout` expires.
+---
+--- `libtmux.Pane:capture`, `libtmux.Pane:wait_for_text` and
+--- `libtmux.Pane:capture_to_buffer`
+---
+--- **Splitting and arranging.** A split resolves to a `libtmux.Creation`. It goes
+--- down by default, takes `size` or `percent` but not both, and is detached
+--- unless `select = true`. Resizing takes dimensions or a direction, not both.
+--- Moving a pane joins it beside another; breaking out gives it a window of its
+--- own.
+---
+--- `libtmux.Pane:split`, `libtmux.Pane:resize`, `libtmux.Pane:select`,
+--- `libtmux.Pane:swap`, `libtmux.Pane:move_to` and `libtmux.Pane:break_out`
+---
+--- **Copy mode and buffers.** Enter copy mode and run a copy-mode command, paste
+--- a named buffer, or clear history. Buffers are addressed by explicit name.
+---
+--- `libtmux.Pane:copy_mode`, `libtmux.Pane:copy_command`,
+--- `libtmux.Pane:paste_buffer` and `libtmux.Pane:clear_history`
+---
+--- **Changing things.** Respawning restarts the pane's command, and replaces a
+--- running program only with `kill = true`. Killing removes the pane.
+---
+--- `libtmux.Pane:respawn`, `libtmux.Pane:set_title` and `libtmux.Pane:kill`
+---
+--- **Options and hooks.** Limited to the pane's own scope; the global scopes
+--- belong to the Server.
+---
+--- `libtmux.Configurable:get_option`, `libtmux.Configurable:list_options`,
+--- `libtmux.Configurable:set_option`, `libtmux.Configurable:unset_option`,
+--- `libtmux.Configurable:get_hook`, `libtmux.Configurable:list_hooks`,
+--- `libtmux.Configurable:set_hook`, `libtmux.Configurable:unset_hook` and
+--- `libtmux.Configurable:run_hook`
 ---@class libtmux.Pane: libtmux.Configurable<libtmux.SnapshotPane>
 ---@field send_keys fun(self:libtmux.Pane,keys:string[],options?:libtmux.KeyOptions):
 --- libtmux.Request<boolean> Sends key names, as tmux's send-keys reads them.
