@@ -19,6 +19,13 @@ function M.object(keys, fields)
     return fields
 end
 
+--- Whether a decoded value is a JSON object, as opposed to an array.
+---@param value table
+---@return boolean
+function M.is_object(value)
+    return order[value] ~= nil
+end
+
 ---@param object table
 ---@return string[]
 function M.keys(object)

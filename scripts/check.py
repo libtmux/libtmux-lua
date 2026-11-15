@@ -133,8 +133,9 @@ def main():
         elif gate == "docs":
             docs()
         elif gate == "generated":
-            run([sys.executable, "scripts/generate_fields.py", "--check"], env=env, timeout=5)
-            run([sys.executable, "scripts/generate_options.py", "--check"], env=env, timeout=5)
+            luajit = shutil.which("luajit") or str(ROOT / ".cache/toolchains/luajit-2.1/bin/luajit")
+            run([luajit, "scripts/generate/generate.lua", "fields", "--check"], env=env, timeout=5)
+            run([luajit, "scripts/generate/generate.lua", "options", "--check"], env=env, timeout=5)
             run([sys.executable, "scripts/release.py", "prepare", "--check"], timeout=5)
             run([sys.executable, "scripts/release.py", "changelogs"], timeout=5)
         elif gate == "integration":

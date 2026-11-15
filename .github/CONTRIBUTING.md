@@ -168,7 +168,7 @@ annotations and the [field reference](../docs/fields.md). Regenerate after
 reviewing a catalog change; the mid gate checks drift without network access:
 
 ```console
-$ mise exec -- python scripts/generate_fields.py
+$ luajit scripts/generate/generate.lua fields
 ```
 
 The [option catalog](../data/tmux-options.json) generates private release
@@ -176,7 +176,7 @@ metadata and the [option reference](../docs/options-reference.md). Normal
 generation and drift checks are offline:
 
 ```console
-$ mise exec -- python scripts/generate_options.py
+$ luajit scripts/generate/generate.lua options
 ```
 
 Check whitespace in unstaged changes:

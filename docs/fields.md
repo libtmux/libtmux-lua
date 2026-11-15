@@ -6,16 +6,16 @@ model. It does not enumerate every tmux format. Edit
 together with Lua metadata and LuaLS field annotations:
 
 ```console
-$ python scripts/generate_fields.py
+$ luajit scripts/generate/generate.lua fields
 ```
 
 Check generated files without changing them:
 
 ```console
-$ python scripts/generate_fields.py --check
+$ luajit scripts/generate/generate.lua fields --check
 ```
 
-Generation uses Python and the pinned StyLua formatter; it needs no network
+Generation uses LuaJIT and the pinned StyLua formatter; it needs no network
 or tmux process. The optional `--verify-source` argument accepts a local tmux
 Git checkout and verifies every pinned format mapping and source anchor.
 

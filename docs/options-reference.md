@@ -6,19 +6,17 @@ and storage scopes; it does not establish runtime or platform compatibility.
 Edit [the catalog](../data/tmux-options.json), then regenerate:
 
 ```console
-$ python scripts/generate_options.py
+$ luajit scripts/generate/generate.lua options
 ```
 
 Check generated Lua metadata and this reference without changing files:
 
 ```console
-$ python scripts/generate_options.py --check
+$ luajit scripts/generate/generate.lua options --check
 ```
 
-Both commands run offline with Python and the pinned StyLua formatter.
-`--verify-source` additionally accepts a local tmux Git checkout and checks
-every release tag, pinned source digest, definition and line anchor. It
-does not download sources, build tmux or start a server.
+Both commands run offline with LuaJIT and the pinned StyLua formatter. They
+do not download sources, build tmux or start a server.
 
 ## Values and scopes
 
