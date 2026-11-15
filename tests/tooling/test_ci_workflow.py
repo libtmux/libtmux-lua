@@ -163,6 +163,8 @@ def problems(ci, publish):
     if not call or "required: true" not in call[1]:
         found.append("the workflow_call scope input must be required")
 
+    found += archive_problems(jobs["validate"])
+
     release = split_jobs(publish).get("validate", "")
     if "uses: ./.github/workflows/ci.yml" not in release:
         found.append("publish: validate must call ci.yml")
@@ -171,6 +173,24 @@ def problems(ci, publish):
     if field(split_jobs(publish).get("luarocks", ""), "needs") != "validate":
         found.append("publish: the upload must wait for validate")
     return found
+
+
+def archive_problems(job):
+    """Name each Lua source archive the job builds that no cache step restores.
+
+    www.lua.org times out from runners now and then, so a job that downloads an
+    archive on every run fails with it. The SHA256 pins in bootstrap_runtimes.py
+    still verify a restored archive. A cache key ends in the Lua version it holds.
+    """
+    keys = []
+    for step in steps_of(job):
+        path, key = (re.search(rf"(?m)^          {name}: (.*)$", step) for name in ("path", "key"))
+        if "actions/cache@" in step and path and key and ".cache/source/lua-*.tar.gz" in path[1]:
+            keys.append(key[1].strip())
+    builds = [("${{ matrix.lua }}", "the matrix Lua")] if 'bootstrap_runtimes.py "$CI_LUA"' in job else []
+    builds += [(version, f"Lua {version}") for version in re.findall(r"bootstrap_runtimes\.py (\d+\.\d+\.\d+)", job)]
+    return [f"validate: builds {name} from lua.org and no cache step restores its archive"
+            for suffix, name in builds if not any(key.endswith(f"-{suffix}") for key in keys)]
 
 
 TMATE = "mxschmitt/action-tmate"
@@ -409,6 +429,13 @@ MUTATIONS = [
         pub, "      scope: full", "      scope: edges")), "ask for scope full"),
     ("the release passes no scope", lambda ci, pub: (ci, without(pub, "    with:\n      scope: full\n")),
      "ask for scope full"),
+    ("the matrix Lua archive is no longer cached", lambda ci, pub: (replaced(
+        ci, "bootstrap_runtimes.py') }}-${{ matrix.lua }}", "bootstrap_runtimes.py') }}-lua"), pub),
+     "builds the matrix Lua from lua.org"),
+    ("the lint interpreter archive is no longer cached", lambda ci, pub: (replaced(
+        ci, "        if: matrix.gate == 'outer'\n        with:\n          path: .cache/source/lua-*.tar.gz\n",
+        "        if: matrix.gate == 'outer'\n        with:\n          path: .cache/source/other\n"), pub),
+     "builds Lua 5.4.9 from lua.org"),
     ("the upload stops waiting for validation", lambda ci, pub: (ci, replaced(
         pub, "    needs: validate\n", "")), "the upload must wait"),
 ]

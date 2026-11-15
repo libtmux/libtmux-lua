@@ -138,6 +138,14 @@ jobs:
         with:
           path: .cache/source/lua-*.tar.gz
           key: lua-source-${{ hashFiles('scripts/bootstrap_runtimes.py') }}-${{ matrix.lua }}
+      # The outer gate also builds the pinned 5.4.9 lint interpreter, whatever
+      # the matrix Lua is. The path matches the step above, so the 5.4.9 unit
+      # job's entry restores here.
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        if: matrix.gate == 'outer'
+        with:
+          path: .cache/source/lua-*.tar.gz
+          key: lua-source-${{ hashFiles('scripts/bootstrap_runtimes.py') }}-5.4.9
       - name: Select Lua and install test dependencies
         run: |
           mkdir -p .cache/ci
