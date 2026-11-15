@@ -125,7 +125,14 @@ $ mise exec -- luajit scripts/check/check.lua outer
 
 Integration includes real luv and Neovim loop ownership, process cancellation,
 post-exit pipe draining and metadata byte round-trips. These use the selected
-Lua interpreter and its own luv ABI; Neovim uses its embedded runtime.
+Lua interpreter and its own luv ABI; Neovim uses its embedded runtime. The
+suites are luaunit files, `tests/integration/test_<name>.lua`, each of which
+starts real tmux servers and runs the paired `tests/integration/<name>.lua`
+program under luv and under Neovim. Run one by name:
+
+```console
+$ mise exec -- luajit scripts/check/check.lua integration buffer
+```
 
 The package gate builds the development rock and installs it into its own
 temporary prefix. Network servers and ambient Lua paths are disabled. Imports
@@ -350,18 +357,16 @@ names, and otherwise to the default socket under `TMUX_TMPDIR`. The
 every `LIBTMUX_SOCKET*` variable and sets `TMUX_TMPDIR` to an owner-only
 `libtmux-lua-sb-` directory, so a test that forgets `-S` finds nothing.
 
-`scripts/check/check.lua`, `scripts/package/main.lua`, `tests/run_integration.py`,
-the tmux fixture and the `tests.integration` package enter the sandbox, and their
-children join it. The Python integration harness keeps a twin of the sandbox in
-[sandbox.py](../tests/support/sandbox.py) until it moves to Lua. Importing the package covers a direct `python3 -m unittest`
-run of one of its modules; discovering a module by path does not, and the canary
-refuses there. A program that calls `Runtime:start_server` makes its server's
-directory under `TMPDIR`, or under `/tmp` when `TMPDIR` leaves no room for a
-socket path. A new entry point that starts tmux must enter the sandbox or be
-started by one that did.
+`scripts/check/check.lua`, `scripts/package/main.lua` and
+`tests/run_integration.lua` enter the sandbox, and their children join it. The
+[tmux fixture](../tests/support/fixture.lua) clears `TMUX` and `TMUX_PANE` from
+its process and refuses to start a server outside the sandbox. A program that
+calls `Runtime:start_server` makes its server's directory under `TMPDIR`, or
+under `/tmp` when `TMPDIR` leaves no room for a socket path. A new entry point
+that starts tmux must enter the sandbox or be started by one that did.
 
-Lua cannot change its environment, so `tests/run.lua` only checks: it exits
-with status 2 unless a parent made the sandbox. Run unit suites through
+Plain Lua cannot change its environment, so `tests/run.lua` only checks: it
+exits with status 2 unless a parent made the sandbox. Run unit suites through
 `scripts/check/check.lua`.
 
 The directory goes under `TMPDIR`, or under `/tmp` when `TMPDIR` is too long for
@@ -375,14 +380,14 @@ server that still answers keeps the directory, which the failure names.
 name variables, sockets and directories, never the values of environment
 variables.
 
-The [canary](../tests/integration/test_sandbox.py) shows that a client naming no
+The [canary](../tests/integration/test_sandbox.lua) shows that a client naming no
 socket looks only under the sandbox. Two more tests check the guard without
-tmux, using a [recording stand-in](../tests/support/recorder.py) that writes
+tmux, using a [recording stand-in](../tests/support/recorder.lua) that writes
 arguments and variable names, never values: the
-[sandbox](../tests/tooling/test_sandbox.py) test in the mid loop, and the
-[canary runner](../tests/integration/test_canary_runner.py) test with the
-integration suite, to keep the mid loop's tooling suite small.
-Prove a change to the guard that way before running a suite.
+[sandbox host](../scripts/check/tests/test_sandbox_host.lua) test in the mid loop,
+and the [canary runner](../tests/integration/test_canary_runner.lua) test with
+the integration suite, to keep the mid loop small. Prove a change to the guard
+that way before running a suite.
 
 `Runtime:connect` with no `socket_path` reads `LIBTMUX_SOCKET_PATH`, then
 `LIBTMUX_SOCKET`, and otherwise leaves the server to tmux, so a program run by
@@ -391,7 +396,7 @@ variables, and tests that connect name their own socket or set a variable in a
 child process they start. tmux leaves its socket file behind when a server
 exits, and the tree check counts it, so a test that starts a server on the
 default socket stops it, waits for it to exit and removes the file, as
-[the default-socket test](../tests/integration/test_socket_default.py) does.
+[the default-socket test](../tests/integration/test_socket_default.lua) does.
 
 A program that needs a server of its own starts one with `Runtime:start_server`
 and ends it with `OwnedServer:stop`, as every program under

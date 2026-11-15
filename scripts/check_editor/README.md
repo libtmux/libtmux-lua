@@ -8,7 +8,7 @@ requires that a handle offers none of the members its kind lacks, such as
 
 ## Who runs it
 
-The `types` gate of `scripts/check.py`, in the outer loop.
+The `types` gate of [check.lua](../check/README.md), in the outer loop.
 
 ## Run it
 

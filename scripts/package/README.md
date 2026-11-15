@@ -15,7 +15,7 @@ failing import and a failing runtime propagate and leave no server behind.
 
 ## Who runs it
 
-The `package` gate of `scripts/check.py`, and the release step of
+The `package` gate of [check.lua](../check/README.md), and the release step of
 [ci.yml](../../.github/workflows/ci.yml), which keeps the validated artifacts.
 
 ## Run it

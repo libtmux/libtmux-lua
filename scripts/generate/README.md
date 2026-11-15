@@ -10,7 +10,7 @@ catalogs describe, and checks that the committed copies are current.
 
 ## Who runs it
 
-- The `generated` gate of `scripts/check.py` runs both with `--check`, so a
+- The `generated` gate of [check.lua](../check/README.md) runs both with `--check`, so a
   catalog edit without regeneration fails `mid` and CI.
 - A maintainer runs it after reviewing a catalog change.
 
