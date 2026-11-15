@@ -209,6 +209,13 @@ def source_rock(spec, work, env, *, rocks, public_tag):
         source_tag = "v" + source_version
         tagged = subprocess.run(["git", "rev-parse", "--verify", f"refs/tags/{source_tag}"],
                                 cwd=ROOT, capture_output=True).returncode == 0
+        # Once a Lua source file or the license changes after its release tag, the tag
+        # can no longer stand in for the checkout; the local fixture is packed instead.
+        # A release still needs the public tag, so the drift cannot be published.
+        if tagged and subprocess.run(
+                ["git", "diff", "--quiet", source_tag, "--", ":(glob)lua/**/*.lua", "LICENSE"],
+                cwd=ROOT).returncode:
+            tagged = False
         if tagged:
             archive = subprocess.check_output(["git", "archive", source_tag], cwd=ROOT)
             with tarfile.open(fileobj=io.BytesIO(archive)) as packed:
