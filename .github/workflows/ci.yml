@@ -206,7 +206,6 @@ jobs:
             git rev-parse HEAD
             uname -a
             cc --version
-            python --version
             "$TEST_LUA" -v
             luarocks --version
             if [[ "$CI_GATE" != unit ]]; then
