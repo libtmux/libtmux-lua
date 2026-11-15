@@ -197,6 +197,15 @@ def complete_api_examples(prefix, version, *, lua, cwd, env):
     print(f"PASS {ran} complete API programs and import/runtime failure cleanup", flush=True)
 
 
+# What a source rock carries from its tag. A change to one of these after the tag is drift.
+SOURCE_PATHS = (":(glob)lua/**/*.lua", "LICENSE")
+
+
+def drifted_from(tag, root=ROOT):
+    """Whether the checkout's Lua sources or license differ from `tag`."""
+    return subprocess.run(["git", "diff", "--quiet", tag, "--", *SOURCE_PATHS], cwd=root).returncode != 0
+
+
 def source_rock(spec, work, env, *, rocks, public_tag):
     """Pack the committed spec, using an isolated source tree before the public tag exists."""
     packing = work / "source-rock"
@@ -212,16 +221,14 @@ def source_rock(spec, work, env, *, rocks, public_tag):
         # Once a Lua source file or the license changes after its release tag, the tag
         # can no longer stand in for the checkout; the local fixture is packed instead.
         # A release still needs the public tag, so the drift cannot be published.
-        if tagged and subprocess.run(
-                ["git", "diff", "--quiet", source_tag, "--", ":(glob)lua/**/*.lua", "LICENSE"],
-                cwd=ROOT).returncode:
-            tagged = False
-        if tagged:
+        drifted = tagged and drifted_from(source_tag)
+        if tagged and not drifted:
             archive = subprocess.check_output(["git", "archive", source_tag], cwd=ROOT)
             with tarfile.open(fileobj=io.BytesIO(archive)) as packed:
                 packed.extractall(repository, filter="data")
         elif revision > 1:
-            raise RuntimeError("fetch the original source tag before checking a packaging revision")
+            raise RuntimeError(f"a packaging revision ships {source_tag}'s source, but lua/ or LICENSE differs from it"
+                               if drifted else "fetch the original source tag before checking a packaging revision")
         else:
             files = subprocess.check_output(
                 ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"], cwd=ROOT,

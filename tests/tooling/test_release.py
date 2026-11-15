@@ -205,6 +205,39 @@ build = { type = "builtin", modules = { libtmux = "lua/libtmux/init.lua" } }
         self.assertTrue((self.root / "rockspecs/libtmux-0.1.0alpha1-1.rockspec").exists())
 
 
+class SourceDriftTests(unittest.TestCase):
+    """The source rock packs its tag only while the Lua sources and license still match it."""
+
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory(prefix="libtmux-lua-drift-")
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name)
+        (self.root / "lua/libtmux").mkdir(parents=True)
+        (self.root / "lua/libtmux/init.lua").write_text("return {}\n")
+        (self.root / "LICENSE").write_text("MIT\n")
+        for arguments in (["init", "-q"], ["add", "."],
+                          ["-c", "user.name=Drift fixture", "-c", "user.email=drift@example.invalid",
+                           "-c", "commit.gpgsign=false", "commit", "-qm", "Tagged source"],
+                          ["tag", "v0.1.1"]):
+            subprocess.run(["git", *arguments], cwd=self.root, check=True, capture_output=True)
+
+    def test_an_unchanged_checkout_matches_its_tag(self):
+        self.assertFalse(package.drifted_from("v0.1.1", self.root))
+
+    def test_a_changed_lua_source_is_drift(self):
+        (self.root / "lua/libtmux/init.lua").write_text("return { changed = true }\n")
+        self.assertTrue(package.drifted_from("v0.1.1", self.root))
+
+    def test_a_changed_license_is_drift(self):
+        (self.root / "LICENSE").write_text("MIT, amended\n")
+        self.assertTrue(package.drifted_from("v0.1.1", self.root))
+
+    def test_other_files_are_not_drift(self):
+        (self.root / "lua/libtmux/README.md").write_text("Notes.\n")
+        (self.root / "README.md").write_text("Notes.\n")
+        self.assertFalse(package.drifted_from("v0.1.1", self.root))
+
+
 class ChangelogTests(unittest.TestCase):
     """The changelog check reports each way a rock loses its changelog, and passes the checkout."""
 
