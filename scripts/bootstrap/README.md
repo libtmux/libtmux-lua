@@ -7,7 +7,7 @@ only network and build step; no test loop runs it.
 
 - CI, through the `lua-tools` action and the `validate` job of
   [ci.yml](../../.github/workflows/ci.yml).
-- The docs workflow, for LuaLS.
+- The shared docs workflow, for LuaLS and the LuaJIT it runs on.
 - A maintainer setting up a checkout, as
   [CONTRIBUTING.md](../../.github/CONTRIBUTING.md) lists.
 

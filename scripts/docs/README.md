@@ -11,8 +11,9 @@ the READMEs quote what the gates run.
 ## Who runs it
 
 - The `types` gate runs `export --check`; the `docs` gate runs `readmes`.
-- The `docs` workflow runs `export` for the documentation build. The
-  libtmux/docs workflow `port-heads.yml` builds Lua's head the same way.
+- The shared libtmux/docs workflow `port-docs.yml`, called by this repository's
+  `docs` workflow, runs `export` for the documentation build. Its
+  `port-heads.yml` builds Lua's head the same way.
 
 ## Run it
 

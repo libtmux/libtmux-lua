@@ -1,13 +1,19 @@
 name: docs
 
+# Publishes this port's documentation to libtmux.org: trunk as
+# /en/lua/latest/, and each `v*` release tag as its own version, which is the
+# default. A prerelease tag also publishes `next`.
+#
+# libtmux/docs builds and publishes the tree, through two reusable workflows
+# pinned to one commit: port-docs.yml decides which versions an event builds
+# and builds each from this repository's source and scripts, and
+# reusable-deploy.yml publishes them. Bump both pins together.
+
 on:
   pull_request:
   push:
-    branches:
-      - master
-      - 'v*.x'
-    tags:
-      - 'v*'
+    branches: [master]
+    tags: ['v*']
   workflow_dispatch:
     inputs:
       source-ref:
@@ -22,7 +28,7 @@ on:
         description: Version policy
         required: true
         type: choice
-        options: [trunk, branch, tag, alias, pr]
+        options: [trunk, tag, alias]
         default: trunk
       is-default:
         description: Make this version canonical
@@ -42,285 +48,52 @@ on:
 permissions:
   contents: read
 
+# Keep publication and close cleanup in one queue. The lock covers builds
+# too, so a close event cannot delete a preview before its build publishes.
 concurrency:
   group: docs-deploy-${{ github.repository }}
   queue: max
 
 jobs:
-  identity:
-    runs-on: ubuntu-latest
-    outputs:
-      source-ref: ${{ steps.identity.outputs.source_ref }}
-      source-repository: ${{ steps.identity.outputs.source_repository }}
-      matrix: ${{ steps.identity.outputs.matrix }}
-      should-publish: ${{ steps.identity.outputs.should_publish }}
-    steps:
-      - id: identity
-        env:
-          EVENT: ${{ github.event_name }}
-          REPOSITORY: ${{ github.repository }}
-          SHA: ${{ github.sha }}
-          REF_NAME: ${{ github.ref_name }}
-          REF_TYPE: ${{ github.ref_type }}
-          PR_NUMBER: ${{ github.event.pull_request.number }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_HEAD_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name }}
-          INPUT_SOURCE_REF: ${{ inputs.source-ref }}
-          INPUT_VERSION: ${{ inputs.version }}
-          INPUT_KIND: ${{ inputs.version-kind }}
-          INPUT_DEFAULT: ${{ inputs.is-default }}
-          INPUT_RESOLVES_TO: ${{ inputs.resolves-to }}
-          INPUT_PUBLISH: ${{ inputs.publish }}
-        run: |
-          set -euo pipefail
-          source_ref=''
-          source_repository="$REPOSITORY"
-          matrix=''
-
-          case "$EVENT" in
-            pull_request)
-              source_ref="$PR_HEAD_SHA"
-              source_repository="$PR_HEAD_REPOSITORY"
-              publish=false
-              [[ "$source_repository" == "$REPOSITORY" ]] && publish=true
-              matrix=$(jq -cn \
-                --arg version "pr-$PR_NUMBER" \
-                --argjson publish "$publish" \
-                '{include: [{version: $version, kind: "pr", isDefault: false, resolvesTo: "", environment: "docs-preview", publish: $publish}]}')
-              ;;
-            push)
-              source_ref="$SHA"
-              if [[ "$REF_TYPE" == tag ]]; then
-                [[ "$REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+((alpha|beta|rc)[0-9]+)?$ ]] || {
-                  echo "unsupported Lua documentation tag: $REF_NAME" >&2
-                  exit 1
-                }
-                if [[ "$REF_NAME" =~ (alpha|beta|rc)[0-9]+$ ]]; then
-                  # A prerelease publishes at its tag and as next.
-                  matrix=$(jq -cn --arg tag "$REF_NAME" \
-                    '{include: [
-                      {version: $tag, kind: "tag", isDefault: false, resolvesTo: "", environment: "docs", publish: true},
-                      {version: "next", kind: "alias", isDefault: false, resolvesTo: $tag, environment: "docs", publish: true}
-                    ]}')
-                else
-                  # A release publishes at its tag only, and is the default
-                  # unless a newer release exists, so a backport cannot take it.
-                  tags=$(git ls-remote --tags --refs "https://github.com/$REPOSITORY" | sed 's#.*refs/tags/##')
-                  newest=$(printf '%s\n%s\n' "$tags" "$REF_NAME" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1)
-                  tag_default=false
-                  [[ "$newest" == "$REF_NAME" ]] && tag_default=true
-                  matrix=$(jq -cn --arg tag "$REF_NAME" --argjson isDefault "$tag_default" \
-                    '{include: [{version: $tag, kind: "tag", isDefault: $isDefault, resolvesTo: "", environment: "docs", publish: true}]}')
-                fi
-              elif [[ "$REF_NAME" == master ]]; then
-                # latest is the default only until the first release:
-                # from then on the newest release is, and a trunk push must not
-                # take the default back from it.
-                trunk_default=true
-                tags=$(git ls-remote --tags --refs "https://github.com/$REPOSITORY" | sed 's#.*refs/tags/##')
-                if grep -Eq '^v[0-9]+\.[0-9]+\.[0-9]+$' <<< "$tags"; then
-                  trunk_default=false
-                fi
-                matrix=$(jq -cn --argjson isDefault "$trunk_default" \
-                  '{include: [{version: "latest", kind: "trunk", isDefault: $isDefault, resolvesTo: "", environment: "docs", publish: true}]}')
-              elif [[ "$REF_NAME" =~ ^v[0-9]+\.x$ ]]; then
-                matrix=$(jq -cn --arg version "$REF_NAME" \
-                  '{include: [{version: $version, kind: "branch", isDefault: false, resolvesTo: "", environment: "docs", publish: true}]}')
-              else
-                echo "unsupported documentation branch: $REF_NAME" >&2
-                exit 1
-              fi
-              ;;
-            workflow_dispatch)
-              source_ref="$INPUT_SOURCE_REF"
-              [[ "$INPUT_VERSION" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || {
-                echo "invalid version slug: $INPUT_VERSION" >&2
-                exit 1
-              }
-              case "$INPUT_KIND" in
-                trunk|branch|tag|alias|pr) ;;
-                *) echo "invalid version kind: $INPUT_KIND" >&2; exit 1 ;;
-              esac
-              if [[ "$INPUT_KIND" == alias && -z "$INPUT_RESOLVES_TO" ]]; then
-                echo 'an alias requires resolves-to' >&2
-                exit 1
-              fi
-              if [[ "$INPUT_KIND" != alias && -n "$INPUT_RESOLVES_TO" ]]; then
-                echo 'resolves-to applies only to aliases' >&2
-                exit 1
-              fi
-              if [[ "$INPUT_KIND" == pr ]]; then
-                [[ "$INPUT_VERSION" =~ ^pr-[0-9]+$ && "$INPUT_DEFAULT" == false ]] || {
-                  echo 'PR previews require pr-N and cannot be default' >&2
-                  exit 1
-                }
-                environment=docs-preview
-              else
-                environment=docs
-              fi
-              matrix=$(jq -cn \
-                --arg version "$INPUT_VERSION" \
-                --arg kind "$INPUT_KIND" \
-                --arg resolves "$INPUT_RESOLVES_TO" \
-                --arg environment "$environment" \
-                --argjson is_default "$INPUT_DEFAULT" \
-                --argjson publish "$INPUT_PUBLISH" \
-                '{include: [{version: $version, kind: $kind, isDefault: $is_default, resolvesTo: $resolves, environment: $environment, publish: $publish}]}')
-              ;;
-            *) echo "unsupported event: $EVENT" >&2; exit 1 ;;
-          esac
-
-          {
-            echo "source_ref=$source_ref"
-            echo "source_repository=$source_repository"
-            echo "matrix=$matrix"
-            echo "should_publish=$(jq -r 'any(.include[]; .publish)' <<<"$matrix")"
-          } >> "$GITHUB_OUTPUT"
-
+  # The shared identity uses github.sha, the tested PR merge commit. Only
+  # same-repository PRs publish; fork PRs run the build without publishing.
   build:
-    needs: identity
-    runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    env:
-      LIBTMUX_DOCS_PORT: lua
-      LIBTMUX_DOCS_VERSION: ${{ matrix.version }}
-      LIBTMUX_DOCS_SOURCE_REPOSITORY: ${{ needs.identity.outputs.source-repository }}
-      LIBTMUX_DOCS_CHECKOUT_LUA: ${{ github.workspace }}/port
-      LIBTMUX_DOCS_GENERATOR_CHECKOUT: ${{ github.workspace }}/docs-generator
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJSON(needs.identity.outputs.matrix) }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: ${{ needs.identity.outputs.source-repository }}
-          ref: ${{ needs.identity.outputs.source-ref }}
-          fetch-depth: 0
-          path: port
-          persist-credentials: false
-
-      - id: source
-        working-directory: port
-        env:
-          SELECTED_REF: ${{ needs.identity.outputs.source-ref }}
-        run: |
-          set -euo pipefail
-          sha=$(git rev-parse HEAD)
-          selected=$(git rev-parse "$SELECTED_REF^{commit}")
-          [[ "$sha" == "$selected" ]] || {
-            echo "selected source resolved to $selected, checkout is $sha" >&2
-            exit 1
-          }
-          echo "sha=$sha" >> "$GITHUB_OUTPUT"
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          ref: ${{ github.sha }}
-          path: docs-generator
-          persist-credentials: false
-
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: libtmux/docs
-          ref: 15786d72eefca1ad802fdd398ee4773e944334c2
-          path: docs
-          persist-credentials: false
-
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
-        with:
-          node-version: '26'
-
-      - name: Snapshot source and exporter before native generation
-        working-directory: docs
-        env:
-          LIBTMUX_DOCS_SOURCE_SHA: ${{ steps.source.outputs.sha }}
-        run: node scripts/publication-provenance.mjs snapshot "$RUNNER_TEMP/build-inputs.json" "$PWD"
-
-      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
-        with:
-          version: 2026.9.9
-          working_directory: port
-          cache: false
-
-      - name: Bootstrap the pinned LuaLS exporter and its LuaJIT
-        working-directory: docs-generator
-        run: |
-          lua scripts/bootstrap/bootstrap.lua runtimes luajit
-          lua scripts/bootstrap/bootstrap.lua rocks dev live --lua=.cache/toolchains/luajit-2.1/bin/luajit
-          lua scripts/bootstrap/bootstrap.lua luals
-
-      - name: Export the selected Lua source
-        working-directory: docs-generator
-        run: |
-          .cache/toolchains/luajit-2.1/bin/luajit scripts/docs/docs.lua export \
-            --source "$GITHUB_WORKSPACE/port" \
-            --luals "$GITHUB_WORKSPACE/docs-generator/.cache/tools/luals-3.19.1/bin/lua-language-server" \
-            --output "$GITHUB_WORKSPACE/port/docs/_build"
-
-      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
-        with:
-          package_json_file: docs/package.json
-      - run: pnpm install --frozen-lockfile
-        working-directory: docs
-
-      - name: Build the selected Lua documentation tree
-        working-directory: docs
-        env:
-          LIBTMUX_DOCS_PORT: lua
-          LIBTMUX_DOCS_VERSION: ${{ matrix.version }}
-          LIBTMUX_DOCS_VERSION_KIND: ${{ matrix.kind }}
-          LIBTMUX_DOCS_IS_DEFAULT: ${{ matrix.isDefault }}
-          LIBTMUX_DOCS_RESOLVES_TO: ${{ matrix.resolvesTo }}
-          LIBTMUX_DOCS_SOURCE_REF: ${{ needs.identity.outputs.source-ref }}
-          LIBTMUX_DOCS_SOURCE_SHA: ${{ steps.source.outputs.sha }}
-          LIBTMUX_DOCS_INPUT_SNAPSHOT: ${{ runner.temp }}/build-inputs.json
-        run: ./scripts/build-site.sh --ports lua --versions "${{ matrix.version }}" --skip-refs --skip-pagefind
-
-      - id: content
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: docs-lua-${{ matrix.version }}
-          path: docs/_site/en/lua/${{ matrix.version }}
-          if-no-files-found: error
-          retention-days: 1
-          include-hidden-files: true
-
-      - name: Describe the uploaded artifact
-        working-directory: docs
-        env:
-          ARTIFACT_ID: ${{ steps.content.outputs.artifact-id }}
-          ARTIFACT_DIGEST: ${{ steps.content.outputs.artifact-digest }}
-          ARTIFACT_NAME: docs-lua-${{ matrix.version }}
-          SOURCE_SHA: ${{ steps.source.outputs.sha }}
-        run: node scripts/publication-provenance.mjs descriptor "$RUNNER_TEMP/publication.json"
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: docs-lua-${{ matrix.version }}-publication
-          path: ${{ runner.temp }}/publication.json
-          if-no-files-found: error
-          retention-days: 1
+    uses: libtmux/docs/.github/workflows/port-docs.yml@d74ce7aca948bebd73061d5a182ec2a3a44bf815
+    with:
+      port: lua
+      tag-prefix: ''
+      publish-previews: true
+      source-ref: ${{ inputs.source-ref }}
+      version: ${{ inputs.version }}
+      version-kind: ${{ inputs.version-kind }}
+      is-default: ${{ inputs.is-default == true }}
+      resolves-to: ${{ inputs.resolves-to }}
+      publish: ${{ inputs.publish == true }}
 
   publish:
-    needs: [identity, build]
-    if: ${{ !cancelled() && needs.build.result == 'success' && needs.identity.outputs.should-publish == 'true' }}
+    needs: build
+    if: needs.build.outputs.should-publish == 'true'
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.identity.outputs.matrix) }}
+      matrix: ${{ fromJSON(needs.build.outputs.matrix) }}
     permissions:
       contents: read
       id-token: write
-    uses: libtmux/docs/.github/workflows/reusable-deploy.yml@15786d72eefca1ad802fdd398ee4773e944334c2
+    uses: libtmux/docs/.github/workflows/reusable-deploy.yml@d74ce7aca948bebd73061d5a182ec2a3a44bf815
     with:
+      # Unprefixed by locale: reusable-deploy prepends <locale>/ itself when
+      # `port` is set, so this becomes en/lua/<version>.
       path-prefix: lua/${{ matrix.version }}
       artifact: docs-lua-${{ matrix.version }}
       version-kind: ${{ matrix.kind }}
+      require-current-pr: true
       port: lua
       version: ${{ matrix.version }}
       label: ${{ matrix.version }}
       is-default: ${{ matrix.isDefault }}
       resolves-to: ${{ matrix.resolvesTo }}
-      environment: ${{ matrix.environment }}
+      environment: ${{ matrix.kind == 'pr' && 'docs-preview' || 'docs' }}
     secrets:
-      role-arn: ${{ matrix.environment == 'docs-preview' && secrets.LIBTMUX_DOCS_PREVIEW_ROLE_ARN || secrets.LIBTMUX_DOCS_ROLE_ARN }}
+      role-arn: ${{ secrets[matrix.kind == 'pr' && 'LIBTMUX_DOCS_PREVIEW_ROLE_ARN' || 'LIBTMUX_DOCS_ROLE_ARN'] }}
       bucket: ${{ secrets.LIBTMUX_DOCS_BUCKET }}
       distribution: ${{ secrets.LIBTMUX_DOCS_DISTRIBUTION }}
