@@ -4,6 +4,21 @@ Notable changes to `libtmux`.
 
 ## Unreleased
 
+- Runtime: `Runtime:start_server` starts a private tmux server and resolves to
+  an `OwnedServer` with its `server` handle, its `socket_path` and `stop()`.
+  The server lives in a new directory under `root` (the system temporary
+  directory by default), with no configuration, none of the `TMUX`,
+  `TMUX_PANE` or `LIBTMUX_SOCKET*` variables, and `exit-empty off`, so it stays
+  up until stopped. `stop()` kills the server, waits until nothing answers and
+  removes the directory; it fails with `stop_failed` or `leaked_server` rather
+  than hide a server that survived. The runtime stops every owned server when
+  its body returns, fails or is cancelled. (#103)
+- Runtime: `Runtime:with_server(options, body)` runs the body on a private
+  server and stops it however the body ends. (#103)
+- Examples: each program starts and stops its own server, so
+  `examples/api/run.sh`, which needed `sh` and `perl`, is removed. Run a program
+  with `lua examples/api/connect.lua`; `TMUX_BIN` still selects another tmux,
+  and `TMUX_SOCKET` is no longer read. (#103)
 - Docs: the README shows `Pane:resize` and `Window:resize` with a new tested
   program, `examples/api/resize.lua`, and links the kill, option and hook
   methods.
