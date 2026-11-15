@@ -12,10 +12,8 @@ import time
 from urllib.parse import unquote
 
 if __package__:
-    from .readme_examples import check_readmes
     from .runtime_config import clean_environment, enter_sandbox, executable_path, identify
 else:
-    from readme_examples import check_readmes
     from runtime_config import clean_environment, enter_sandbox, executable_path, identify
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -88,10 +86,8 @@ def docs():
                 fragment = unquote(target.split("#", 1)[1])
                 if fragment and fragment not in markdown_anchors(destination):
                     raise SystemExit(f"Broken anchor in {path.relative_to(ROOT)}: {target}")
-    try:
-        check_readmes(ROOT)
-    except ValueError as error:
-        raise SystemExit(str(error)) from error
+    luajit = shutil.which("luajit") or str(ROOT / ".cache/toolchains/luajit-2.1/bin/luajit")
+    run([luajit, "scripts/docs/docs.lua", "readmes"], timeout=10)
     if not (ROOT / "CLAUDE.md").is_symlink() or os.readlink(ROOT / "CLAUDE.md") != "AGENTS.md":
         raise SystemExit("CLAUDE.md must remain a relative symlink to AGENTS.md")
     run(["git", "diff", "--check"], timeout=5)
@@ -149,9 +145,10 @@ def main():
             executable = ROOT / ".cache/tools/luals-3.19.1/bin/lua-language-server"
             if not executable.exists():
                 raise SystemExit("Missing pinned LuaLS 3.19.1; see CONTRIBUTING.md")
+            luajit = shutil.which("luajit") or str(ROOT / ".cache/toolchains/luajit-2.1/bin/luajit")
             run([str(executable), "--check=.", "--checklevel=Warning", "--logpath=.cache/luals"], env=env)
-            run([sys.executable, "scripts/export-docs", "--luals", str(executable), "--check"], env=env)
-            run([sys.executable, "scripts/check_editor.py"], env=env, timeout=20)
+            run([luajit, "scripts/docs/docs.lua", "export", "--luals", str(executable), "--check"], env=env)
+            run([luajit, "scripts/check_editor/check_editor.lua"], env=env, timeout=20)
         elif gate == "mid":
             # Mid-loop work, so the mid budget: about 220 child processes take 5 s on a loaded host.
             run([sys.executable, "-m", "unittest", "discover", "-s", "tests/tooling", "-v"], timeout=30)

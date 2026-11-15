@@ -242,12 +242,17 @@ jobs:
           working_directory: port
           cache: false
 
-      - name: Bootstrap the pinned LuaLS exporter
-        run: lua docs-generator/scripts/bootstrap/bootstrap.lua luals
+      - name: Bootstrap the pinned LuaLS exporter and its LuaJIT
+        working-directory: docs-generator
+        run: |
+          lua scripts/bootstrap/bootstrap.lua runtimes luajit
+          lua scripts/bootstrap/bootstrap.lua rocks dev --lua=.cache/toolchains/luajit-2.1/bin/luajit
+          lua scripts/bootstrap/bootstrap.lua luals
 
       - name: Export the selected Lua source
+        working-directory: docs-generator
         run: |
-          python docs-generator/scripts/export-docs \
+          .cache/toolchains/luajit-2.1/bin/luajit scripts/docs/docs.lua export \
             --source "$GITHUB_WORKSPACE/port" \
             --luals "$GITHUB_WORKSPACE/docs-generator/.cache/tools/luals-3.19.1/bin/lua-language-server" \
             --output "$GITHUB_WORKSPACE/port/docs/_build"

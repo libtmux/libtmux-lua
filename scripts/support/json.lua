@@ -140,8 +140,8 @@ local function number(value)
 end
 
 -- `indent` is a number of spaces for json.dumps(indent=n) layout, or nil for the compact
--- separators (",", ":").
-function M.encode(value, indent)
+-- separators (",", ":"). `sort_keys` orders every object's keys, as json.dumps(sort_keys=True).
+function M.encode(value, indent, sort_keys)
     local function emit(item, level)
         if item == M.null then
             return "null"
@@ -153,6 +153,10 @@ function M.encode(value, indent)
             return tostring(item)
         end
         local keys = order[item]
+        if keys and sort_keys then
+            keys = { unpack(keys) }
+            table.sort(keys)
+        end
         if not keys and next(item) ~= nil and item[1] == nil then
             keys = M.keys(item)
         end
@@ -192,8 +196,8 @@ function M.read(path)
     return M.decode(files.read(path))
 end
 
-function M.write(path, value, indent)
-    files.write(path, M.encode(value, indent) .. "\n")
+function M.write(path, value, indent, sort_keys)
+    files.write(path, M.encode(value, indent, sort_keys) .. "\n")
 end
 
 return M
