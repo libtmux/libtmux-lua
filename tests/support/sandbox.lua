@@ -1,4 +1,4 @@
--- Lua cannot change its environment, so scripts/check/check.lua or tests/run_integration.py makes
+-- Lua cannot change its environment, so scripts/check/check.lua or tests/run_integration.lua makes
 -- the sandbox (tests/support/sandbox_host.lua) and this checks that it holds. Findings name
 -- variables and never print their values.
 local M = {}
