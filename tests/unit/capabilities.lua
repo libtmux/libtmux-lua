@@ -42,7 +42,12 @@ function M.test_the_committed_manifest_is_the_registry()
     local file = assert(io.open("capabilities.json", "rb"))
     local committed = file:read("*a")
     file:close()
-    t.assertEquals(committed, expected, "capabilities.json differs from the registry")
+    t.assertEquals(
+        committed,
+        expected,
+        "capabilities.json differs from the registry; "
+            .. "run lua scripts/emit_capabilities.lua > capabilities.json"
+    )
 end
 
 function M.test_the_raw_break_pane_is_refused_and_only_break_out_repairs()
