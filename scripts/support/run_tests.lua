@@ -5,7 +5,7 @@
 -- A suite is a file that returns a table of test functions, like tests/unit/*.lua. Arguments that
 -- end in .lua are suites; the rest go to luaunit, for example `--pattern mutation`.
 local here = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") or "."
-package.path = here .. "/../?.lua;" .. package.path
+package.path = here .. "/../?.lua;" .. here .. "/../../?.lua;" .. package.path
 require("support.repo").use_rocks()
 local luaunit = require("luaunit")
 
