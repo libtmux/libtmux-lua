@@ -246,7 +246,7 @@ jobs:
         working-directory: docs-generator
         run: |
           lua scripts/bootstrap/bootstrap.lua runtimes luajit
-          lua scripts/bootstrap/bootstrap.lua rocks dev --lua=.cache/toolchains/luajit-2.1/bin/luajit
+          lua scripts/bootstrap/bootstrap.lua rocks dev live --lua=.cache/toolchains/luajit-2.1/bin/luajit
           lua scripts/bootstrap/bootstrap.lua luals
 
       - name: Export the selected Lua source
