@@ -55,18 +55,10 @@ $ mise exec -- python scripts/bootstrap.py lint \
     --lua=.cache/toolchains/lua-5.4.9/bin/lua
 ```
 
-Install native prerequisites and LuaLS 3.19.1 into the ignored local cache:
+Install LuaLS 3.19.1 into the ignored local cache:
 
 ```console
-$ mise exec -- python scripts/bootstrap_native.py yaml luals
-```
-
-Install consumer codecs. LibYAML 0.2.5 is built statically in that cache; the
-external package check verifies the resulting native binding actually loads.
-
-```console
-$ mise exec -- python scripts/bootstrap.py consumers \
-    --yaml-dir=.cache/libyaml
+$ mise exec -- python scripts/bootstrap_native.py luals
 ```
 
 Bootstrap additional interpreters' unit dependencies with the same `--lua`

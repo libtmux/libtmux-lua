@@ -82,7 +82,7 @@ class RunnerTests(unittest.TestCase):
             raise Stop
 
         with patch.dict(os.environ, DIRTY), patch.object(package, "identify", look), \
-                patch.object(sys, "argv", ["package.py", "--core-only"]):
+                patch.object(sys, "argv", ["package.py"]):
             with self.assertRaises(Stop):
                 package.main()
         self.assertEqual(seen, [[]])

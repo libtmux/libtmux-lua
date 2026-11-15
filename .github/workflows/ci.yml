@@ -187,8 +187,7 @@ jobs:
           mise where actionlint@1.7.12 >> "$GITHUB_PATH"
           python scripts/bootstrap_runtimes.py 5.4.9
           python scripts/bootstrap.py lint --lua=.cache/toolchains/lua-5.4.9/bin/lua
-          python scripts/bootstrap_native.py yaml luals
-          python scripts/bootstrap.py consumers --lua="$TEST_LUA" --yaml-dir=.cache/libyaml
+          python scripts/bootstrap_native.py luals
       - name: Record tool identities
         run: |
           {

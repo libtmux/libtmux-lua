@@ -16,7 +16,6 @@ DEPENDENCIES = {
     "dev": (("luaunit", "3.5-1"), ("lunajson", "1.2.3-1")),
     "lint": (("argparse", "0.7.2-1"), ("luafilesystem", "1.9.0-1"), ("luacheck", "1.2.0-1")),
     "live": (("luv", "1.52.1-0"),),
-    "consumers": (("lunajson", "1.2.3-1"), ("lyaml", "6.2.9-1")),
 }
 
 
@@ -25,7 +24,6 @@ def main():
     parser.add_argument("groups", nargs="+", choices=DEPENDENCIES)
     parser.add_argument("--lua", default="lua")
     parser.add_argument("--luarocks", default="luarocks")
-    parser.add_argument("--yaml-dir", help="LibYAML prefix for lyaml")
     args = parser.parse_args()
     runtime = identify(args.lua)
     tree = ROOT / ".cache" / "rocks" / runtime.cache_label
@@ -39,10 +37,7 @@ def main():
             if existing.returncode == 0:
                 print(f"Installed: {name} {pin}", flush=True)
                 continue
-            command = [*base, "install", name, pin]
-            if name == "lyaml" and args.yaml_dir:
-                command.append(f"YAML_DIR={Path(args.yaml_dir).resolve()}")
-            subprocess.run(command, cwd=ROOT, env=env, check=True)
+            subprocess.run([*base, "install", name, pin], cwd=ROOT, env=env, check=True)
     print(json.dumps({"bootstrap_seconds": round(time.monotonic() - started, 4)}))
 
 

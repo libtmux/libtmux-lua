@@ -17,7 +17,6 @@ else:
 
 ROOT = Path(__file__).resolve().parent.parent
 CACHE = ROOT / ".cache"
-YAML_REVISION = "2c891fc7a770e8ba2fec34fc6b545c672beb37e6"
 MATRIX = json.loads((ROOT / "data/ci-matrix.json").read_text())
 # Releases below the supported floor. Their lanes prove the library refuses
 # the daemon, so they build from a pinned tag without a catalog entry.
@@ -99,22 +98,6 @@ def tmux_ref(ref):
     print(json.dumps(identify(build_tmux(source, prefix, label), commit, ref=ref)), flush=True)
 
 
-def yaml():
-    source = CACHE / "source/libyaml"
-    prefix = CACHE / "libyaml"
-    if not source.exists():
-        subprocess.run(["git", "clone", "--depth=1", "--branch=0.2.5",
-                        "https://github.com/yaml/libyaml.git", str(source)], check=True)
-    revision = subprocess.check_output(["git", "-C", str(source), "rev-parse", "HEAD"], text=True).strip()
-    if revision != YAML_REVISION:
-        raise SystemExit("Cached LibYAML checkout does not match the pinned revision")
-    subprocess.run(["cmake", "-S", str(source), "-B", str(source / "build"),
-                    f"-DCMAKE_INSTALL_PREFIX={prefix}", "-DBUILD_SHARED_LIBS=OFF",
-                    "-DCMAKE_POSITION_INDEPENDENT_CODE=ON", "-DYAML_BUILD_TESTING=OFF"], check=True)
-    subprocess.run(["cmake", "--build", str(source / "build"), "-j4"], check=True)
-    subprocess.run(["cmake", "--install", str(source / "build")], check=True)
-
-
 def luals():
     host = (platform.system(), platform.machine())
     if host not in LUALS:
@@ -137,7 +120,7 @@ def luals():
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("components", nargs="+", choices=("yaml", "luals", "tmux"))
+    parser.add_argument("components", nargs="+", choices=("luals", "tmux"))
     parser.add_argument("--tmux-version", help="exact released tmux version from the option catalog or the refused releases")
     parser.add_argument("--tmux-ref", help="a tag, branch or full commit of github.com/tmux/tmux, built at the commit it names")
     args = parser.parse_args()
@@ -154,7 +137,7 @@ def main():
         elif name == "tmux":
             tmux(args.tmux_version)
         else:
-            {"yaml": yaml, "luals": luals}[name]()
+            luals()
     print(json.dumps({"bootstrap_seconds": round(time.monotonic() - started, 4)}))
 
 

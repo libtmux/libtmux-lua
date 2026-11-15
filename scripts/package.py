@@ -31,7 +31,6 @@ DEPENDENCIES = {"luv": "1.52.1-0"}
 # Where each rock's changelog lands inside its installed rock: LuaRocks copies the
 # core's root CHANGES.md into doc/.
 INSTALLED_CHANGELOGS = {"libtmux": "doc/CHANGES.md"}
-PACKAGES = {"libtmux": ("lua", [])}
 
 
 def run(command, *, cwd, env, source=None):
@@ -315,18 +314,42 @@ def check_release(work, env, *, rocks, lua, runtime, cache, output, public_tag):
           "imports, examples", flush=True)
 
 
+def check_core(work, env, *, rocks, lua, version):
+    """Build the development rock, install it into its own tree and import it from outside the checkout."""
+    spec = ROOT / "rockspecs" / "libtmux-scm-1.rockspec"
+    inspect_spec(spec, "lua", {"lua"}, lua=lua, cwd=work, env=env)
+    build = work / "build-libtmux"
+    build.mkdir()
+    shutil.copytree(ROOT / "lua", build / "lua")
+    shutil.copyfile(spec, build / spec.name)
+    shutil.copyfile(ROOT / "LICENSE", build / "LICENSE")
+    changelog = CHANGELOGS["libtmux"]
+    (build / changelog).parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(ROOT / changelog, build / changelog)
+    build_prefix = work / "build-tree-libtmux"
+    rocks([f"--tree={build_prefix}", "make", "--deps-mode=one", spec.name], cwd=build)
+    rocks([f"--tree={build_prefix}", "pack", "libtmux", "scm-1"], cwd=build)
+    artifact = next(build.glob("libtmux-scm-1.*.rock"))
+    prefix = work / "installed-libtmux"
+    rocks([f"--tree={prefix}", "install", "--deps-mode=one", str(artifact)], cwd=work)
+    actual = installed(prefix, rocks, cwd=work)
+    if actual != {"libtmux"}:
+        raise RuntimeError(f"libtmux: installed closure {actual} != {{'libtmux'}}")
+    inspect_installed_license("libtmux", prefix, version)
+    inspect_installed_changelog("libtmux", prefix, version)
+    import_installed("libtmux", prefix, version, lua=lua, cwd=work, env=env)
+    print("PASS libtmux: built artifact, isolated install, MIT license, changelog, imports, "
+          "dependency closure", flush=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    scope = parser.add_mutually_exclusive_group()
-    scope.add_argument("--core-only", action="store_true", help="check core without consumer prerequisites")
-    scope.add_argument("--package", choices=PACKAGES, help="check one package and its core dependency")
-    scope.add_argument("--release", action="store_true", help="check only the core release candidate")
+    parser.add_argument("--release", action="store_true", help="check only the core release candidate")
     parser.add_argument("--output", type=Path, help="retain validated release artifacts in an empty directory")
     parser.add_argument("--public-tag", action="store_true", help="fetch the actual public source tag (network)")
     parser.add_argument("--cache", type=Path, help="installed prerequisite LuaRocks tree")
     parser.add_argument("--lua", default="lua", help="interpreter executable")
     parser.add_argument("--luarocks", default="luarocks", help="LuaRocks executable")
-    parser.add_argument("--yaml-dir", type=Path, help="LibYAML prefix (defaults to .cache/libyaml if present)")
     args = parser.parse_args()
     enter_sandbox()
     started = time.monotonic()
@@ -339,107 +362,24 @@ def main():
     lua_dir = Path(lua).parent.parent
     version = runtime.version
     rock_command = [luarocks, f"--lua-version={version}", f"--lua-dir={lua_dir}"]
-    yaml_dir = args.yaml_dir or ROOT / ".cache" / "libyaml"
-    rock_variables = [f"YAML_DIR={yaml_dir.resolve()}"] if yaml_dir.is_dir() else []
 
     def rocks(arguments, *, cwd, override_env=None):
-        return run([*rock_command, *arguments, *rock_variables], cwd=cwd, env=override_env or env)
+        return run([*rock_command, *arguments], cwd=cwd, env=override_env or env)
 
     cache = (args.cache or ROOT / ".cache" / "rocks" / runtime.cache_label).resolve()
-    if args.release:
-        selected = []
-    elif args.core_only or args.package == "libtmux":
-        selected = ["libtmux"]
-    elif args.package:
-        selected = ["libtmux", args.package]
-    else:
-        selected = list(PACKAGES)
-    needed = {dependency for name in selected for dependency in PACKAGES[name][1]}
     with tempfile.TemporaryDirectory(prefix="libtmux-lua-packages-") as directory:
         work = Path(directory)
         # Empty servers make missing prerequisites fail locally instead of downloading.
         config = work / "config.lua"
-        config_text = "rocks_servers = {}\nrocks_trees = {}\n"
-        if rock_variables:
-            # lyaml can link LibYAML statically; the external import verifies loadability.
-            config_text += (
-                'runtime_external_deps_patterns = { lib = { "lib?.so", '
-                '"lib?.so.*", "lib?.dylib", "?.dll", "lib?.a" } }\n'
-            )
-        config.write_text(config_text, encoding="utf-8")
+        config.write_text("rocks_servers = {}\nrocks_trees = {}\n", encoding="utf-8")
         env["LUAROCKS_CONFIG"] = str(config)
         env[f"LUAROCKS_CONFIG_{version.replace('.', '_')}"] = str(config)
         shutil.copyfile(ROOT / "tests/unit/imports.lua", work / "imports.lua")
         shutil.copyfile(ROOT / "examples/native_query.lua", work / "native_query.lua")
         shutil.copyfile(ROOT / "examples/snapshot.lua", work / "snapshot.lua")
         shutil.copyfile(ROOT / "examples/quickstart.lua", work / "quickstart.lua")
-        artifacts = work / "artifacts"
-        artifacts.mkdir()
-        dependency_rocks = {}
-        if needed:
-            for dependency, pinned in DEPENDENCIES.items():
-                if dependency not in needed:
-                    continue
-                spec = cache / "lib/luarocks" / f"rocks-{version}" / dependency / pinned / f"{dependency}-{pinned}.rockspec"
-                if not spec.is_file():
-                    raise RuntimeError(
-                        f"missing cached {dependency} {pinned}; "
-                        "run scripts/bootstrap.py live consumers first"
-                    )
-                rocks([f"--tree={cache}", "pack", dependency, pinned], cwd=artifacts)
-                dependency_rocks[dependency] = next(artifacts.glob(f"{dependency}-{pinned}.*.rock"))
-        built = {}
-        live_example_checked = False
-        for name in selected:
-            source_root, dependencies = PACKAGES[name]
-            spec = ROOT / "rockspecs" / f"{name}-scm-1.rockspec"
-            expected = {"lua", *dependencies}
-            if name != "libtmux":
-                expected.add("libtmux")
-            inspect_spec(spec, source_root, expected, lua=lua, cwd=work, env=env)
-            build = work / f"build-{name}"
-            build.mkdir()
-            shutil.copytree(ROOT / source_root, build / source_root)
-            shutil.copyfile(spec, build / spec.name)
-            shutil.copyfile(ROOT / "LICENSE", build / "LICENSE")
-            changelog = CHANGELOGS[name]
-            (build / changelog).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(ROOT / changelog, build / changelog)
-            build_prefix = work / f"build-tree-{name}"
-            prerequisites = [dependency_rocks[dep] for dep in dependencies]
-            if name != "libtmux":
-                prerequisites.insert(0, built["libtmux"])
-            for artifact in prerequisites:
-                rocks([
-                    f"--tree={build_prefix}", "install", "--deps-mode=one", str(artifact),
-                ], cwd=work)
-            rocks([
-                f"--tree={build_prefix}", "make", "--deps-mode=one", spec.name,
-            ], cwd=build)
-            rocks([f"--tree={build_prefix}", "pack", name, "scm-1"], cwd=build)
-            artifact = next(build.glob(f"{name}-scm-1.*.rock"))
-            built[name] = artifacts / artifact.name
-            shutil.copyfile(artifact, built[name])
-            prefix = work / f"installed-{name}"
-            for artifact in [*prerequisites, built[name]]:
-                rocks([
-                    f"--tree={prefix}", "install", "--deps-mode=one", str(artifact),
-                ], cwd=work)
-            expected_installed = {name, *dependencies}
-            if name != "libtmux":
-                expected_installed.add("libtmux")
-            actual = installed(prefix, rocks, cwd=work)
-            if actual != expected_installed:
-                raise RuntimeError(f"{name}: installed closure {actual} != {expected_installed}")
-            for installed_name in sorted(expected_installed & PACKAGES.keys()):
-                inspect_installed_license(installed_name, prefix, version)
-                inspect_installed_changelog(installed_name, prefix, version)
-            import_installed(name, prefix, version, lua=lua, cwd=work, env=env)
-            if "luv" in dependencies and not live_example_checked:
-                live_example(prefix, version, lua=lua, cwd=work, env=env)
-                live_example_checked = True
-            print(f"PASS {name}: built artifact, isolated install, MIT license, changelog, imports, "
-                  "dependency closure", flush=True)
+        if not args.release:
+            check_core(work, env, rocks=rocks, lua=lua, version=version)
         check_release(work, env, rocks=rocks, lua=lua, runtime=runtime, cache=cache,
                       output=args.output.resolve() if args.output else None, public_tag=args.public_tag)
     print(f"PASS package checks: Lua {version}, {time.monotonic() - started:.3f}s")

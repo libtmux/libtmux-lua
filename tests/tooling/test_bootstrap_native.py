@@ -162,7 +162,7 @@ class Command(FakeTmux):
         self.assertEqual(self.run_main("tmux", "--tmux-version=3.8", "--tmux-ref=master"), 2)
 
     def test_the_tmux_options_apply_only_to_tmux(self):
-        self.assertEqual(self.run_main("yaml", "--tmux-ref=master"), 2)
+        self.assertEqual(self.run_main("luals", "--tmux-ref=master"), 2)
         self.assertEqual(self.run_main("luals", "--tmux-version=3.8"), 2)
 
     def test_standard_output_carries_only_the_json_a_workflow_reads(self):
