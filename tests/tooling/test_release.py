@@ -9,6 +9,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -31,6 +32,23 @@ def prepare(root, *arguments):
     )
 
 
+PREPARED_SPECS = {}
+PREPARED_SPEC = release.prepared_spec
+
+
+def prepared_spec_once(root, version):
+    """`release.prepared_spec`, which starts luarocks and stylua, once per input.
+
+    The result depends only on the template rockspec, the stylua config and the
+    version, so each test that prepares the same fixture reuses the first run.
+    """
+    inputs = [root / "rockspecs/libtmux-scm-1.rockspec", root / "stylua.toml"]
+    key = (version, *(path.read_bytes() if path.is_file() else None for path in inputs))
+    if key not in PREPARED_SPECS:
+        PREPARED_SPECS[key] = PREPARED_SPEC(root, version)
+    return PREPARED_SPECS[key]
+
+
 def prepare_in_process(root, *arguments):
     """What `release.py prepare` does, without a Python start-up per call.
 
@@ -40,7 +58,8 @@ def prepare_in_process(root, *arguments):
     check = "--check" in arguments
     versions = [argument for argument in arguments if argument != "--check"]
     try:
-        release.prepare(root, versions[0] if versions else release.candidate(root), check=check)
+        with mock.patch.object(release, "prepared_spec", prepared_spec_once):
+            release.prepare(root, versions[0] if versions else release.candidate(root), check=check)
     except (OSError, ValueError, RuntimeError) as error:
         return subprocess.CompletedProcess(arguments, 1, "", f"FAIL {error}")
     return subprocess.CompletedProcess(arguments, 0, "", "")
