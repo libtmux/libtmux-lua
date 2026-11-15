@@ -1,7 +1,5 @@
 -- Directory work the scripts share, on luv: listing, walking, creating and removing trees.
----@type any
----@diagnostic disable-next-line: different-requires
-local uv = require("luv")
+local uv = require("support.uv")
 
 local M = {}
 

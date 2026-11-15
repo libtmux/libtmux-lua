@@ -101,14 +101,14 @@ offline and fail on missing prerequisites; they never install dependencies.
 Run a focused inner suite:
 
 ```console
-$ mise exec -- python scripts/check.py unit query
+$ mise exec -- luajit scripts/check/check.lua unit query
 ```
 
 Run unit suites, Lua51 formatting, lint, generated-field drift, links, README
 examples and whitespace checks:
 
 ```console
-$ mise exec -- python scripts/check.py mid
+$ mise exec -- luajit scripts/check/check.lua mid
 ```
 
 Each README must open with Quick start and close with What it leaves out and
@@ -120,7 +120,7 @@ Run the current outer gates: mid checks, owned-tmux integration, independent
 artifact builds/imports, LuaLS diagnostics and actual editor completion:
 
 ```console
-$ mise exec -- python scripts/check.py outer
+$ mise exec -- luajit scripts/check/check.lua outer
 ```
 
 Integration includes real luv and Neovim loop ownership, process cancellation,
@@ -148,9 +148,9 @@ uses owned pidfds; macOS cleanup remains an explicit unverified gate.
 Select the floor Lua and a cached Neovim explicitly:
 
 ```console
-$ mise exec -- python scripts/check.py integration \
-    --lua=.cache/toolchains/lua-5.1.5/bin/lua \
-    --nvim=.cache/toolchains/nvim-0.10.0/bin/nvim
+$ mise exec -- luajit scripts/check/check.lua integration \
+    --lua .cache/toolchains/lua-5.1.5/bin/lua \
+    --nvim .cache/toolchains/nvim-0.10.0/bin/nvim
 ```
 
 Set `TMUX_BIN` to the intended floor or current executable for each run.
@@ -328,13 +328,14 @@ library and its integration tests exist.
 
 A tmux command that names no socket goes to the server an inherited `TMUX`
 names, and otherwise to the default socket under `TMUX_TMPDIR`. The
-[test sandbox](../tests/support/sandbox.py) removes `TMUX`, `TMUX_PANE` and
+[test sandbox](../tests/support/sandbox_host.lua) removes `TMUX`, `TMUX_PANE` and
 every `LIBTMUX_SOCKET*` variable and sets `TMUX_TMPDIR` to an owner-only
 `libtmux-lua-sb-` directory, so a test that forgets `-S` finds nothing.
 
-`scripts/check.py`, `scripts/package/main.lua`, `tests/run_integration.py`, the tmux
-fixture and the `tests.integration` package enter the sandbox, and their
-children join it. Importing the package covers a direct `python3 -m unittest`
+`scripts/check/check.lua`, `scripts/package/main.lua`, `tests/run_integration.py`,
+the tmux fixture and the `tests.integration` package enter the sandbox, and their
+children join it. The Python integration harness keeps a twin of the sandbox in
+[sandbox.py](../tests/support/sandbox.py) until it moves to Lua. Importing the package covers a direct `python3 -m unittest`
 run of one of its modules; discovering a module by path does not, and the canary
 refuses there. A program that calls `Runtime:start_server` makes its server's
 directory under `TMPDIR`, or under `/tmp` when `TMPDIR` leaves no room for a
@@ -343,7 +344,7 @@ started by one that did.
 
 Lua cannot change its environment, so `tests/run.lua` only checks: it exits
 with status 2 unless a parent made the sandbox. Run unit suites through
-`scripts/check.py`.
+`scripts/check/check.lua`.
 
 The directory goes under `TMPDIR`, or under `/tmp` when `TMPDIR` is too long for
 a socket path, so keep `TMPDIR` short. The fixture's own directories stay under

@@ -13,9 +13,7 @@ repo.use_rocks()
 local json = require("support.json")
 local protocol = require("check_editor.protocol")
 local script = require("check_editor.script")
----@type any
----@diagnostic disable-next-line: different-requires
-local uv = require("luv")
+local uv = require("support.uv")
 
 local DEADLINE_MS = 8000
 

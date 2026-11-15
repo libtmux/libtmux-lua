@@ -13,7 +13,7 @@ M.LUA_VARIABLES = { "LUA_PATH", "LUA_CPATH", "LUA_INIT", "LUAROCKS_CONFIG" }
 function M.executable_path(name)
     local found
     if name:find("/", 1, true) then
-        found = name
+        found = shell.run({ "test", "-x", name }) == 0 and name or nil
     else
         local code, output = shell.run({ "sh", "-c", 'command -v "$1"', "sh", name })
         found = code == 0 and output:match("[^\n]+") or nil

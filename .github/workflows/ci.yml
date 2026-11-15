@@ -226,14 +226,14 @@ jobs:
       - name: Run offline gates
         run: |
           if [[ "$CI_GATE" == unit ]]; then
-            python scripts/check.py unit --lua="$TEST_LUA" 2>&1 | tee .cache/ci/check.log
+            luajit scripts/check/check.lua unit --lua "$TEST_LUA" 2>&1 | tee .cache/ci/check.log
           else
-            python scripts/check.py "$CI_GATE" --lua="$TEST_LUA" --nvim=".cache/toolchains/nvim-$CI_NVIM/bin/nvim" 2>&1 | tee .cache/ci/check.log
+            luajit scripts/check/check.lua "$CI_GATE" --lua "$TEST_LUA" --nvim ".cache/toolchains/nvim-$CI_NVIM/bin/nvim" 2>&1 | tee .cache/ci/check.log
           fi
       - name: Run the refusal check with a newer client
         if: matrix.client
         run: |
-          TMUX_CLIENT_BIN="$CI_CLIENT_BIN" LIBTMUX_REFUSAL_MAX_MS=500 python scripts/check.py refusal --lua="$TEST_LUA" --nvim=".cache/toolchains/nvim-$CI_NVIM/bin/nvim" 2>&1 | tee .cache/ci/mixed-client.log
+          TMUX_CLIENT_BIN="$CI_CLIENT_BIN" LIBTMUX_REFUSAL_MAX_MS=500 luajit scripts/check/check.lua refusal --lua "$TEST_LUA" --nvim ".cache/toolchains/nvim-$CI_NVIM/bin/nvim" 2>&1 | tee .cache/ci/mixed-client.log
       - name: Retain diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

@@ -184,8 +184,7 @@ end
 function M.test_rejects_linked_and_normalized_source_bytes()
     local program = root .. "/examples/api/connect.lua"
     os.remove(program)
-    ---@diagnostic disable-next-line: different-requires
-    local uv = require("luv")
+    local uv = require("support.uv")
     assert(uv.fs_symlink(repo.root .. "/examples/api/connect.lua", program))
     rejects("missing or linked")
     os.remove(program)

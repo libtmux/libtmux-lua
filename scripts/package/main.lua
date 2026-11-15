@@ -9,7 +9,7 @@
 -- complete examples. --output keeps the validated artifacts in an empty directory; --public-tag
 -- fetches the actual source tag (network). Missing dependencies fail locally. See README.md.
 local here = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") or "."
-package.path = here .. "/../?.lua;" .. package.path
+package.path = here .. "/../?.lua;" .. here .. "/../../?.lua;" .. package.path
 local repo = require("support.repo")
 repo.use_rocks()
 local argparse = require("argparse")
@@ -27,17 +27,20 @@ if not parsed then
     os.exit(2)
 end
 
-local ok, failure = pcall(function()
-    require("package.package").main({
-        lua = arguments.lua,
-        luarocks = arguments.luarocks,
-        cache = arguments.cache,
-        release = arguments.release,
-        output = arguments.output,
-        public_tag = arguments.public_tag,
-    })
-end)
-if not ok then
-    io.stderr:write("FAIL package checks: ", tostring(failure), "\n")
-    os.exit(1)
-end
+os.exit(require("tests.support.sandbox_host").run(function()
+    local ok, failure = pcall(function()
+        require("package.package").main({
+            lua = arguments.lua,
+            luarocks = arguments.luarocks,
+            cache = arguments.cache,
+            release = arguments.release,
+            output = arguments.output,
+            public_tag = arguments.public_tag,
+        })
+    end)
+    if not ok then
+        io.stderr:write("FAIL package checks: ", tostring(failure), "\n")
+        return 1
+    end
+    return 0
+end))
