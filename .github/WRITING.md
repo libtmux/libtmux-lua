@@ -54,9 +54,7 @@ never past three lines.
   library does.
 - **Examples start with their imports,** so a reader can paste one into a file
   and run it. Later excerpts in a section may continue from the first.
-- **Examples own their tmux server through the library,** not the shell. Where
-  the library cannot start or stop a server, as in Lua today, a launcher does
-  it, and "What it leaves out" says so.
+- **Examples own their tmux server through the library,** not the shell.
 - **Every displayed example comes from a file CI runs.** Mark each Lua block
   with the example or excerpt comment that names its source.
 - **Show the headline features the library has:** queries and filters, the

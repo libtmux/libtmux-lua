@@ -7,16 +7,18 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
+    local owned = must(runtime:start_server({ binary = binary }):await())
     local created = must(
-        server:new_session({ name = "demo", window_name = "main", argv = { "/bin/cat" } }):await()
+        owned.server
+            :new_session({ name = "demo", window_name = "main", argv = { "/bin/cat" } })
+            :await()
     )
     -- Observation holds one control-mode client open; it needs tmux 3.7 or newer.
-    local observation = must(server:observe(created.session):await())
+    local observation = must(owned.server:observe(created.session):await())
     local watch = must(observation:watch_pane(created.pane):await())
 
     must(created.pane:send_text("watched"):await())
@@ -27,6 +29,6 @@ must(adapter.run(function(runtime)
     print("output: watched")
 
     must(observation:close():await())
-    must(server:close():await())
+    must(owned:stop():await())
     return true
 end))

@@ -16,8 +16,15 @@ TARGETS = {
     "libtmux.Pane:send_keys", "libtmux.Pane:capture", "libtmux.Pane:wait_for_text", "libtmux.Error.code", "libtmux.Error.message",
     "libtmux.Entity:snapshot", "libtmux.Window:rename", "libtmux.Server:explain_panes",
     "libtmux.Server:group", "libtmux.Server:observe", "libtmux.Observation:watch_pane",
-    "libtmux.Pane:resize", "libtmux.Window:resize",
+    "libtmux.Pane:resize", "libtmux.Window:resize", "libtmux.Runtime:start_server",
+    "libtmux.Runtime:with_server", "libtmux.OwnedServer.server", "libtmux.OwnedServer.socket_path",
+    "libtmux.OwnedServer:stop",
 }
+# What a launcher or a hand-made server would need. A program that names any of
+# these is not one Lua program on the library.
+OUTSIDE_THE_LIBRARY = (
+    "run.sh", "TMUX_SOCKET", "os.execute", "io.popen", "perl", "wait-for", "/bin/sh -c", "unset",
+)
 
 
 class CompleteApiExamplesTest(unittest.TestCase):
@@ -34,15 +41,19 @@ class CompleteApiExamplesTest(unittest.TestCase):
 
     def test_complete_programs_cover_their_existing_targets(self):
         manifest = load_examples(self.root, TARGETS)
-        self.assertEqual(len(manifest["examples"]), 14)
+        self.assertEqual(len(manifest["examples"]), 16)
         self.assertEqual({symbol for example in manifest["examples"]
                           for symbol in example["symbols"]}, TARGETS)
         for example in manifest["examples"]:
             source = (self.root / example["file"]).read_text()
             self.assertIn('require("libtmux.runtime.luv")', source)
-            if example["id"] != "unsupported_version":  # the refused connect opens no server
-                self.assertIn("server:close():await()", source)
+            # Each program starts its own server and ends it, or hands it to the scoped form.
+            self.assertIn("start_server" if example["id"] != "with_server" else "with_server", source)
+            if example["id"] != "with_server":
+                self.assertIn("owned:stop():await()", source)
             self.assertNotIn('require("tests.', source)
+            for word in OUTSIDE_THE_LIBRARY:
+                self.assertNotIn(word, source, f"{example['id']} reaches outside the library")
 
     def test_receiver_and_collection_identities_match_native_annotations(self):
         declarations = [

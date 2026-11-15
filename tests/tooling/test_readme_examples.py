@@ -47,7 +47,7 @@ $ lua examples/hello.lua
 {FENCE}
 
 {FENCE}console
-$ sh examples/api/run.sh examples/api/connect.lua
+$ lua examples/api/connect.lua
 connected
 {FENCE}
 
@@ -73,7 +73,6 @@ FILES = {
     "lua/libtmux/assets/logo.svg": "<svg>library</svg>",
     "lua/libtmux/assets/logo.png": PNG,
     "examples/hello.lua": EXAMPLE,
-    "examples/api/run.sh": "#!/bin/sh\n",
     "examples/api/connect.lua": 'print("connected")\n',
     "examples/api/manifest.json": json.dumps(
         {"examples": [{"file": "examples/api/connect.lua", "stdout": "connected\n"}]}

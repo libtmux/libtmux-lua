@@ -1,16 +1,24 @@
 local adapter = require("libtmux.runtime.nvim")
 
 adapter.start(function(runtime)
-    local server, err = runtime
-        :connect({
-            binary = vim.fn.exepath("tmux"),
-            socket_path = assert(os.getenv("TMUX_SOCKET")),
-        })
-        :await()
-    if not server then
+    local owned, err = runtime:start_server({ binary = vim.fn.exepath("tmux") }):await()
+    if not owned then
         return nil, err
     end
-    return server:snapshot({ strict = true }):await()
+    local created
+    created, err = owned.server:new_session({ name = "demo", argv = { "/bin/cat" } }):await()
+    local snapshot
+    if created then
+        snapshot, err = owned.server:snapshot({ strict = true }):await()
+    end
+    local stopped, stop_err = owned:stop():await()
+    if not snapshot then
+        return nil, err
+    end
+    if not stopped then
+        return nil, stop_err
+    end
+    return snapshot
 end, function(snapshot, err)
     if err then
         vim.notify(tostring(err), vim.log.levels.ERROR)

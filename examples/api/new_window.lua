@@ -7,12 +7,12 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
-    local created = must(server
+    local owned = must(runtime:start_server({ binary = binary }):await())
+    local created = must(owned.server
         :new_session({
             name = "demo",
             window_name = "main",
@@ -24,6 +24,6 @@ must(adapter.run(function(runtime)
     assert(snapshot.name == "logs", "created window has the wrong name")
     print("window: " .. snapshot.name)
 
-    must(server:close():await())
+    must(owned:stop():await())
     return true
 end))

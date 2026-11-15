@@ -29,6 +29,7 @@ release may change an API: pin an exact version and read the
 [changelog](CHANGES.md).
 
 **Contents** — [Quick start](#quick-start) ·
+[Start a server](#start-and-stop-a-private-server) ·
 [Read tmux](#read-what-tmux-has-now) ·
 [Create](#create-sessions-windows-and-panes) ·
 [Type and read](#type-into-a-pane-and-read-the-answer) ·
@@ -83,12 +84,12 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
-    local created = must(server
+    local owned = must(runtime:start_server({ binary = binary }):await())
+    local created = must(owned.server
         :new_session({
             name = "demo",
             window_name = "main",
@@ -100,38 +101,81 @@ must(adapter.run(function(runtime)
     assert(snapshot.name == "demo", "created session has the wrong name")
     print("session: " .. snapshot.name)
 
-    must(server:close():await())
+    must(owned:stop():await())
     return true
 end))
 ```
 
-[`Runtime:connect`][ref-runtime-connect] binds the socket you name and never
-starts a server.
-[`Server:new_session`][ref-server-new-session] creates the session and
-[`Session:snapshot`][ref-session-snapshot] reads it back.
+[`Runtime:start_server`](docs/runtime.md#start-a-private-server) starts a
+private tmux server and `owned:stop()` ends it, so the program needs only Lua
+and tmux. [`Server:new_session`][ref-server-new-session] creates the session
+and [`Session:snapshot`][ref-session-snapshot] reads it back.
 
 Live calls return [Requests][ref-request]. [`:await()`][ref-request-await]
 yields inside the [runtime][ref-runtime] body and returns `value, err`; `must`
 raises the error.
 
-The program needs `TMUX_BIN` and `TMUX_SOCKET`, absolute paths to tmux and a
-socket. The repository's launcher sets both on a private server, runs the
-program, then stops the server:
+The programs use `/usr/bin/tmux`. Set `TMUX_BIN` to another absolute path to
+change that. Run one from a checkout:
 
 ```console
 $ git clone https://github.com/libtmux/libtmux-lua.git && cd libtmux-lua
 ```
 
-The launcher needs `perl` to confirm the stop:
-
 ```console
-$ sh examples/api/run.sh examples/api/new_session.lua
+$ lua examples/api/new_session.lua
 session: demo
 ```
 
 Every Lua block here comes from a program under [`examples/`](examples/).
 Excerpts continue inside the same runtime body, with `server` and `must` in
 hand.
+
+## Start and stop a private server
+
+### [`Runtime:start_server`](docs/runtime.md#start-a-private-server): own a tmux server
+
+`start_server` starts a tmux server in a directory of its own, with no
+configuration and none of your `TMUX` variables. It returns an `OwnedServer`
+with its `server`, its `socket_path` and `stop()`:
+
+<!-- example: examples/api/start_server.lua -->
+
+```lua
+local adapter = require("libtmux.runtime.luv")
+
+local function must(value, err)
+    if err ~= nil then
+        error(tostring(err), 0)
+    end
+    return value
+end
+
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
+
+must(adapter.run(function(runtime)
+    -- The server is private: its own directory, socket and environment.
+    local owned = must(runtime:start_server({ binary = binary }):await())
+    local server = owned.server
+    local before = must(server:snapshot():await())
+
+    must(server:new_session({ name = "demo", argv = { "/bin/cat" } }):await())
+    local after = must(server:snapshot():await())
+    print(("sessions: %d, then %d"):format(#before.sessions, #after.sessions))
+
+    must(owned:stop():await())
+    return true
+end))
+```
+
+- `stop()` kills the server, waits until nothing answers and removes the
+  directory.
+- The runtime stops a server you did not, even when the program fails.
+- `Runtime:with_server(options, body)` stops it when the body ends.
+- The server stays up with no session, so the program creates its own.
+
+More: [private servers](docs/runtime.md#start-a-private-server).
 
 ## Read what tmux has now
 
@@ -155,27 +199,26 @@ local function must(value, err)
     return value
 end
 
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
+
 must(adapter.run(function(runtime)
-    local server = must(runtime
-        :connect({
-            binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable"),
-            socket_path = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to an explicit socket"),
-        })
-        :await())
-    local snapshot = must(server:snapshot({ strict = true }):await())
+    local owned = must(runtime:start_server({ binary = binary }):await())
+    must(owned.server:new_session({ name = "demo", argv = { "/bin/cat" } }):await())
+    local snapshot = must(owned.server:snapshot({ strict = true }):await())
     for _, pane in ipairs(snapshot.panes) do
         io.stdout:write(pane.id, "\t", pane.window_id, "\n")
     end
-    must(server:close():await())
+    must(owned:stop():await())
     return true
 end))
 ```
 
-The launcher's server has one pane, so it prints that pane's ID and its
-window's ID:
+The program creates one session with one pane, so it prints that pane's ID and
+its window's ID:
 
 ```console
-$ sh examples/api/run.sh examples/snapshot.lua
+$ lua examples/snapshot.lua
 %0	@0
 ```
 
@@ -259,7 +302,7 @@ The program creates sessions named `demo` and `worker`, so the filter matches
 one:
 
 ```console
-$ sh examples/api/run.sh examples/api/query.lua
+$ lua examples/api/query.lua
 matched: demo
 ```
 
@@ -293,7 +336,7 @@ ones kept local. `pushdown` picks the mode: `never`, `auto` or `require`:
 `current_command` local:
 
 ```console
-$ sh examples/api/run.sh examples/api/explain.lua
+$ lua examples/api/explain.lua
 never: 6 tmux commands, filter none
   local: $ (pushdown_disabled)
 auto: 7 tmux commands, filter #{==:#{pane_active},1}
@@ -329,7 +372,7 @@ print(held.name .. " " .. fresh.name)
 ```
 
 ```console
-$ sh examples/api/run.sh examples/api/refresh.lua
+$ lua examples/api/refresh.lua
 editor build
 ```
 
@@ -355,12 +398,12 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
-    local created = must(server
+    local owned = must(runtime:start_server({ binary = binary }):await())
+    local created = must(owned.server
         :new_session({
             name = "demo",
             window_name = "main",
@@ -372,7 +415,7 @@ must(adapter.run(function(runtime)
     assert(snapshot.name == "logs", "created window has the wrong name")
     print("window: " .. snapshot.name)
 
-    must(server:close():await())
+    must(owned:stop():await())
     return true
 end))
 ```
@@ -381,7 +424,7 @@ end))
 shell.
 
 ```console
-$ sh examples/api/run.sh examples/api/new_window.lua
+$ lua examples/api/new_window.lua
 window: logs
 ```
 
@@ -408,8 +451,8 @@ this split, then prints their IDs. New windows and splits leave the
 selection alone unless you pass `select = true`:
 
 ```console
-$ sh examples/api/run.sh examples/quickstart.lua
-$1	@2	%3
+$ lua examples/quickstart.lua
+$0	@1	%2
 ```
 
 ## Type into a pane and read the answer
@@ -420,8 +463,8 @@ $1	@2	%3
 [`Pane:send_keys`][ref-pane-send-keys] presses named keys such as `Enter`.
 
 Success means tmux accepted the input while the command may still be running.
-The example waits on a tmux `wait-for` channel with
-[`Server:command`][ref-server-command]:
+The example [waits for the command's output][ref-pane-wait-for-text] before it
+goes on:
 
 <!-- example: examples/api/send_keys.lua -->
 
@@ -435,51 +478,37 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
-    local created = must(server:new_session({ name = "demo", argv = { "/bin/sh" } }):await())
+    local owned = must(runtime:start_server({ binary = binary }):await())
+    local created = must(owned.server:new_session({ name = "demo", argv = { "/bin/sh" } }):await())
     local pane = created.pane
-    local function quote(text)
-        return "'" .. text:gsub("'", "'\\''") .. "'"
-    end
 
-    -- Signal completion on this socket; do not guess when the shell has printed.
-    local command = "printf '\\nlua input ready\\n'; "
-        .. quote(binary)
-        .. " -S "
-        .. quote(socket)
-        .. " wait-for -S example-ready"
-    must(pane:send_text(command):await())
+    -- The shell echoes what is typed, so print the needle from two pieces.
+    must(pane:send_text("printf '%s%s\\n' 'lua input ' 'ready'"):await())
     must(pane:send_keys({ "Enter" }):await())
-    must(server:command({ "wait-for", "example-ready" }, { timeout = 1000 }):await())
-    local capture = must(pane:capture({ history_lines = 20 }):await())
-    local found = false
-    for line in must(capture:text()):gmatch("[^\r\n]+") do
-        if line == "lua input ready" then
-            found = true
-        end
-    end
-    assert(found, "completed command did not print the expected line")
+    local found = must(pane:wait_for_text("lua input ready", { timeout = 5000 }):await())
+    assert(found.text:find("lua input ready", 1, true), "the command did not print its line")
     print("lua input ready")
 
-    must(server:close():await())
+    must(owned:stop():await())
     return true
 end))
 ```
 
-`quote` shell-quotes the tmux path and socket for the pane's shell. The
-program captures the pane and prints the line the command wrote:
+The shell echoes what is typed, so the command prints its text from two
+pieces and the wait cannot match the echo. The program prints the line the
+command wrote:
 
 ```console
-$ sh examples/api/run.sh examples/api/send_keys.lua
+$ lua examples/api/send_keys.lua
 lua input ready
 ```
 
 [`Server:command`][ref-server-command] runs any tmux command from literal
-arguments. A nonzero exit is part of the result.
+arguments, such as `wait-for`. A nonzero exit is part of the result.
 
 More: [Pane operations](docs/panes.md).
 
@@ -505,7 +534,7 @@ print("lua capture ready")
 ```
 
 ```console
-$ sh examples/api/run.sh examples/api/capture.lua
+$ lua examples/api/capture.lua
 lua capture ready
 ```
 
@@ -532,7 +561,7 @@ print("lua wait ready")
 ```
 
 ```console
-$ sh examples/api/run.sh examples/api/wait_for_text.lua
+$ lua examples/api/wait_for_text.lua
 lua wait ready
 ```
 
@@ -560,12 +589,12 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
-    local created = must(server:new_session({ name = "demo", argv = { "/bin/cat" } }):await())
+    local owned = must(runtime:start_server({ binary = binary }):await())
+    local created = must(owned.server:new_session({ name = "demo", argv = { "/bin/cat" } }):await())
     local split = must(created.pane:split({ direction = "right", argv = { "/bin/cat" } }):await())
 
     must(created.window:resize({ width = 100, height = 30 }):await())
@@ -578,13 +607,13 @@ must(adapter.run(function(runtime)
     assert(pane.width == 30, "the pane kept its old width")
     print(("window %dx%d, pane %d wide"):format(window.width, window.height, pane.width))
 
-    must(server:close():await())
+    must(owned:stop():await())
     return true
 end))
 ```
 
 ```console
-$ sh examples/api/run.sh examples/api/resize.lua
+$ lua examples/api/resize.lua
 window 100x30, pane 30 wide
 ```
 
@@ -626,13 +655,13 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
+    local owned = must(runtime:start_server({ binary = binary }):await())
     -- One tmux process runs all four commands, in order.
-    local done = must(server
+    local done = must(owned.server
         :group({
             { "new-session", "-d", "-s", "demo", "-n", "main", "/bin/cat" },
             { "new-window", "-d", "-t", "demo:", "-n", "build", "/bin/cat" },
@@ -648,13 +677,13 @@ must(adapter.run(function(runtime)
     assert(#names == 3, "the group did not create three windows")
     print("windows: " .. table.concat(names, ", "))
 
-    must(server:close():await())
+    must(owned:stop():await())
     return true
 end))
 ```
 
 ```console
-$ sh examples/api/run.sh examples/api/group.lua
+$ lua examples/api/group.lua
 windows: main, build, test
 ```
 
@@ -686,16 +715,18 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
+    local owned = must(runtime:start_server({ binary = binary }):await())
     local created = must(
-        server:new_session({ name = "demo", window_name = "main", argv = { "/bin/cat" } }):await()
+        owned.server
+            :new_session({ name = "demo", window_name = "main", argv = { "/bin/cat" } })
+            :await()
     )
     -- Observation holds one control-mode client open; it needs tmux 3.7 or newer.
-    local observation = must(server:observe(created.session):await())
+    local observation = must(owned.server:observe(created.session):await())
     local watch = must(observation:watch_pane(created.pane):await())
 
     must(created.pane:send_text("watched"):await())
@@ -706,13 +737,13 @@ must(adapter.run(function(runtime)
     print("output: watched")
 
     must(observation:close():await())
-    must(server:close():await())
+    must(owned:stop():await())
     return true
 end))
 ```
 
 ```console
-$ sh examples/api/run.sh examples/api/watch_pane.lua
+$ lua examples/api/watch_pane.lua
 output: watched
 ```
 
@@ -736,16 +767,24 @@ did not create stay open:
 local adapter = require("libtmux.runtime.nvim")
 
 adapter.start(function(runtime)
-    local server, err = runtime
-        :connect({
-            binary = vim.fn.exepath("tmux"),
-            socket_path = assert(os.getenv("TMUX_SOCKET")),
-        })
-        :await()
-    if not server then
+    local owned, err = runtime:start_server({ binary = vim.fn.exepath("tmux") }):await()
+    if not owned then
         return nil, err
     end
-    return server:snapshot({ strict = true }):await()
+    local created
+    created, err = owned.server:new_session({ name = "demo", argv = { "/bin/cat" } }):await()
+    local snapshot
+    if created then
+        snapshot, err = owned.server:snapshot({ strict = true }):await()
+    end
+    local stopped, stop_err = owned:stop():await()
+    if not snapshot then
+        return nil, err
+    end
+    if not stopped then
+        return nil, stop_err
+    end
+    return snapshot
 end, function(snapshot, err)
     if err then
         vim.notify(tostring(err), vim.log.levels.ERROR)
@@ -755,17 +794,17 @@ end, function(snapshot, err)
 end)
 ```
 
-From the checkout, start Neovim with the library on its `runtimepath` and set
-`TMUX_SOCKET` to the absolute path of a server's socket:
+From the checkout, start Neovim with the library on its `runtimepath`. `tmux`
+must be on its `PATH`:
 
 ```console
-$ TMUX_SOCKET=/path/to/tmux.sock nvim \
+$ nvim \
     --cmd 'set runtimepath+=.' \
     -c 'luafile examples/nvim_snapshot.lua'
 ```
 
-Neovim shows the server's pane count. It has its own libuv binding, so the
-`luv` rock is not needed.
+Neovim starts a private server, creates a session and shows the pane count. It
+has its own libuv binding, so the `luv` rock is not needed.
 
 More: [runtime ownership and cancellation](docs/runtime.md).
 
@@ -794,8 +833,9 @@ $ luarocks --local make rockspecs/libtmux-scm-1.rockspec
 
 ## What it leaves out
 
-- **Starting a server.** [`Runtime:connect`][ref-runtime-connect] never starts
-  one. Without a `socket_path`, `LIBTMUX_SOCKET_PATH` or `LIBTMUX_SOCKET` names
+- **Starting a server on connect.** [`Runtime:connect`][ref-runtime-connect]
+  never starts one; [`start_server`](docs/runtime.md#start-a-private-server)
+  does. Without a `socket_path`, `LIBTMUX_SOCKET_PATH` or `LIBTMUX_SOCKET` names
   the server, and otherwise tmux picks it.
 - **Live records.** A [snapshot][ref-snapshot] holds what tmux said when it
   was read. Capture again to see a change.

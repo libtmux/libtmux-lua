@@ -7,36 +7,21 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
-    local created = must(server:new_session({ name = "demo", argv = { "/bin/sh" } }):await())
+    local owned = must(runtime:start_server({ binary = binary }):await())
+    local created = must(owned.server:new_session({ name = "demo", argv = { "/bin/sh" } }):await())
     local pane = created.pane
-    local function quote(text)
-        return "'" .. text:gsub("'", "'\\''") .. "'"
-    end
 
-    -- Signal completion on this socket; do not guess when the shell has printed.
-    local command = "printf '\\nlua input ready\\n'; "
-        .. quote(binary)
-        .. " -S "
-        .. quote(socket)
-        .. " wait-for -S example-ready"
-    must(pane:send_text(command):await())
+    -- The shell echoes what is typed, so print the needle from two pieces.
+    must(pane:send_text("printf '%s%s\\n' 'lua input ' 'ready'"):await())
     must(pane:send_keys({ "Enter" }):await())
-    must(server:command({ "wait-for", "example-ready" }, { timeout = 1000 }):await())
-    local capture = must(pane:capture({ history_lines = 20 }):await())
-    local found = false
-    for line in must(capture:text()):gmatch("[^\r\n]+") do
-        if line == "lua input ready" then
-            found = true
-        end
-    end
-    assert(found, "completed command did not print the expected line")
+    local found = must(pane:wait_for_text("lua input ready", { timeout = 5000 }):await())
+    assert(found.text:find("lua input ready", 1, true), "the command did not print its line")
     print("lua input ready")
 
-    must(server:close():await())
+    must(owned:stop():await())
     return true
 end))

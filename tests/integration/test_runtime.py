@@ -7,7 +7,6 @@ import subprocess
 import tempfile
 import unittest
 
-from tests.support.tmux_fixture import TmuxFixture
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -36,14 +35,18 @@ class RuntimeHostTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         self.assertIn(b"Neovim runtime smoke PASS", result.stdout + result.stderr)
 
-    def test_neovim_example_reports_the_pane_count(self):
+    def test_neovim_example_starts_its_own_server_and_reports_the_pane_count(self):
         nvim = os.environ.get("LIBTMUX_TEST_NVIM") or shutil.which("nvim")
         self.assertIsNotNone(nvim, "missing Neovim integration executable")
-        with TmuxFixture() as fixture, tempfile.TemporaryDirectory(prefix="libtmux-lua-") as bin_dir:
-            # The example finds tmux with exepath, so name the fixture's build "tmux" on PATH.
-            os.symlink(shutil.which(fixture.binary), os.path.join(bin_dir, "tmux"))
-            env = dict(fixture.env, TMUX_SOCKET=str(fixture.socket),
-                       PATH=bin_dir + os.pathsep + fixture.env.get("PATH", ""))
+        binary = shutil.which(os.environ.get("TMUX_BIN") or "tmux")
+        self.assertIsNotNone(binary)
+        # Short and under /tmp: the example's private directory must fit a socket path.
+        root = tempfile.mkdtemp(prefix="t-", dir="/tmp")
+        self.addCleanup(shutil.rmtree, root, ignore_errors=True)
+        with tempfile.TemporaryDirectory(prefix="libtmux-lua-") as bin_dir:
+            # The example finds tmux with exepath, so name the selected build "tmux" on PATH.
+            os.symlink(binary, os.path.join(bin_dir, "tmux"))
+            env = dict(os.environ, TMPDIR=root, PATH=bin_dir + os.pathsep + os.environ.get("PATH", ""))
             env.pop("LUA_CPATH", None)
             result = subprocess.run(
                 [nvim, "--headless", "-u", "NONE", "-i", "NONE", "--cmd", "set runtimepath+=.",
@@ -53,3 +56,4 @@ class RuntimeHostTests(unittest.TestCase):
         output = (result.stdout + result.stderr).decode(errors="replace")
         self.assertEqual(result.returncode, 0, output)
         self.assertEqual(result.stdout.decode(), "Panes: 1\n")
+        self.assertEqual(os.listdir(root), [], "the example left its server directory")

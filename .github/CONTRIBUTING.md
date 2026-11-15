@@ -29,11 +29,6 @@ Development scripts require Python 3.12 or newer; the development pin supplies
 actionlint 1.7.12 are build prerequisites. Bootstrap runs outside all test
 loops and may use the network.
 
-The [example launcher](../examples/api/run.sh) also needs `perl` on `PATH`, to
-confirm over a socket connection that tmux stopped. The Ubuntu 24.04 CI image
-and macOS include it. The launcher exits before it starts tmux when it is
-missing.
-
 Build the floor interpreter and the Lua 5.4.9 lint-tool interpreter:
 
 ```console
@@ -342,10 +337,10 @@ every `LIBTMUX_SOCKET*` variable and sets `TMUX_TMPDIR` to an owner-only
 fixture and the `tests.integration` package enter the sandbox, and their
 children join it. Importing the package covers a direct `python3 -m unittest`
 run of one of its modules; discovering a module by path does not, and the canary
-refuses there. The launcher `examples/api/run.sh` does the same for the programs
-it runs, in a directory under `TMPDIR`, or under `/tmp` when `TMPDIR` leaves no
-room for the default socket path. A new entry point that starts tmux must enter
-the sandbox or be started by one that did.
+refuses there. A program that calls `Runtime:start_server` makes its server's
+directory under `TMPDIR`, or under `/tmp` when `TMPDIR` leaves no room for a
+socket path. A new entry point that starts tmux must enter the sandbox or be
+started by one that did.
 
 Lua cannot change its environment, so `tests/run.lua` only checks: it exits
 with status 2 unless a parent made the sandbox. Run unit suites through
@@ -357,20 +352,18 @@ a socket path, so keep `TMPDIR` short. The fixture's own directories stay under
 left anywhere in the sandbox, even when every test passed, whether tmux chose it
 for a command that named none or a test named it with `-S`. It stops each server
 with `tmux -S <socket> kill-server`, then connects to confirm nothing answers. A
-server that still answers keeps the directory, which the failure names. The
-launcher does the same for its own directory, confirming each stop with a
-connection to the socket from `perl` and not with a tmux client. Refusals and
-failures name variables, sockets and directories, never the values of
-environment variables.
+server that still answers keeps the directory, which the failure names.
+`OwnedServer:stop` does the same for its own directory. Refusals and failures
+name variables, sockets and directories, never the values of environment
+variables.
 
 The [canary](../tests/integration/test_sandbox.py) shows that a client naming no
-socket looks only under the sandbox. Three more tests check the guard without
+socket looks only under the sandbox. Two more tests check the guard without
 tmux, using a [recording stand-in](../tests/support/recorder.py) that writes
 arguments and variable names, never values: the
 [sandbox](../tests/tooling/test_sandbox.py) test in the mid loop, and the
-[canary runner](../tests/integration/test_canary_runner.py) and
-[launcher](../tests/integration/test_launcher.py) tests with the integration
-suite, to keep the mid loop's tooling suite small.
+[canary runner](../tests/integration/test_canary_runner.py) test with the
+integration suite, to keep the mid loop's tooling suite small.
 Prove a change to the guard that way before running a suite.
 
 `Runtime:connect` with no `socket_path` reads `LIBTMUX_SOCKET_PATH`, then
@@ -382,31 +375,13 @@ exits, and the tree check counts it, so a test that starts a server on the
 default socket stops it, waits for it to exit and removes the file, as
 [the default-socket test](../tests/integration/test_socket_default.py) does.
 
-To run a program by hand against a server of your own, keep a `.env` that names
-its socket. `.gitignore` keeps it out of commits, and the rockspecs install
-only the modules they list. Write the file:
+A program that needs a server of its own starts one with `Runtime:start_server`
+and ends it with `OwnedServer:stop`, as every program under
+[examples/api](../examples/api/README.md) does, so no shell step starts or stops
+tmux. Run one by hand:
 
 ```console
-$ printf 'LIBTMUX_SOCKET_PATH=%s\n' /tmp/libtmux-lua-dev.sock > .env
-```
-
-The library never starts a server, so start one on that socket first:
-
-```console
-$ tmux -S /tmp/libtmux-lua-dev.sock -f /dev/null new-session -d
-```
-
-Load the file into the shell before running the program:
-
-```console
-$ set -a && . ./.env && set +a
-```
-
-Stop the server when you are done. tmux leaves its socket file behind, and a
-connection to it reports `uncertain_generation`:
-
-```console
-$ tmux -S /tmp/libtmux-lua-dev.sock kill-server
+$ lua examples/api/new_session.lua
 ```
 
 ## Pull requests

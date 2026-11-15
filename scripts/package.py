@@ -120,26 +120,21 @@ dofile("native_query.lua")
 
 
 def live_example(prefix, version, *, lua, cwd, env):
-    sys.path.insert(0, str(ROOT))
-    from tests.support.tmux_fixture import TmuxFixture
-
-    with TmuxFixture() as fixture:
-        child_env = dict(env, TMUX_BIN=shutil.which(fixture.binary),
-                         TMUX_SOCKET=str(fixture.socket))
-        child_env["LUA_PATH"] = f"{prefix}/share/lua/{version}/?.lua;{prefix}/share/lua/{version}/?/init.lua"
-        child_env["LUA_CPATH"] = f"{prefix}/lib/lua/{version}/?.so"
-        output = run([lua, "snapshot.lua"], cwd=cwd, env=child_env)
-        if output != "%0\t@0\n":
-            raise RuntimeError("installed snapshot example returned unexpected output")
-        if list(fixture.path.glob("libtmux-lua-pin-*")):
-            raise RuntimeError("installed snapshot example leaked its socket alias")
-        quickstart = run([lua, "quickstart.lua"], cwd=cwd, env=child_env)
-        if not re.fullmatch(r"\$\d+\t@\d+\t%\d+\n", quickstart):
-            raise RuntimeError(f"installed quickstart returned unexpected output: {quickstart!r}")
-        if fixture.run("has-session", "-t", "quickstart", check=False).returncode == 0:
-            raise RuntimeError("installed quickstart left its session running")
-        fixture.run("has-session", "-t", "$0")
-    print("PASS installed public snapshot/quickstart examples and borrowed-server cleanup", flush=True)
+    # Each program starts a private server; its directory and socket alias must fit sun_path.
+    temporary = Path(tempfile.mkdtemp(prefix="libtmux-lua-live-", dir="/tmp"))
+    child_env = dict(env, TMPDIR=str(temporary), TMUX_BIN=shutil.which(env.get("TMUX_BIN", "tmux")))
+    child_env["LUA_PATH"] = f"{prefix}/share/lua/{version}/?.lua;{prefix}/share/lua/{version}/?/init.lua"
+    child_env["LUA_CPATH"] = f"{prefix}/lib/lua/{version}/?.so"
+    output = run([lua, "snapshot.lua"], cwd=cwd, env=child_env)
+    if output != "%0\t@0\n":
+        raise RuntimeError("installed snapshot example returned unexpected output")
+    quickstart = run([lua, "quickstart.lua"], cwd=cwd, env=child_env)
+    if not re.fullmatch(r"\$\d+\t@\d+\t%\d+\n", quickstart):
+        raise RuntimeError(f"installed quickstart returned unexpected output: {quickstart!r}")
+    if list(temporary.iterdir()):
+        raise RuntimeError("installed examples left a private server directory")
+    temporary.rmdir()
+    print("PASS installed public snapshot/quickstart examples and private-server cleanup", flush=True)
 
 
 def tmux_release(binary):
@@ -155,12 +150,10 @@ def complete_api_examples(prefix, version, *, lua, cwd, env):
     manifest = load_examples(ROOT)
     directory = cwd / "complete-api-examples"
     directory.mkdir(exist_ok=True)
-    # Endpoint aliases also use this directory; keep Unix socket paths short.
+    # Each program starts a private server under TMPDIR; its directory and socket
+    # alias must fit sun_path.
     temporary = Path(tempfile.mkdtemp(prefix="libtmux-lua-api-check-", dir="/tmp"))
-    launcher = directory / "run.sh"
-    shutil.copyfile(ROOT / manifest["setup"]["launcher"], launcher)
-    child_env = dict(env, LUA_BIN=lua, TMPDIR=str(temporary),
-                     TMUX_BIN=shutil.which(env.get("TMUX_BIN", "tmux")))
+    child_env = dict(env, TMPDIR=str(temporary), TMUX_BIN=shutil.which(env.get("TMUX_BIN", "tmux")))
     child_env["LUA_PATH"] = f"{prefix}/share/lua/{version}/?.lua;{prefix}/share/lua/{version}/?/init.lua"
     child_env["LUA_CPATH"] = f"{prefix}/lib/lua/{version}/?.so"
     release = tmux_release(child_env["TMUX_BIN"])
@@ -173,11 +166,12 @@ def complete_api_examples(prefix, version, *, lua, cwd, env):
         ran += 1
         program = directory / Path(example["file"]).name
         shutil.copyfile(ROOT / example["file"], program)
-        output = run(["sh", str(launcher), str(program)], cwd=directory, env=child_env)
+        output = run([lua, str(program)], cwd=directory, env=child_env)
         if output != example["stdout"]:
             raise RuntimeError(f"{program.name}: complete example output differs: {output!r}")
         if list(temporary.iterdir()):
-            raise RuntimeError(f"{program.name}: complete example left a socket directory")
+            raise RuntimeError(f"{program.name}: complete example left a server directory")
+    # The runtime failure comes after the server started, so it proves the cleanup.
     for name, source in {
         "import": 'require("libtmux_example_missing_module")\n',
         "runtime": (directory / "connect.lua").read_text().replace(
@@ -185,13 +179,13 @@ def complete_api_examples(prefix, version, *, lua, cwd, env):
     }.items():
         program = directory / f"failure-{name}.lua"
         program.write_text(source)
-        result = subprocess.run(["sh", str(launcher), str(program)], cwd=directory,
+        result = subprocess.run([lua, str(program)], cwd=directory,
                                 env=child_env, capture_output=True, text=True, timeout=10)
         expected = "libtmux_example_missing_module" if name == "import" else "intentional example failure"
         if result.returncode == 0 or expected not in result.stderr:
             raise RuntimeError(f"{name}: example failure did not propagate")
         if list(temporary.iterdir()):
-            raise RuntimeError(f"{name}: failing example left a socket directory")
+            raise RuntimeError(f"{name}: failing example left a server directory")
     temporary.rmdir()
     print(f"PASS {ran} complete API programs and import/runtime failure cleanup", flush=True)
 

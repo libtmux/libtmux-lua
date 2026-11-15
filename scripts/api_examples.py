@@ -42,12 +42,11 @@ def load_examples(root, symbols=None):
     keys(manifest, ("schema", "setup", "examples"))
     require(type(manifest["schema"]) is int and manifest["schema"] == 1, "unsupported schema")
     setup = manifest["setup"]
-    keys(setup, ("lua", "luv", "launcher"))
+    keys(setup, ("lua", "luv"))
     require(isinstance(setup["lua"], str) and re.fullmatch(r"5\.[1-5]\.\d+", setup["lua"]),
             "Lua version must be pinned")
     require(isinstance(setup["luv"], str) and re.fullmatch(r"\d+\.\d+\.\d+-\d+", setup["luv"]),
             "luv version must be pinned")
-    file(setup["launcher"], "examples/api/run.sh")
     require(isinstance(manifest["examples"], list) and bool(manifest["examples"]), "no examples")
     ids, targets = set(), set()
     for example in manifest["examples"]:

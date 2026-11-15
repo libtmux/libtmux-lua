@@ -7,13 +7,13 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to the private socket")
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
+    local owned = must(runtime:start_server({ binary = binary }):await())
     -- One tmux process runs all four commands, in order.
-    local done = must(server
+    local done = must(owned.server
         :group({
             { "new-session", "-d", "-s", "demo", "-n", "main", "/bin/cat" },
             { "new-window", "-d", "-t", "demo:", "-n", "build", "/bin/cat" },
@@ -29,6 +29,6 @@ must(adapter.run(function(runtime)
     assert(#names == 3, "the group did not create three windows")
     print("windows: " .. table.concat(names, ", "))
 
-    must(server:close():await())
+    must(owned:stop():await())
     return true
 end))

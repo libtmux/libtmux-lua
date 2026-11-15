@@ -7,11 +7,12 @@ local function must(value, err)
     return value
 end
 
-local binary = assert(os.getenv("TMUX_BIN"), "set TMUX_BIN to an absolute tmux executable")
-local socket = assert(os.getenv("TMUX_SOCKET"), "set TMUX_SOCKET to an explicit socket")
+-- tmux is /usr/bin/tmux unless TMUX_BIN names another absolute path.
+local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 local result = must(adapter.run(function(runtime)
-    local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
+    local owned = must(runtime:start_server({ binary = binary }):await())
+    local server = owned.server
 
     -- docs:begin main
     local created = must(
@@ -23,21 +24,16 @@ local result = must(adapter.run(function(runtime)
     local split =
         must(logs.pane:split({ direction = "right", percent = 40, argv = { "/bin/cat" } }):await())
 
-    -- The pane signals through the same tmux binary; a bare `tmux` there may be
-    -- another build that cannot reach this server.
-    local marker = "libtmux-lua-quickstart"
-    local signal = ("printf 'libtmux ready\\n'; '%s' wait-for -S %s"):format(binary, marker)
-    must(created.pane:send_text(signal):await())
+    -- The shell echoes what is typed, so print the needle from two pieces.
+    must(created.pane:send_text("printf '%s%s\\n' 'libtmux ' 'ready'"):await())
     must(created.pane:send_keys({ "Enter" }):await())
-    must(server:command({ "wait-for", marker }, { timeout = 10000 }):await())
-
-    local capture = must(created.pane:capture({ history_lines = 20 }):await())
-    assert(must(capture:text()):find("libtmux ready", 1, true), "pane output was not captured")
+    local found = must(created.pane:wait_for_text("libtmux ready", { timeout = 5000 }):await())
+    assert(found.text:find("libtmux ready", 1, true), "pane output was not read")
     print(created.session:reference().id, logs.window:reference().id, split.pane:reference().id)
 
     must(created.session:kill():await())
     -- docs:end main
-    must(server:close():await())
+    must(owned:stop():await())
     return true
 end))
 

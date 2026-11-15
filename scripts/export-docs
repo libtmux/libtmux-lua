@@ -180,7 +180,7 @@ def build_payload(luals):
         "package": rock_metadata(),
         "declarations": declarations,
         "guides": content_files(["README.md", "docs/**/*.md"]),
-        "examples": content_files(["examples/**/*.lua", "examples/api/run.sh"]),
+        "examples": content_files(["examples/**/*.lua"]),
     }
     # Historical sources predate complete examples; an opted-in directory must validate.
     if (SOURCE / "examples/api").exists():

@@ -2,17 +2,37 @@
   "schema": 1,
   "setup": {
     "lua": "5.5.1",
-    "luv": "1.52.1-0",
-    "launcher": "examples/api/run.sh"
+    "luv": "1.52.1-0"
   },
   "examples": [
     {
+      "id": "start_server",
+      "symbols": [
+        "libtmux.Runtime:start_server",
+        "libtmux.OwnedServer.server",
+        "libtmux.OwnedServer:stop"
+      ],
+      "file": "examples/api/start_server.lua",
+      "description": "Start a private tmux server, create a session on it, and stop it.",
+      "stdout": "sessions: 0, then 1\n"
+    },
+    {
+      "id": "with_server",
+      "symbols": [
+        "libtmux.Runtime:with_server"
+      ],
+      "file": "examples/api/with_server.lua",
+      "description": "Run a body on a private tmux server that stops when the body ends.",
+      "stdout": "sessions: 1\n"
+    },
+    {
       "id": "connect",
       "symbols": [
-        "libtmux.Runtime:connect"
+        "libtmux.Runtime:connect",
+        "libtmux.OwnedServer.socket_path"
       ],
       "file": "examples/api/connect.lua",
-      "description": "Connect to an existing tmux daemon without taking ownership of it.",
+      "description": "Connect a second handle to a running tmux daemon without taking ownership of it.",
       "stdout": "connected\n"
     },
     {
@@ -25,7 +45,7 @@
       ],
       "file": "examples/api/snapshot.lua",
       "description": "List sessions, windows, and panes from one captured server snapshot.",
-      "stdout": "sessions: bootstrap, demo\nwindows: bootstrap, main\npanes: 2\n"
+      "stdout": "sessions: demo, worker\nwindows: jobs, main\npanes: 2\n"
     },
     {
       "id": "new_session",

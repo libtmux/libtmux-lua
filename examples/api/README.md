@@ -1,14 +1,13 @@
 # Complete API examples
 
-Each Lua file is a standalone program. [run.sh](run.sh) runs one on a private
-tmux server and stops that server afterward, even when the program fails. No
-existing session is needed. If the server will not stop, the launcher keeps the
-socket directory and says so.
+Each Lua file is a standalone program. It starts its own private tmux
+server with `Runtime:start_server`, uses it and stops it, even when the program
+fails. No existing session is needed.
 
-Needs Lua, LuaRocks, Git, tmux 3.3a or newer, a C compiler, CMake and perl on
-Linux. The launcher uses perl to confirm the server stopped. From the
-repository root, install the library and its standalone runtime dependency
-into a local tree:
+Needs Lua, LuaRocks, Git, tmux 3.3a or newer, a C compiler and CMake on Linux.
+The programs use `/usr/bin/tmux`; set `TMUX_BIN` to another absolute path to
+change that. From the repository root, install the library and its standalone
+runtime dependency into a local tree:
 
 ```console
 $ luarocks --tree ./rocks install luv 1.52.1-0 && \
@@ -19,12 +18,14 @@ $ luarocks --tree ./rocks install luv 1.52.1-0 && \
 Run one complete program:
 
 ```console
-$ sh examples/api/run.sh examples/api/connect.lua
+$ lua examples/api/connect.lua
 ```
 
 | Program | Task | Expected output |
 | --- | --- | --- |
-| [connect.lua](connect.lua) | Connect to the launcher's server | `connected` |
+| [start_server.lua](start_server.lua) | Start a private server, use it and stop it | `sessions: 0, then 1` |
+| [with_server.lua](with_server.lua) | Run a body on a server that stops when the body ends | `sessions: 1` |
+| [connect.lua](connect.lua) | Connect a second handle to a started server | `connected` |
 | [snapshot.lua](snapshot.lua) | List sessions, windows, and panes | Two of each |
 | [new_session.lua](new_session.lua) | Create a session | `session: demo` |
 | [new_window.lua](new_window.lua) | Create a window in that session | `window: logs` |
