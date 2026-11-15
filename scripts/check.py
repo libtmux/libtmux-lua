@@ -153,7 +153,8 @@ def main():
             run([sys.executable, "scripts/export-docs", "--luals", str(executable), "--check"], env=env)
             run([sys.executable, "scripts/check_editor.py"], env=env, timeout=20)
         elif gate == "mid":
-            run([sys.executable, "-m", "unittest", "discover", "-s", "tests/tooling", "-v"], timeout=5)
+            # Mid-loop work, so the mid budget: about 220 child processes take 5 s on a loaded host.
+            run([sys.executable, "-m", "unittest", "discover", "-s", "tests/tooling", "-v"], timeout=30)
             run([tool("actionlint")], timeout=5)
             for item in ("unit", "format", "lint", "generated", "docs"):
                 execute(item)

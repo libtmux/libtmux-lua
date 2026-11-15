@@ -378,7 +378,7 @@ arguments and variable names, never values: the
 [sandbox](../tests/tooling/test_sandbox.py) test in the mid loop, and the
 [canary runner](../tests/integration/test_canary_runner.py) and
 [launcher](../tests/integration/test_launcher.py) tests with the integration
-suite, since the tooling tests share a five-second limit in `scripts/check.py`.
+suite, to keep the mid loop's tooling suite small.
 Prove a change to the guard that way before running a suite.
 
 `Runtime:connect` with no `socket_path` reads `LIBTMUX_SOCKET_PATH`, then

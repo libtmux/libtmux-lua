@@ -52,7 +52,7 @@ def prepared_spec_once(root, version):
 def prepare_in_process(root, *arguments):
     """What `release.py prepare` does, without a Python start-up per call.
 
-    The tooling suite has a five second budget. The CLI wrapper adds only
+    The tooling suite is subprocess-bound. The CLI wrapper adds only
     argument parsing and the exit status, which test_prepare_and_check_keep_one_alpha_identity covers.
     """
     check = "--check" in arguments
@@ -274,8 +274,8 @@ class ChangelogTests(unittest.TestCase):
         )
 
     def refused(self, fragment):
-        # In-process: the tooling suite has a five second budget, and a Python
-        # start-up per case would spend it. The command is run twice below.
+        # In-process: a Python start-up per case would add up across the
+        # subprocess-bound tooling suite. The command is run twice below.
         reported = release.changelog_failures(self.root)
         self.assertTrue(any(fragment in line for line in reported), reported)
 

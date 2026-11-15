@@ -58,6 +58,22 @@ class RunnerTests(unittest.TestCase):
                 check.main()
         self.assertEqual(seen, [[]])
 
+    def test_the_tooling_suite_is_killed_only_at_the_mid_budget(self):
+        seen = []
+
+        def record(command, *, env=None, timeout=290):
+            seen.append((command[1:3], timeout))
+            raise Stop
+
+        with patch.object(check, "run", record), patch.object(check, "enter_sandbox"), \
+                patch.object(check, "tool", lambda name: name), patch.object(check, "lua_environment", lambda lua: {}), \
+                patch.object(sys, "argv", ["check.py", "mid"]):
+            with self.assertRaises(Stop):
+                check.main()
+        # The suite is subprocess-bound: a loaded runner or machine takes 5 s for it.
+        self.assertEqual(seen[0][0], ["-m", "unittest"])
+        self.assertGreaterEqual(seen[0][1], 30, "the tooling suite is killed before the mid budget")
+
     def test_package_enters_the_sandbox_before_it_builds_anything(self):
         seen = []
 
