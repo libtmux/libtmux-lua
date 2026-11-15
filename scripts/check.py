@@ -120,7 +120,7 @@ def main():
                 raise SystemExit("No unit suites discovered")
             run([lua, "tests/run.lua", *suites], env=env, timeout=5)
         elif gate == "format":
-            run([tool("stylua"), "--check", "--syntax", "Lua51", "lua", "tests", "examples", "rockspecs"], timeout=10)
+            run([tool("stylua"), "--check", "--syntax", "Lua51", "lua", "tests", "examples", "rockspecs", "scripts"], timeout=10)
         elif gate == "lint":
             lint_lua = ROOT / ".cache/toolchains/lua-5.4.9/bin/lua"
             if not lint_lua.exists():
@@ -128,8 +128,8 @@ def main():
             lint_env = lua_environment(str(lint_lua))
             executable = shutil.which("luacheck", path=lint_env["PATH"])
             if not executable:
-                raise SystemExit("Missing luacheck; run scripts/bootstrap.py first")
-            run([executable, "lua", "tests", "examples"], env=lint_env, timeout=10)
+                raise SystemExit("Missing luacheck; run scripts/bootstrap/bootstrap.lua rocks lint first")
+            run([executable, "lua", "tests", "examples", "scripts"], env=lint_env, timeout=10)
         elif gate == "docs":
             docs()
         elif gate == "generated":
@@ -154,6 +154,9 @@ def main():
         elif gate == "mid":
             # Mid-loop work, so the mid budget: about 220 child processes take 5 s on a loaded host.
             run([sys.executable, "-m", "unittest", "discover", "-s", "tests/tooling", "-v"], timeout=30)
+            luajit = shutil.which("luajit") or str(ROOT / ".cache/toolchains/luajit-2.1/bin/luajit")
+            suites = sorted(str(path.relative_to(ROOT)) for path in ROOT.glob("scripts/*/tests/test_*.lua"))
+            run([luajit, "scripts/support/run_tests.lua", *suites], timeout=30)
             run([tool("actionlint")], timeout=5)
             for item in ("unit", "format", "lint", "generated", "docs"):
                 execute(item)

@@ -9,7 +9,11 @@ local M = {}
 
 M.DEPENDENCIES = {
     dev = { { "luaunit", "3.5-1" }, { "lunajson", "1.2.3-1" }, { "argparse", "0.7.2-1" } },
-    lint = { { "luafilesystem", "1.9.0-1" }, { "luacheck", "1.2.0-1" } },
+    lint = {
+        { "argparse", "0.7.2-1" },
+        { "luafilesystem", "1.9.0-1" },
+        { "luacheck", "1.2.0-1" },
+    },
     live = { { "luv", "1.52.1-0" } },
 }
 

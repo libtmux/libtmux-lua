@@ -24,62 +24,68 @@ Check the selected interpreter:
 $ mise exec -- lua -v
 ```
 
-Development scripts require Python 3.12 or newer; the development pin supplies
-3.14.6. LuaRocks 3.13.0, a C compiler, make, CMake, StyLua 2.4.0 and
-actionlint 1.7.12 are build prerequisites. Bootstrap runs outside all test
-loops and may use the network.
+The repository's scripts are Lua. They run on LuaJIT, which the bootstrap builds
+from a pinned revision, with `luv` for processes; the pinned development Lua
+runs only the bootstrap that builds it. LuaRocks 3.13.0, a C compiler, make,
+CMake, git, curl, tar, StyLua 2.4.0 and actionlint 1.7.12 are build
+prerequisites. Bootstrap runs outside all test loops and may use the network.
 
-Build the floor interpreter and the Lua 5.4.9 lint-tool interpreter:
+Build the tool LuaJIT, the Lua 5.4.9 lint-tool interpreter and the floor
+interpreter:
 
 ```console
-$ mise exec -- python scripts/bootstrap_runtimes.py 5.1.5 5.4.9
+$ mise exec -- lua scripts/bootstrap/bootstrap.lua runtimes \
+    luajit 5.4.9 5.1.5
 ```
 
-Install unit-test and standalone runtime dependencies for the development Lua:
+Put the tool LuaJIT on `PATH`; every script below runs on it:
 
 ```console
-$ mise exec -- python scripts/bootstrap.py dev live
+$ export PATH="$PWD/.cache/toolchains/luajit-2.1/bin:$PATH"
 ```
 
-Install lint dependencies under the separate tool interpreter. Luacheck 1.2.0
-assigns to a loop variable, which Lua 5.5 rejects; this tool constraint does
-not change the library's runtime targets.
+Install the script and unit-test dependencies, `luv` and the lint tools under
+the tool LuaJIT:
 
 ```console
-$ mise exec -- python scripts/bootstrap.py lint \
+$ mise exec -- lua scripts/bootstrap/bootstrap.lua rocks \
+    dev live lint \
+    --lua=.cache/toolchains/luajit-2.1/bin/luajit
+```
+
+Install the unit-test and standalone runtime dependencies for the development
+Lua. Luacheck 1.2.0 assigns to a loop variable, which Lua 5.5 rejects, so the
+lint gate runs it under the 5.4.9 interpreter; this tool constraint does not
+change the library's runtime targets:
+
+```console
+$ mise exec -- lua scripts/bootstrap/bootstrap.lua rocks \
+    dev live
+```
+
+```console
+$ mise exec -- lua scripts/bootstrap/bootstrap.lua rocks \
+    lint \
     --lua=.cache/toolchains/lua-5.4.9/bin/lua
 ```
 
 Install LuaLS 3.19.1 into the ignored local cache:
 
 ```console
-$ mise exec -- python scripts/bootstrap_native.py luals
+$ mise exec -- lua scripts/bootstrap/bootstrap.lua luals
 ```
 
 Bootstrap additional interpreters' unit dependencies with the same `--lua`
-option. C modules must be built separately for each interpreter ABI.
-
-Build the accepted standalone LuaJIT revision:
-
-```console
-$ mise exec -- python scripts/bootstrap_runtimes.py luajit
-```
-
-Install its independent unit and live dependencies:
-
-```console
-$ mise exec -- python scripts/bootstrap.py dev live \
-    --lua=.cache/toolchains/luajit-2.1/bin/luajit
-```
-
-The scripts keep LuaJIT and PUC Lua 5.1 rocks in separate cache trees, even
-though both report the Lua 5.1 ABI. LuaJIT uses the same absolute prefix during
-build and installation, following its [installation guide](https://luajit.org/install.html).
+option. C modules must be built separately for each interpreter ABI. The
+scripts keep LuaJIT and PUC Lua 5.1 rocks in separate cache trees, even though
+both report the Lua 5.1 ABI. LuaJIT uses the same absolute prefix during build
+and installation, following its [installation guide](https://luajit.org/install.html).
 
 Install the accepted Neovim hosts into separate local cache directories:
 
 ```console
-$ mise exec -- python scripts/bootstrap_hosts.py 0.10.0 0.10.4 0.11.7 0.12.5
+$ luajit scripts/bootstrap/bootstrap.lua hosts \
+    0.10.0 0.10.4 0.11.7 0.12.5
 ```
 
 The host bootstrap supports Linux x86_64. It verifies pinned official archive
@@ -222,24 +228,18 @@ pinned commits and read-only repository permissions. Setup failures fail the
 job; gates do not install missing dependencies. The job deadline includes
 bootstrap and does not replace the test-loop budgets below.
 
-CI builds tmux at the commit recorded in the option catalog (or, for a refused
-release, the pinned tag), checks the
-reported version and records the binary hash. To reproduce that setup:
-
-```console
-$ mise exec -- python scripts/bootstrap_native.py tmux \
-    --tmux-version=3.7c
-```
-
-The build requires Autoconf, Automake, a C compiler, make, pkg-config, Bison,
-libevent and ncurses development headers. Select its result through
-`TMUX_BIN=.cache/toolchains/tmux-3.7c/bin/tmux` when running a gate.
+CI builds tmux with the shared
+[build-tmux action](https://github.com/libtmux/.github/tree/30f81842b1e639ea4e25f93f1f2543504178e228/actions/build-tmux),
+which pins each release's archive by checksum, caches the build and checks the
+version it reports. Each matrix cell names its build in `ref`: the release, or
+the commit the catalog records for a development build. To reproduce a build,
+install that tmux and select it through `TMUX_BIN` when running a gate.
 macOS, remaining runtime/host combinations and unfinished product gates stay
 open in the [compatibility matrix](../docs/compatibility.md).
 
 ### Running CI against any tmux
 
-A `plan` job runs [ci_plan.py](../scripts/ci_plan.py) on
+A `plan` job runs [ci_plan.lua](../scripts/ci_plan/README.md) on
 [the option catalog](../data/tmux-options.json) and
 [ci-matrix.json](../data/ci-matrix.json) and decides the jobs, so the workflow
 lists no version. The catalog's releases
@@ -258,11 +258,10 @@ $ gh workflow run ci.yml \
     -f tmux-ref=3.6b,master
 ```
 
-A version that the table pins is built at its pinned revision. Any other ref is
-resolved to a commit and built from source by
-`scripts/bootstrap_native.py tmux --tmux-ref`, in a directory named for the
-commit. Each ref runs the integration suite, or the refusal check for a release
-below the minimum.
+A version that the table pins is built from its release. Any other ref is
+resolved to a commit and built from source by the build-tmux action. Each ref
+runs the integration suite, or the refusal check for a release below the
+minimum.
 
 Name other Lua runtimes or Neovim versions from `data/ci-matrix.json` with
 `lua` and `nvim`; they apply to the tmux jobs and multiply with the refs. The

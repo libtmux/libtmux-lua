@@ -76,8 +76,11 @@ jobs:
         with:
           persist-credentials: false
           sparse-checkout: |
+            .github/actions
             scripts
             data
+            .tool-versions
+      - uses: ./.github/actions/lua-tools
       - name: Plan the run
         id: plan
         env:
@@ -89,7 +92,7 @@ jobs:
           IMAGE: ${{ inputs.os }}
           TMATE: ${{ inputs.tmate }}
         run: |
-          python3 scripts/ci_plan.py plan \
+          luajit scripts/ci_plan/ci_plan.lua plan \
             --event "$EVENT" \
             --scope "$SCOPE" \
             --tmux-ref "$TMUX_REF" \
@@ -116,7 +119,6 @@ jobs:
       CI_CLIENT: ${{ matrix.client }}
       CI_NVIM: ${{ matrix.nvim }}
       CI_GATE: ${{ matrix.gate }}
-      CI_BUILD: ${{ matrix.build }}
     defaults:
       run:
         shell: bash
@@ -125,19 +127,19 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Native build dependencies
-        run: |
-          ./scripts/apt-get.sh update
-          ./scripts/apt-get.sh install --no-install-recommends -y build-essential cmake pkg-config autoconf automake libtool bison libevent-dev libncurses-dev libreadline-dev
-      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      - uses: libtmux/.github/actions/apt-get@30f81842b1e639ea4e25f93f1f2543504178e228
         with:
-          version: 2026.9.9
+          update: 'true'
+          args: install --no-install-recommends --yes build-essential cmake libreadline-dev
+      - uses: ./.github/actions/lua-tools
+        with:
+          groups: dev live lint
       # lua.org times out from runners now and then; the SHA256 pins in
-      # bootstrap_runtimes.py still verify a restored archive.
+      # runtimes.lua still verify a restored archive.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .cache/source/lua-*.tar.gz
-          key: lua-source-${{ hashFiles('scripts/bootstrap_runtimes.py') }}-${{ matrix.lua }}
+          key: lua-source-${{ hashFiles('scripts/bootstrap/runtimes.lua') }}-${{ matrix.lua }}
       # The outer gate also builds the pinned 5.4.9 lint interpreter, whatever
       # the matrix Lua is. The path matches the step above, so the 5.4.9 unit
       # job's entry restores here.
@@ -145,14 +147,14 @@ jobs:
         if: matrix.gate == 'outer'
         with:
           path: .cache/source/lua-*.tar.gz
-          key: lua-source-${{ hashFiles('scripts/bootstrap_runtimes.py') }}-5.4.9
+          key: lua-source-${{ hashFiles('scripts/bootstrap/runtimes.lua') }}-5.4.9
       - name: Select Lua and install test dependencies
         run: |
           mkdir -p .cache/ci
           if [[ "$CI_LUA" == '5.5.1' ]]; then
             test_lua="$(mise which lua)"
           else
-            python scripts/bootstrap_runtimes.py "$CI_LUA" 2>&1 | tee .cache/ci/runtime.log
+            lua scripts/bootstrap/bootstrap.lua runtimes "$CI_LUA" 2>&1 | tee .cache/ci/runtime.log
             if [[ "$CI_LUA" == luajit ]]; then
               test_lua="$PWD/.cache/toolchains/luajit-2.1/bin/luajit"
             else
@@ -160,21 +162,31 @@ jobs:
             fi
           fi
           echo "TEST_LUA=$test_lua" >> "$GITHUB_ENV"
-          python scripts/bootstrap.py dev live --lua="$test_lua" 2>&1 | tee .cache/ci/dependencies.log
-      - name: Build live-test prerequisites
+          lua scripts/bootstrap/bootstrap.lua rocks dev live --lua="$test_lua" 2>&1 | tee .cache/ci/dependencies.log
+      - name: Install the Neovim host
         if: matrix.gate != 'unit'
+        run: luajit scripts/bootstrap/bootstrap.lua hosts "$CI_NVIM" 2>&1 | tee .cache/ci/neovim.log
+      - name: Build tmux
+        if: matrix.gate != 'unit'
+        id: tmux
+        uses: libtmux/.github/actions/build-tmux@30f81842b1e639ea4e25f93f1f2543504178e228
+        with:
+          ref: ${{ matrix.ref }}
+      - name: Build the client tmux
+        if: matrix.client
+        id: client
+        uses: libtmux/.github/actions/build-tmux@30f81842b1e639ea4e25f93f1f2543504178e228
+        with:
+          ref: ${{ matrix.client }}
+      - name: Select the tmux builds
+        if: matrix.gate != 'unit'
+        env:
+          TMUX_BUILT: ${{ steps.tmux.outputs.binary }}
+          CLIENT_BUILT: ${{ steps.client.outputs.binary }}
         run: |
-          python scripts/bootstrap_hosts.py "$CI_NVIM" 2>&1 | tee .cache/ci/neovim.log
-          if [[ "$CI_BUILD" == ref ]]; then
-            python scripts/bootstrap_native.py tmux --tmux-ref="$CI_TMUX" | tee .cache/ci/tmux.log
-            echo "TMUX_BIN=$(jq -r 'select(.executable) | .executable' .cache/ci/tmux.log)" >> "$GITHUB_ENV"
-          else
-            python scripts/bootstrap_native.py tmux --tmux-version="$CI_TMUX" 2>&1 | tee .cache/ci/tmux.log
-            echo "TMUX_BIN=$PWD/.cache/toolchains/tmux-$CI_TMUX/bin/tmux" >> "$GITHUB_ENV"
-          fi
-          if [[ -n "$CI_CLIENT" ]]; then
-            python scripts/bootstrap_native.py tmux --tmux-version="$CI_CLIENT" 2>&1 | tee .cache/ci/client.log
-            echo "CI_CLIENT_BIN=$PWD/.cache/toolchains/tmux-$CI_CLIENT/bin/tmux" >> "$GITHUB_ENV"
+          echo "TMUX_BIN=$TMUX_BUILT" >> "$GITHUB_ENV"
+          if [[ -n "$CLIENT_BUILT" ]]; then
+            echo "CI_CLIENT_BIN=$CLIENT_BUILT" >> "$GITHUB_ENV"
           fi
       - name: Install outer-gate prerequisites
         if: matrix.gate == 'outer'
@@ -185,9 +197,9 @@ jobs:
           mise where stylua@2.4.0 >> "$GITHUB_PATH"
           mise install actionlint@1.7.12
           mise where actionlint@1.7.12 >> "$GITHUB_PATH"
-          python scripts/bootstrap_runtimes.py 5.4.9
-          python scripts/bootstrap.py lint --lua=.cache/toolchains/lua-5.4.9/bin/lua
-          python scripts/bootstrap_native.py luals
+          lua scripts/bootstrap/bootstrap.lua runtimes 5.4.9
+          lua scripts/bootstrap/bootstrap.lua rocks lint --lua=.cache/toolchains/lua-5.4.9/bin/lua
+          lua scripts/bootstrap/bootstrap.lua luals
       - name: Record tool identities
         run: |
           {
@@ -270,8 +282,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          sparse-checkout: scripts
+          sparse-checkout: |
+            .github/actions
+            scripts
+            .tool-versions
+      - uses: ./.github/actions/lua-tools
       - name: Require every planned job
         env:
           NEEDS: ${{ toJSON(needs) }}
-        run: python3 scripts/ci_plan.py verify
+        run: luajit scripts/ci_plan/ci_plan.lua verify

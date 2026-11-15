@@ -1,0 +1,31 @@
+name: Lua tools
+description: >-
+  Build the pinned LuaJIT that runs the repository's scripts and install its
+  rocks. The first step of every job that runs a script.
+
+inputs:
+  groups:
+    description: Rock groups for scripts/bootstrap/bootstrap.lua, such as dev or dev live lint.
+    required: false
+    default: dev
+
+runs:
+  using: composite
+  steps:
+    - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+      with:
+        version: 2026.9.9
+    - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: |
+          .cache/source/luajit
+          .cache/toolchains/luajit-2.1
+        key: tool-luajit-${{ runner.os }}-${{ hashFiles('scripts/bootstrap/runtimes.lua') }}
+    - name: Build LuaJIT and install its rocks
+      shell: bash
+      env:
+        GROUPS_TO_INSTALL: ${{ inputs.groups }}
+      run: |
+        lua scripts/bootstrap/bootstrap.lua runtimes luajit
+        lua scripts/bootstrap/bootstrap.lua rocks $GROUPS_TO_INSTALL --lua=.cache/toolchains/luajit-2.1/bin/luajit
+        echo "$PWD/.cache/toolchains/luajit-2.1/bin" >> "$GITHUB_PATH"
