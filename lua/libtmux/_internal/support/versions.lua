@@ -1,13 +1,12 @@
 -- Version support: reads which tmux release the connected daemon runs.
 -- "Support" means the tmux releases this library works with, not helper code.
 local M = {}
+local codec = require("libtmux._internal.codec")
 local MAX_INTEGER = 9007199254740991
--- tmux fires no hook for run-shell -C: its expanded text fails in the parser.
--- The doubled q: survives that parser's one level of unquoting.
-local TEMPLATE = "#{pid}_#{start_time}_#{version}_#{q:#{q:socket_path}}."
+local TEMPLATE = assert(codec.format({ "pid", "start_time", "version", "socket_path" }))
 local sequence = 0
 
--- A marker names no tmux command, so tmux refuses it and reports the word.
+-- A fresh prefix distinguishes native probe rows and generation-fence refusals.
 function M.marker(uv)
     sequence = sequence + 1
     local random
@@ -40,22 +39,28 @@ function M.condition(evidence)
 end
 
 function M.argv(prefix)
-    return { "run-shell", "-C", prefix .. TEMPLATE }
+    return { "list-commands", "-F", prefix .. TEMPLATE, "list-sessions" }
 end
 
--- The report is exactly one stderr line: tmux's refusal of this probe's marker.
-function M.report(prefix, stderr)
-    local head = "unknown command: " .. prefix
-    if type(stderr) ~= "string" or stderr:sub(1, #head) ~= head or stderr:sub(-1) ~= "\n" then
+-- The reserved native command emits one row through the existing bounded codec.
+function M.report(prefix, stdout)
+    if type(stdout) ~= "string" or stdout:sub(1, #prefix) ~= prefix then
         return nil
     end
-    local record = stderr:sub(#head + 1, -2)
-    local pid, started, version, socket = record:match("^(%d+)_(%d+)_([^_]+)_(.+)%.$")
+    local rows = codec.decode(stdout:sub(#prefix + 1), 4, { max_bytes = 16384, max_rows = 1 })
+    if not rows or #rows ~= 1 then
+        return nil
+    end
+    local pid, started, version, socket = rows[1][1], rows[1][2], rows[1][3], rows[1][4]
+    if not pid:match("^%d+$") or not started:match("^%d+$") or socket == "" then
+        return nil
+    end
     local pid_number, start_number = tonumber(pid), tonumber(started)
     if
-        not pid
-        or socket:find("\n", 1, true)
+        not pid_number
+        or not start_number
         or pid_number <= 0
+        or start_number <= 0
         or pid_number > MAX_INTEGER
         or start_number > MAX_INTEGER
     then
@@ -69,11 +74,9 @@ function M.report(prefix, stderr)
     }
 end
 
--- tmux before 3.2 has neither run-shell -C nor the client's -N, so such a
--- daemon (or client) answers the probe with usage text, not the marker; a
--- 3.0 daemon is turned away by a newer client before any command is parsed.
+-- Old clients reject -N; old protocol peers can reject the connection before
+-- parsing a command. A valid older daemon row is refused by the support floor.
 local PRE_32 = {
-    { "usage: run-shell ", "server" },
     { "server version is too old for client", "server" },
     { "tmux: unknown option -- N", "client" },
 }

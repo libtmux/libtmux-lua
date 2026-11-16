@@ -208,12 +208,16 @@ local function verify(state)
     return true
 end
 
-local function parse_probe(prefix, err)
-    local partial = type(err) == "table" and rawget(err, "partial") or nil
-    if type(partial) ~= "table" or partial.exit_code ~= 1 or partial.stdout ~= "" then
+local function parse_probe(prefix, result)
+    if
+        type(result) ~= "table"
+        or result.exit_code ~= 0
+        or result.stderr ~= ""
+        or (result.signal and result.signal ~= 0)
+    then
         return nil
     end
-    return versions.report(prefix, partial.stderr)
+    return versions.report(prefix, result.stdout)
 end
 
 -- With -N a client never starts a daemon: these two reports mean nothing ran.
@@ -249,10 +253,19 @@ local function read_evidence(state, operation)
             { timeout = 750, max_output_bytes = 16384 }
         )
         :await()
-    local observed = not result and parse_probe(prefix, err) or nil
+    local observed = result and parse_probe(prefix, result) or nil
     if not observed then
         local absent = daemon_absent(result or err)
-        local _, retained_error = process.retain_output(operation, result, err, "endpoint")
+        local retained_result, retained_error =
+            process.retain_output(operation, result, err, "endpoint")
+        if retained_result and not retained_error then
+            retained_error =
+                errors.new("invalid_frame", "native daemon evidence reply is invalid", {
+                    operation = "endpoint",
+                    effect = "completed",
+                    partial = retained_result,
+                })
+        end
         -- A socket path was checked by the pin; a name or none was not, and
         -- tmux alone knows the socket it would have used.
         if absent and not state.options.socket then

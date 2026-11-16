@@ -1,4 +1,4 @@
--- The version check reads the daemon's own version without firing user hooks.
+-- The reserved native bootstrap reads the daemon release without user effects.
 local test = require("luaunit")
 local child = require("tests.support.child")
 local fixture = require("tests.support.fixture")
@@ -7,10 +7,11 @@ local M = {}
 local DEADLINE = 3
 local FLOOR = "3.3a"
 -- Each hook with the command that fires it. tmux has after-hooks only for commands that opt in;
--- if-shell and run-shell, which carry the fence and the probe, have none through next-3.9, so
--- those two arm only on a tmux that adds them.
+-- if-shell and run-shell carry existing command fences and have none through next-3.9,
+-- so those two arm only on a tmux that adds them. Discovery reserves list-commands.
 local HOOKS = {
     { "after-display-message", "@after-display", { "display-message", "-p", "control" } },
+    { "after-show-options", "@after-show-options", { "show-options", "-s" } },
     { "command-error", "@command-error", { "has-session", "-t", "=missing-control" } },
     { "after-if-shell", "@after-if-shell", { "if-shell", "-F", "1", "" } },
     { "after-run-shell", "@after-run-shell", { "run-shell", "true" } },
@@ -52,7 +53,10 @@ local function refusal_wording(version)
     if at_32 then
         return "older than 3.3a"
     end
-    -- Before 3.2 the client that is too old rejects -N; a newer client reports the server.
+    if os.getenv("TMUX_CLIENT_BIN") and ranks(version, "3.1")[1] == true then
+        return "older than 3.3a"
+    end
+    -- Before 3.2 the client rejects -N; incompatible protocol peers refuse earlier.
     return ("tmux %s is older than 3.2"):format(
         os.getenv("TMUX_CLIENT_BIN") and "server" or "client"
     )
@@ -86,7 +90,8 @@ local function state(f)
 end
 
 local function fired(f, option)
-    return f:out("show-options", "-gqv", option):gsub("%s+$", "") == "fired"
+    return f:out("list-commands", "-F", "#{" .. option .. "}", "list-sessions"):gsub("%s+$", "")
+        == "fired"
 end
 
 --- Proves each armed hook fires for an ordinary command, then clears it.
@@ -169,7 +174,10 @@ function M.test_oracle_asks_the_library_grammar()
     test.assertEquals(ranks("3.4-master", FLOOR)[1], "none")
     test.assertEquals(ranks("3.4-dev", FLOOR)[1], "none")
     test.assertEquals(refusal_wording("3.4-dev"), "no release")
-    test.assertStrContains(refusal_wording("3.1c"), "is older than 3.2")
+    test.assertStrContains(
+        refusal_wording("3.1c"),
+        os.getenv("TMUX_CLIENT_BIN") and "older than 3.3a" or "is older than 3.2"
+    )
     test.assertEquals(refusal_wording("3.3"), "older than 3.3a")
 end
 

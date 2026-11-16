@@ -17,7 +17,12 @@ local function run_case(mode, host)
         }, "pipe")
         local old_socket = f.path .. "/old.sock"
         local ok, failure = pcall(function()
-            if mode == "replacement" or mode == "capabilities_replacement" or mode == "dead" then
+            if
+                mode == "replacement"
+                or mode == "capabilities_replacement"
+                or mode == "capabilities_alias"
+                or mode == "dead"
+            then
                 test.assertTrue(
                     program:expect(function(fresh)
                         return fresh:find("\n", 1, true) ~= nil
@@ -27,7 +32,17 @@ local function run_case(mode, host)
                 local ready = program:output():match("^[^\n]*")
                 local old_pid, old_started = ready:match("^READY (%d+) (%d+)$")
                 test.assertNotNil(old_pid, ready .. program:errors())
-                if mode == "replacement" or mode == "capabilities_replacement" then
+                if mode == "capabilities_alias" then
+                    f:run("set-option", "-s", "@capability-alias", "untouched")
+                    for index, name in ipairs({ "run-shell", "if-shell", "display-message" }) do
+                        f:run(
+                            "set-option",
+                            "-s",
+                            "command-alias[" .. (99 + index) .. "]",
+                            name .. "=set-option -s @capability-alias ran ; " .. name
+                        )
+                    end
+                elseif mode == "replacement" or mode == "capabilities_replacement" then
                     assert(uv.fs_rename(f.socket, old_socket))
                     local result = f:run(
                         "new-session",
@@ -53,6 +68,12 @@ local function run_case(mode, host)
                 program:write("continue\n")
             end
             local result = program:finish(fixture.DEADLINE)
+            if mode == "capabilities_alias" then
+                test.assertEquals(
+                    f:out("list-commands", "-F", "#{@capability-alias}", "list-sessions"),
+                    "untouched\n"
+                )
+            end
             test.assertEquals(result.code, 0, result.stderr)
             test.assertStrContains(result.stdout, mode .. " passed")
             test.assertEquals(f:pins(), {})
@@ -80,6 +101,9 @@ fixture.each_host(M, "path_replacement_rejects_reused_entity_ids", function(host
 end)
 fixture.each_host(M, "public_capabilities_refuse_a_replacement_daemon", function(host)
     run_case("capabilities_replacement", host)
+end)
+fixture.each_host(M, "public_capabilities_avoid_shell_alias_effects", function(host)
+    run_case("capabilities_alias", host)
 end)
 fixture.each_host(M, "dead_alias_cannot_autostart_new_daemon", function(host)
     run_case("dead", host)
