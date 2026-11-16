@@ -16,6 +16,9 @@ matrix for the event that started the run.
   both succeeded.
 - A maintainer runs `plan` to preview a run before dispatching it.
 
+The Python `ci_plan.py` this replaced is `git show a879ff6~1:scripts/ci_plan.py`. The comparison and its result (700 of 700 sampled plan inputs agree) are in
+[libtmux-lua#106](https://github.com/libtmux/libtmux-lua/issues/106#issuecomment-6907114327).
+
 ## Run it
 
 Preview a push. Run from any directory inside the repository:

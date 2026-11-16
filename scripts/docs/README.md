@@ -13,6 +13,9 @@ the READMEs quote what the gates run.
 - The `types` gate runs `export --check`; the `docs` gate runs `readmes`.
 - The `docs` workflow runs `export` for the documentation build.
 
+The Python `export-docs` this replaced is `git show 8dc4642~1:scripts/export-docs`. The comparison and its result (the exports differ only in exporter.name) are in
+[libtmux-lua#106](https://github.com/libtmux/libtmux-lua/issues/106#issuecomment-6907114327).
+
 ## Run it
 
 Install LuaLS, then export into the default directory:
