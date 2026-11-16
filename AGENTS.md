@@ -27,7 +27,9 @@ requested work. Prefer `rg`, `ag`, and `fd` for discovery.
 - Documentation, user-facing text, comments, and commit messages:
   [.github/WRITING.md](.github/WRITING.md).
 - Support scripts: what may stay, their language, layout and checks:
-  [.github/SCRIPTS.md](.github/SCRIPTS.md).
+  [.github/SCRIPTS.md](.github/SCRIPTS.md). They are Lua on LuaJIT, one
+  directory each under `scripts/<name>/`, and `scripts/check/check.lua` runs
+  the gates ([how](scripts/check/README.md)).
 - Changelog entries:
   [.github/WRITING.md](.github/WRITING.md#changelogs-and-release-notes).
 
