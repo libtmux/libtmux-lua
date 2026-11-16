@@ -17,6 +17,14 @@ jobs:
     runs-on: ubuntu-latest
     environment: docs-preview-cleanup
     steps:
+      # A pull_request_target run checks out the base branch, so this runs the
+      # repository's own script, not the closed pull request's.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/lua-tools
+        with:
+          groups: dev live
       - uses: aws-actions/configure-aws-credentials@e1253824e5c10ff9df46874f81ed3ec929e19cfd # v6.3.0
         with:
           role-to-assume: ${{ secrets.LIBTMUX_DOCS_PREVIEW_CLEANUP_ROLE_ARN }}
@@ -26,10 +34,4 @@ jobs:
         env:
           BUCKET: ${{ secrets.LIBTMUX_DOCS_BUCKET }}
           PR: ${{ github.event.pull_request.number }}
-        run: |
-          set -euo pipefail
-          [[ "$PR" =~ ^[0-9]+$ ]] || {
-            echo 'pull request number must be numeric' >&2
-            exit 1
-          }
-          aws s3 rm "s3://$BUCKET/en/lua/pr-$PR/" --recursive
+        run: luajit scripts/docs/docs.lua delete-preview --bucket "$BUCKET" --pr "$PR"

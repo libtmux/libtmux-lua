@@ -530,6 +530,13 @@ function M.test_the_lua_tools_action_runs_one_command_per_step()
     test.assertEquals(command_problems(action, "lua-tools"), {})
 end
 
+function M.test_publish_and_the_preview_cleanup_run_one_command_per_step()
+    for _, name in ipairs({ "publish.yml", "docs-preview-cleanup.yml" }) do
+        local text = files.read(repo.root .. "/.github/workflows/" .. name)
+        test.assertEquals(command_problems(text, name), {})
+    end
+end
+
 function M.test_a_run_block_counts_a_continued_line_as_one_command()
     local block = "      - name: one\n        run: |\n          a \\\n            --b\n"
     test.assertEquals(command_problems(block, "x"), {})
