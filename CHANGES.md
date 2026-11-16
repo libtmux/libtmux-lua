@@ -4,6 +4,9 @@ Notable changes to `libtmux`.
 
 ## Unreleased
 
+- Connect: discovery uses native `list-commands`, which must stay unaliased
+  during connection and capability calls. It preserves literal socket-path
+  bytes, including line breaks, and rejects malformed or diagnostic replies.
 - Server: `Server:capabilities()` returns a Request for feature requirements,
   support decisions and active workarounds on the bound daemon. Reports own
   their nested metadata; editing one cannot change command admission. (#104)
