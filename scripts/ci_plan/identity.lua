@@ -1,6 +1,6 @@
 -- The identities of the tools a CI job ran with, printed so the log shows what produced a result.
-local proc = require("support.proc")
-
+-- Starting a process needs luv, which the `plan` job does not install, so `support.proc` loads only
+-- when a command runs.
 local M = {}
 
 --- Seconds one identity command may take.
@@ -38,7 +38,7 @@ end
 ---@param argv string[]
 ---@return support.RunResult
 local function run(argv)
-    return proc.run(argv, { timeout = M.TIMEOUT })
+    return require("support.proc").run(argv, { timeout = M.TIMEOUT })
 end
 
 --- Runs each command and writes what it printed, standard error included, to `out`. Stops at the

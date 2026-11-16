@@ -2,6 +2,8 @@
 local test = require("luaunit")
 local cli = require("ci_plan.cli")
 local identity = require("ci_plan.identity")
+local proc = require("support.proc")
+local repo = require("support.repo")
 local M = {}
 
 local function buffer()
@@ -119,6 +121,21 @@ function M.test_the_command_line_prints_the_report_and_reports_a_failure_in_the_
     test.assertEquals(failures.text(), "identity: uname exited with status 3\n")
     status = cli.main({ "identity" }, { stdout = failing, stderr = failures })
     test.assertEquals(status, 2)
+end
+
+-- The `plan` job installs the `dev` rocks and not luv, so the command line has to load without it.
+function M.test_the_command_line_loads_without_luv()
+    local program = table.concat({
+        'package.preload["luv"] = function() error("luv was loaded", 0) end',
+        ('package.path = %q .. ";" .. package.path'):format(repo.root .. "/scripts/?.lua"),
+        'require("support.repo").use_rocks()',
+        'require("ci_plan.cli")',
+        'io.write("loaded")',
+    }, "; ")
+    local result = proc.run({ arg[-1], "-e", program })
+    test.assertEquals(result.stderr, "")
+    test.assertEquals(result.stdout, "loaded")
+    test.assertEquals(result.code, 0)
 end
 
 return M
