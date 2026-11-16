@@ -113,7 +113,7 @@ local function fixture()
             driver.defer(finish)
             return 0
         end
-        if uv.hold_child and not metadata then
+        if (uv.hold_child and not metadata) or (uv.hold_probe and metadata) then
             uv.finish_child = finish
         else
             driver.defer(finish)
@@ -476,6 +476,66 @@ function M.test_daemon_release_is_checked_from_the_probe_not_the_client()
             t.assertEquals(#f.uv.spawned, 1, version)
         end)
         t.assertNil(f.uv.files[f.uv.alias], version)
+    end
+end
+
+function M.test_cancelled_fresh_evidence_retires_child_and_keeps_the_binding()
+    local f = fixture()
+    f:start(function(rt)
+        local bound =
+            assert(endpoints.bind(rt, { binary = "/tmux", socket = "/owned/tmux.sock" }):await())
+        local generation = assert(bound:generation())
+        f.uv.hold_probe = true
+        f.observation = bound:observe_evidence()
+        local observed, err = f.observation:await()
+        t.assertNil(observed)
+        t.assertEquals(assert(err).code, "cancelled")
+        t.assertEquals(bound:generation(), generation)
+        f.uv.hold_probe = false
+        t.assertEquals(assert(bound:observe_evidence():await()).version, "3.7c")
+        t.assertTrue(bound:close():await())
+    end)
+    t.assertNotNil(f.uv.finish_child, "fresh probe never started")
+    t.assertFalse(f.observation:is_settled())
+    t.assertTrue(f.observation:cancel())
+    f.driver:drain()
+    t.assertTrue(f.observation:is_retired())
+    t.assertTrue(f.root:is_retired())
+    t.assertNil(select(2, f.root:result()))
+    t.assertNil(f.uv.files[f.uv.alias])
+    t.assertNil(f.uv.files[f.uv.directory])
+end
+
+function M.test_fresh_evidence_refuses_every_changed_identity_without_rebinding()
+    for _, changed in ipairs({
+        "124_100_3.7c_/owned/tmux.sock.",
+        "123_101_3.7c_/owned/tmux.sock.",
+        "123_100_3.8_/owned/tmux.sock.",
+        "123_100_3.7c_/another/socket.",
+    }) do
+        local f = fixture()
+        f:start(function(rt)
+            local bound = assert(endpoints
+                .bind(rt, {
+                    binary = "/tmux",
+                    socket = "/owned/tmux.sock",
+                })
+                :await())
+            t.assertEquals(type(bound.observe_evidence), "function", "fresh evidence is missing")
+            local generation = assert(bound:generation())
+            f.uv.probe_reply = function(prefix)
+                return "unknown command: " .. prefix .. changed .. "\n"
+            end
+            local value, err = bound:observe_evidence():await()
+            t.assertNil(value)
+            t.assertEquals(assert(err).code, "stale_generation", changed)
+            t.assertNil(identity.evidence(generation))
+            t.assertNil(bound:generation())
+            bound:close():await()
+        end)
+        t.assertTrue(f.root:is_retired())
+        t.assertNil(f.uv.files[f.uv.alias])
+        t.assertNil(f.uv.files[f.uv.directory])
     end
 end
 

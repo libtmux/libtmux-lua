@@ -73,4 +73,48 @@ function M.test_lookup_rejects_an_unknown_id()
     t.assertError(registry.workaround, "control-mode")
 end
 
+function M.test_reports_feature_boundaries_and_exact_release_workarounds()
+    t.assertEquals(type(registry.report), "function", "capability reports are missing")
+    for _, case in ipairs({
+        { "3.3a", false, false },
+        { "3.7", true, false },
+        { "3.7z", true, false },
+        { "next-3.8", true, false },
+        { "3.8-rc2", true, false },
+        { "3.8", true, true },
+        { "3.8a", true, true },
+    }) do
+        local report = registry.report(case[1])
+        t.assertEquals(report.version, case[1])
+        t.assertEquals(report.features["control-mode"].supported, case[2], case[1])
+        t.assertEquals(report.features["layout-json"].supported, case[3], case[1])
+        t.assertEquals(report.features["layout-json"].since, "3.8")
+        t.assertNil(report.features["no-such-capability"])
+    end
+    t.assertTrue(registry.report("3.7").workarounds["name-separators-rejected"].active)
+    t.assertFalse(registry.report("3.7a").workarounds["name-separators-rejected"].active)
+    t.assertNil(registry.report("3.7").workarounds["control-mode"])
+end
+
+function M.test_report_mutation_cannot_change_admission_or_another_report()
+    t.assertEquals(type(registry.report), "function", "capability reports are missing")
+    local report = registry.report("3.7")
+    report.features["layout-json"].since = "1.0"
+    report.features["layout-json"].supported = true
+    report.features["control-mode"].commands[1].flags[1] = "broken"
+    report.features["control-mode"].apis[1] = "broken"
+    report.workarounds["name-separators-rejected"].releases[1] = "3.7a"
+    local next_report = registry.report("3.7")
+    t.assertEquals(next_report.features["layout-json"].since, "3.8")
+    t.assertFalse(next_report.features["layout-json"].supported)
+    t.assertEquals(next_report.features["control-mode"].commands[1].flags[1], "-E")
+    t.assertEquals(next_report.features["control-mode"].apis[1], "libtmux.Server:observe")
+    t.assertTrue(next_report.workarounds["name-separators-rejected"].active)
+    local refusal = assert(require("libtmux._internal.features").commands("3.7", {
+        { "select-layout", '{"type":"pane"}' },
+    }))
+    t.assertEquals(refusal.code, "unsupported")
+    t.assertEquals(refusal.required, "3.8")
+end
+
 return M

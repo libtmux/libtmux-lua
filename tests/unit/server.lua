@@ -35,6 +35,11 @@ local function fixture(body)
     function bound.evidence()
         return identity.evidence(generation)
     end
+    function bound.observe_evidence()
+        return rt:_operation(function()
+            return identity.evidence(generation)
+        end)
+    end
     function bound.close()
         state.closed = true
         identity.invalidate(generation)
@@ -127,6 +132,25 @@ end
 local function connect(rt)
     t.assertEquals(type(rt.connect), "function", "public connection is missing")
     return assert(rt:connect({ binary = "/bin/tmux", socket_path = "/owned/socket" }):await())
+end
+
+function M.test_public_capabilities_return_a_detached_report_and_refuse_closed_handles()
+    fixture(function(rt)
+        local server = connect(rt)
+        t.assertEquals(type(server.capabilities), "function", "public discovery is missing")
+        local report = assert(server:capabilities():await())
+        t.assertEquals(report.version, "3.7c")
+        t.assertFalse(report.features["layout-json"].supported)
+        t.assertTrue(report.features["control-mode"].supported)
+        report.features["layout-json"].since = "1.0"
+        local next_report = assert(server:capabilities():await())
+        t.assertEquals(next_report.features["layout-json"].since, "3.8")
+        server:close():await()
+        local value, err = server:capabilities():await()
+        t.assertNil(value)
+        t.assertEquals(assert(err).code, "closed")
+        t.assertEquals(report.version, "3.7c")
+    end)
 end
 
 function M.test_connection_copies_options_and_invalid_snapshot_dispatches_nothing()

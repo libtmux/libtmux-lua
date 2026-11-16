@@ -122,6 +122,8 @@ local function work(runtime)
     end
     assert(mode == "supported", "unknown version check case")
     assert(server, tostring(err))
+    local capabilities = assert(server:capabilities():await())
+    assert(capabilities.version == os.getenv("TMUX_DAEMON_VERSION"))
     local created
     created, err = server:command({ "new-session", "-d", "-s", "supported", "/bin/cat" }):await()
     assert(created, tostring(err))

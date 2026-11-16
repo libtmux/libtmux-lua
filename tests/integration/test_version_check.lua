@@ -102,7 +102,10 @@ local function exercise(f, armed)
 end
 
 local function run_lua(f, mode, host, version, extra)
-    local env = { LIBTMUX_EXPECT_REFUSAL = refusal_wording(version) }
+    local env = {
+        LIBTMUX_EXPECT_REFUSAL = refusal_wording(version),
+        TMUX_DAEMON_VERSION = version,
+    }
     -- A newer client in front of an older daemon: the lane builds both.
     for _, name in ipairs({ "TMUX_CLIENT_BIN", "LIBTMUX_REFUSAL_MAX_MS" }) do
         env[name] = os.getenv(name)

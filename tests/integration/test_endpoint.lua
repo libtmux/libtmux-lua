@@ -9,15 +9,15 @@ local M = {}
 local function run_case(mode, host)
     fixture.with(function(f)
         local version = f:version()
-        local program = f:start_program(
-            host,
-            "endpoint",
-            { TMUX_DAEMON_VERSION = version, LIBTMUX_ENDPOINT_CASE = mode },
-            "pipe"
-        )
+        local program = f:start_program(host, "endpoint", {
+            TMUX_DAEMON_VERSION = version,
+            TMUX_DAEMON_PID = tostring(f.server_pid),
+            TMUX_DAEMON_START = f:out("display-message", "-p", "#{start_time}"):gsub("%s+$", ""),
+            LIBTMUX_ENDPOINT_CASE = mode,
+        }, "pipe")
         local old_socket = f.path .. "/old.sock"
         local ok, failure = pcall(function()
-            if mode == "replacement" or mode == "dead" then
+            if mode == "replacement" or mode == "capabilities_replacement" or mode == "dead" then
                 test.assertTrue(
                     program:expect(function(fresh)
                         return fresh:find("\n", 1, true) ~= nil
@@ -27,7 +27,7 @@ local function run_case(mode, host)
                 local ready = program:output():match("^[^\n]*")
                 local old_pid, old_started = ready:match("^READY (%d+) (%d+)$")
                 test.assertNotNil(old_pid, ready .. program:errors())
-                if mode == "replacement" then
+                if mode == "replacement" or mode == "capabilities_replacement" then
                     assert(uv.fs_rename(f.socket, old_socket))
                     local result = f:run(
                         "new-session",
@@ -56,7 +56,7 @@ local function run_case(mode, host)
             test.assertEquals(result.code, 0, result.stderr)
             test.assertStrContains(result.stdout, mode .. " passed")
             test.assertEquals(f:pins(), {})
-            if mode == "replacement" then
+            if mode == "replacement" or mode == "capabilities_replacement" then
                 test.assertEquals(f:out("list-sessions", "-F", "#{session_name}"), "fixture\n")
             elseif mode == "dead" then
                 test.assertNotEquals(f:try("list-sessions").code, 0)
@@ -77,6 +77,9 @@ fixture.each_host(M, "actual_daemon_evidence_and_explicit_close", function(host)
 end)
 fixture.each_host(M, "path_replacement_rejects_reused_entity_ids", function(host)
     run_case("replacement", host)
+end)
+fixture.each_host(M, "public_capabilities_refuse_a_replacement_daemon", function(host)
+    run_case("capabilities_replacement", host)
 end)
 fixture.each_host(M, "dead_alias_cannot_autostart_new_daemon", function(host)
     run_case("dead", host)

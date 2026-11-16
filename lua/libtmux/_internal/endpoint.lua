@@ -326,6 +326,35 @@ function Bound:generation()
     return bindings[self].generation
 end
 
+function Bound:observe_evidence()
+    local state = assert(bindings[self], "invalid endpoint")
+    state.active = state.active + 1
+    local request = state.runtime:_operation(function(_, operation)
+        local valid, err = preflight(state)
+        if not valid then
+            return nil, err
+        end
+        local observed
+        observed, err = read_evidence(state, operation)
+        if not observed then
+            return nil, err
+        end
+        for _, key in ipairs({ "pid", "started", "version", "socket" }) do
+            if observed[key] ~= state.evidence[key] then
+                invalidate(state, "daemon evidence changed during capability discovery")
+                return nil,
+                    failure("stale_generation", "capability discovery reached another daemon")
+            end
+        end
+        return self:evidence()
+    end, { operation = "capabilities", effect = "not_sent" })
+    request:_on_retire(function()
+        state.active = state.active - 1
+        cleanup(state)
+    end)
+    return request
+end
+
 function Bound:close()
     local state = assert(bindings[self], "invalid endpoint")
     invalidate(state, "endpoint closed")
