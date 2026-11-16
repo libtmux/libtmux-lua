@@ -43,3 +43,11 @@ library. Do not add shell or Python script files.
 - A capability Lua lacks comes from a test-only Lua dependency, not from a
   second language.
 - Test data that is not a comparison, such as workspace files a loader reads.
+- `scripts/support/shell.lua`, which runs a program through `io.popen` with every
+  argument quoted. The bootstrap runs on the Lua that mise installs, and that
+  Lua has neither luv nor FFI, so `support.proc` cannot run there. Measured on
+  Lua 5.5.1: `mise exec -- lua -e 'print(pcall(require, "luv"))'` and the same
+  with `"ffi"` both print `false` and a module-not-found message. The bootstrap
+  installs luv, so it cannot use it first. A script that runs under LuaJIT with
+  luv uses `support.proc`; the scripts that still call `shell.lua` after the
+  bootstrap are listed on libtmux-lua#113 to move.
