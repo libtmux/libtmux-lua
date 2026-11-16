@@ -3,6 +3,7 @@ local hosts = require("bootstrap.hosts")
 local luals = require("bootstrap.luals")
 local rocks = require("bootstrap.rocks")
 local runtimes = require("bootstrap.runtimes")
+local select_lua = require("bootstrap.select")
 local runtime = require("support.runtime")
 local shell = require("support.shell")
 local M = {}
@@ -127,6 +128,38 @@ function M.test_an_unknown_request_is_refused_before_anything_runs()
     test.assertErrorMsgContains("Unknown runtime", runtimes.main, { "5.0.1" })
     test.assertErrorMsgContains("Unknown rock group", rocks.main, { "nonsense" })
     test.assertErrorMsgContains("Unknown Neovim version", hosts.main, { "0.0.1" }, true)
+end
+
+function M.test_the_job_lua_is_mises_for_the_provided_version_and_a_built_one_otherwise()
+    test.assertEquals(
+        select_lua.built_path("5.4.9", "/work"),
+        "/work/.cache/toolchains/lua-5.4.9/bin/lua"
+    )
+    test.assertEquals(
+        select_lua.built_path("luajit", "/work"),
+        "/work/.cache/toolchains/luajit-2.1/bin/luajit"
+    )
+    local path = os.tmpname()
+    os.remove(path)
+    local named = select_lua.main(select_lua.PROVIDED, path, function()
+        return "/mise/lua/bin/lua\n"
+    end)
+    local handle = assert(io.open(path, "rb"))
+    local written = handle:read("*a")
+    handle:close()
+    os.remove(path)
+    test.assertEquals(named, "/mise/lua/bin/lua")
+    test.assertEquals(written, "TEST_LUA=/mise/lua/bin/lua\n")
+end
+
+function M.test_an_unknown_runtime_is_refused_before_anything_is_written()
+    local path = os.tmpname()
+    test.assertErrorMsgContains("Unknown runtime: 9.9.9", select_lua.main, "9.9.9", path)
+    local handle = assert(io.open(path, "rb"))
+    local written = handle:read("*a")
+    handle:close()
+    os.remove(path)
+    test.assertEquals(written, "")
 end
 
 return M
