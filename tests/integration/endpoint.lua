@@ -43,6 +43,36 @@ local function ready(runtime, evidence)
 end
 
 local function work(runtime)
+    if mode == "capabilities_alias" then
+        local server = assert(
+            runtime:connect({ binary = options.binary, socket_path = options.socket }):await()
+        )
+        ready(runtime, {
+            pid = assert(os.getenv("TMUX_DAEMON_PID")),
+            started = assert(os.getenv("TMUX_DAEMON_START")),
+        })
+        local report, err = server:capabilities():await()
+        assert(server:close():await())
+        assert(report, tostring(err))
+        assert(report.version == os.getenv("TMUX_DAEMON_VERSION"))
+        return mode .. " passed"
+    end
+    if mode == "capabilities_replacement" then
+        local server = assert(
+            runtime:connect({ binary = options.binary, socket_path = options.socket }):await()
+        )
+        local report = assert(server:capabilities():await())
+        ready(runtime, {
+            pid = assert(os.getenv("TMUX_DAEMON_PID")),
+            started = assert(os.getenv("TMUX_DAEMON_START")),
+        })
+        local replaced, err = server:capabilities():await()
+        assert(replaced == nil, "capability discovery accepted the replacement daemon")
+        assert(err.code == "stale_generation" and err.effect == "not_sent", tostring(err))
+        assert(report.version == os.getenv("TMUX_DAEMON_VERSION"))
+        assert(server:close():await())
+        return mode .. " passed"
+    end
     if mode == "cancel_bind" then
         local uv = runtime._driver.uv
         local original = uv.fs_mkdtemp

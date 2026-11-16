@@ -16,7 +16,8 @@ for symbol in
     libtmux.Server:group libtmux.Server:observe libtmux.Observation:watch_pane
     libtmux.Pane:resize libtmux.Window:resize libtmux.Runtime:start_server
     libtmux.Runtime:with_server libtmux.OwnedServer.server libtmux.OwnedServer.socket_path
-    libtmux.OwnedServer:stop]]):gmatch("%S+")
+    libtmux.OwnedServer:stop libtmux.Server:capabilities libtmux.CapabilityReport.features
+    libtmux.CapabilityStatus.supported]]):gmatch("%S+")
 do
     TARGETS[symbol] = true
 end
@@ -66,7 +67,7 @@ end
 
 function M.test_complete_programs_cover_their_existing_targets()
     local loaded = api.load_examples(repo.root, TARGETS)
-    test.assertEquals(#loaded.examples, 16)
+    test.assertEquals(#loaded.examples, 17)
     local seen = {}
     for _, example in ipairs(loaded.examples) do
         for _, symbol in ipairs(example.symbols) do

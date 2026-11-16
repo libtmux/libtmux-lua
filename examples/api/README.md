@@ -26,6 +26,7 @@ $ lua examples/api/connect.lua
 | [start_server.lua](start_server.lua) | Start a private server, use it and stop it | `sessions: 0, then 1` |
 | [with_server.lua](with_server.lua) | Run a body on a server that stops when the body ends | `sessions: 1` |
 | [connect.lua](connect.lua) | Connect a second handle to a started server | `connected` |
+| [capabilities.lua](capabilities.lua) | Check a feature on the connected daemon | `named deletion requires: 3.4`, then `daemon decision checked` |
 | [snapshot.lua](snapshot.lua) | List sessions, windows, and panes | Two of each |
 | [new_session.lua](new_session.lua) | Create a session | `session: demo` |
 | [new_window.lua](new_window.lua) | Create a window in that session | `window: logs` |
@@ -38,7 +39,7 @@ $ lua examples/api/connect.lua
 | [capture.lua](capture.lua) | Read a completed command's output | `lua capture ready` |
 | [wait_for_text.lua](wait_for_text.lua) | Wait for text on the visible screen | `lua wait ready` |
 | [watch_pane.lua](watch_pane.lua) | Stream a pane's output over control mode (tmux 3.7 or newer) | `output: watched` |
-| [unsupported_version.lua](unsupported_version.lua) | Handle a tmux below the minimum | `unsupported_version` and its message |
+| [unsupported_version.lua](unsupported_version.lua) | Handle an unsupported tmux client | `unsupported_version` and its message |
 
 The [manifest](manifest.json) ties each program to the API symbols it shows
 and its exact output.

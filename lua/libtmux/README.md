@@ -28,6 +28,10 @@ shows a first tmux program. The
 [API reference](https://libtmux.org/en/lua/latest/reference/) lists every
 public symbol.
 
+`Server:capabilities` checks named features on the connected daemon. See the
+[report](https://github.com/libtmux/libtmux-lua/blob/master/docs/compatibility.md#optional-features)
+and [complete program](https://github.com/libtmux/libtmux-lua/blob/master/examples/api/capabilities.lua).
+
 **Contents** — [Quick start](#quick-start) · [Modules](#modules) ·
 [Leaves out](#what-it-leaves-out) · [Support](#support-and-status)
 

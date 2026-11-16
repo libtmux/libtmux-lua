@@ -103,6 +103,7 @@ local function connect(doc, adapter, entry)
     doc:complete("  pending:", { "await", "cancel", "result", "on_complete" })
     doc:add("  local server = assert(pending:await())")
     doc:complete("  server:", {
+        "capabilities",
         "snapshot",
         "close",
         "handle",
@@ -123,6 +124,14 @@ local function connect(doc, adapter, entry)
         "show_buffer",
         "delete_buffer",
     })
+    doc:add("  local discovery = server:capabilities()")
+    doc:complete("  discovery:", { "await", "cancel", "result", "on_complete" })
+    doc:add("  local capabilities = assert(discovery:await())")
+    doc:complete("  capabilities.", { "version", "features", "workarounds" })
+    doc:add('  local feature = capabilities.features["layout-json"]')
+    doc:complete("  feature.", { "id", "since", "except", "supported", "apis", "commands" })
+    doc:add('  local workaround = capabilities.workarounds["name-separators-rejected"]')
+    doc:complete("  workaround.", { "id", "releases", "required", "active", "handling" })
 end
 
 --- A buffer, a created session and the objects it holds: session, window and window link.

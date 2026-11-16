@@ -426,7 +426,7 @@ end
 ---@param directory string
 ---@return string[]
 function M.github_release_command(version, tag, directory)
-    local command = {
+    local argv = {
         "gh",
         "release",
         "create",
@@ -437,12 +437,12 @@ function M.github_release_command(version, tag, directory)
         "--generate-notes",
     }
     if M.is_prerelease(version) then
-        command[#command + 1] = "--prerelease"
+        argv[#argv + 1] = "--prerelease"
     end
     for _, asset in ipairs(release_assets(version, directory)) do
-        command[#command + 1] = asset
+        argv[#argv + 1] = asset
     end
-    return command
+    return argv
 end
 
 ---@param argv string[]
@@ -466,8 +466,8 @@ end
 ---@param key? string
 ---@param runner? fun(argv: string[]): support.RunResult
 function M.upload(root, directory, key, runner)
-    local command = M.upload_command(M.candidate(root), directory, key)
-    run_or_refuse(command, runner or run_attached)
+    local argv = M.upload_command(M.candidate(root), directory, key)
+    run_or_refuse(argv, runner or run_attached)
 end
 
 --- Creates the GitHub release for a tag with the validated artifacts and their provenance bundle.

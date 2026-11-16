@@ -53,10 +53,15 @@ How the check works:
 
 - The library reads the connected daemon's own `#{version}`, never the client
   executable's `-V`, so a newer client cannot pass for an older daemon.
-- The endpoint reads the daemon's version, pid and start time once, when it
-  binds, with `run-shell -C`, which fires no `after-*` or `command-error` hook.
+- The endpoint reads the daemon's version, pid and start time when it
+  binds, with one native `list-commands -F` row. The existing bounded metadata
+  codec preserves the socket bytes and handles printer differences.
   Each command group then starts with a fence on the cached pid, start time and
   release, so a command costs no probe.
+- Reserve the native, unaliased `list-commands` bootstrap throughout binding
+  and discovery, without concurrent administrative configuration changes.
+  The library does not inspect or repair that prerequisite. A private server
+  with its default empty configuration supplies it.
 - A daemon that changed after the check raises `stale_generation`, none of the
   group's commands run, and the cache is dropped. A daemon that is gone raises
   the same error.
@@ -67,10 +72,9 @@ A daemon below the minimum raises `unsupported_version` when connecting, with
 `effect = "not_sent"`. So does a report that names no release, such as bare
 `master`; its message says so instead of calling the version too old.
 
-- tmux before 3.2 has neither `run-shell -C` nor the client's `-N`. Its server
-  answers the probe with a usage error (3.1) or is turned away by a newer
-  client (3.0), and an executable that old rejects `-N`. All three raise
-  `unsupported_version`.
+- A client before 3.2 rejects `-N`; an incompatible older server can refuse
+  the protocol before a command is parsed. A readable older daemon row uses
+  the ordinary minimum-version refusal. These raise `unsupported_version`.
 - The message gives the remedy: upgrade tmux to 3.3a or newer and restart the
   server, or install the previous libtmux release. The last release that
   supports tmux 3.2a is 0.1.0alpha1-1; 0.1.0alpha2-1 raised the minimum.
@@ -87,9 +91,27 @@ The full CI run builds all three. It also has tmux 3.0a, 3.1c, 3.2a and the
 unpatched 3.3 as refusal lanes. They assert the refusal and that no requested
 operation ran, and do not run the integration suite. The 3.0a and 3.1c lanes
 also run the check with a 3.3a client against the old daemon, which covers the
-3.1 usage error and the 3.0 "too old for client" answer.
+3.1 release refusal and the 3.0 "too old for client" answer.
 
 ## Optional features
+
+Use `Server:capabilities():await()` to check a feature before attempting it.
+The [complete program](../examples/api/capabilities.lua) starts and stops its
+own daemon and checks named buffer deletion against it.
+
+The request reads the bound daemon again with the same bounded native probe
+and reserved bootstrap. It refuses a changed or closed binding instead of
+accepting another daemon. The report contains:
+
+- `version`: the daemon's release, independent of the client executable.
+- `features[id]`: copied requirement metadata, including `since`, `except`,
+  `apis` and `commands`, with a boolean `supported` decision.
+- `workarounds[id]`: copied release-specific defect metadata with a boolean
+  `active` decision. These are workarounds, not additional features.
+
+Unknown IDs are absent. The report is an observation; later daemon changes do
+not update it. Editing it cannot change the library's command guards or a
+later report. Those guards still check every operation before dispatch.
 
 The 3.3a minimum covers subprocess commands, typed operations, snapshots and
 polling captures. Each feature below names its own release requirement. A

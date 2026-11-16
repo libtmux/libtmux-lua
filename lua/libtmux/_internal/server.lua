@@ -14,6 +14,7 @@ local process = require("libtmux._internal.process")
 local domain = require("libtmux._internal.domain")
 local live_query = require("libtmux._internal.live_query")
 local observation = require("libtmux._internal.observation")
+local capability_registry = require("libtmux._internal.support.capabilities")
 local M, Server = {}, {}
 -- Live objects own state; the registry must not root returned-request cycles on Lua 5.1.
 local servers = setmetatable({}, { __mode = "kv" })
@@ -375,6 +376,32 @@ local function capture(state, options)
         end
         return snapshot
     end, { operation = "snapshot", effect = "not_sent" })
+end
+
+--- Discover feature requirements on this handle's actual pinned daemon.
+--- Returns copied feature/workaround metadata. Unknown IDs are absent; edits to a
+--- report do not affect admission. The bounded probe creates no tmux resources and
+--- refuses a replaced or closed binding. The detached report remains an observation
+--- of that release after later daemon changes. Reserve the native, unaliased
+--- list-commands bootstrap throughout binding and discovery, without concurrent
+--- administrative configuration changes; discovery does not inspect or repair it.
+---@return libtmux.Request<libtmux.CapabilityReport>
+function Server:capabilities()
+    local state = servers[self]
+    return state.runtime:_operation(function()
+        if state.closed then
+            return nil,
+                errors.new("closed", "server handle is closed", {
+                    operation = "capabilities",
+                    effect = "not_sent",
+                })
+        end
+        local evidence, err = state.bound:observe_evidence():await()
+        if not evidence then
+            return nil, err
+        end
+        return capability_registry.report(evidence.version)
+    end, { operation = "capabilities", effect = "not_sent" })
 end
 
 function Server:get_option(name, options)
@@ -1319,6 +1346,14 @@ end
 ---
 --- `libtmux.Runtime:connect`, `Server:close` and `Server:observe`
 ---
+--- **Checking feature support.** `Server:capabilities` reads the connected
+--- daemon again and resolves to a detached `libtmux.CapabilityReport`: named
+--- feature requirements and decisions, plus release-specific workarounds.
+--- Editing the report does not change command admission.
+---
+--- `Server:capabilities`, `libtmux.CapabilityReport.features` and
+--- `libtmux.CapabilityReport.workarounds`
+---
 --- **Finding one thing.** Take one record from a `libtmux.Snapshot`, or from
 --- the rows of a query, with `libtmux.Selection:one`, which reports no match or
 --- several as errors, or `libtmux.Selection:one_or_nil`, which also accepts no
@@ -1407,6 +1442,7 @@ end
 ---
 --- `Server:command`, `Server:group` and `Server:batch`
 ---@class libtmux.Server
+---@field capabilities fun(self:libtmux.Server):libtmux.Request<libtmux.CapabilityReport>
 ---@field get_option fun(self:libtmux.Server,name:string,options?:libtmux.SettingGetOptions):
 --- libtmux.Request<libtmux.OptionRecord>
 ---@field list_options fun(self:libtmux.Server,options?:libtmux.SettingListOptions):

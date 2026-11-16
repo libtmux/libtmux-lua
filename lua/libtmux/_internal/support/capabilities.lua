@@ -3,6 +3,7 @@
 -- features.lua refuses with these thresholds, and scripts/emit_capabilities.lua
 -- serializes this same table to capabilities.json, so the two cannot disagree.
 -- Release names are inferred from the daemon's version; tmux advertises none.
+local fields = require("libtmux._internal.fields")
 local M = {}
 
 local RAW = { "libtmux.Server:command", "libtmux.Server:batch", "libtmux.Server:group" }
@@ -215,6 +216,64 @@ end
 ---@return table workaround
 function M.workaround(id)
     return find(M.workarounds, id)
+end
+
+---@class libtmux.CapabilityStatus: libtmux.Capability
+---@field supported boolean Whether the observed release provides this feature.
+
+---@class libtmux.WorkaroundStatus
+---@field id string
+---@field name string
+---@field summary string
+---@field releases string[] Exact releases affected by this workaround.
+---@field required string? First release that fixes this defect, when known.
+---@field handling "refuse"|"repair"
+---@field apis string[]
+---@field commands libtmux.CapabilityCommand[]
+---@field active boolean Whether the observed release needs this workaround.
+
+---@class libtmux.CapabilityReport
+---@field version string Observed daemon release, independent of the client binary.
+---@field features table<string, libtmux.CapabilityStatus> Named feature decisions and requirements.
+---@field workarounds table<string, libtmux.WorkaroundStatus> Release-specific defects and handling.
+
+local function copy(value)
+    if type(value) ~= "table" then
+        return value
+    end
+    local result = {}
+    for key, item in pairs(value) do
+        result[key] = copy(item)
+    end
+    return result
+end
+
+local function contains(values, version)
+    for _, value in ipairs(values) do
+        if value == version then
+            return true
+        end
+    end
+    return false
+end
+
+-- Each report owns its nested metadata; caller edits cannot change admission.
+---@param version string
+---@return libtmux.CapabilityReport
+function M.report(version)
+    local report = { version = version, features = {}, workarounds = {} }
+    for _, entry in ipairs(M.capabilities) do
+        local status = copy(entry)
+        status.supported = fields.at_least(version, entry.since) == true
+            and not contains(entry.except, version)
+        report.features[entry.id] = status
+    end
+    for _, entry in ipairs(M.workarounds) do
+        local status = copy(entry)
+        status.active = contains(entry.releases, version)
+        report.workarounds[entry.id] = status
+    end
+    return report
 end
 
 return M

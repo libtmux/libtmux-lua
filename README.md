@@ -860,9 +860,9 @@ $ luarocks --local make rockspecs/libtmux-scm-1.rockspec
 - **tmux.** 3.3a or newer. An older server is refused with
   [`unsupported_version`](docs/compatibility.md#minimum-tmux-release).
   [Compatibility matrix](docs/compatibility.md).
-- **Optional features.** Some commands and options need a newer tmux. The
-  [table](docs/compatibility.md#optional-features) and
-  [`capabilities.json`](capabilities.json) list each.
+- **Optional features.** `Server:capabilities` reads feature decisions from
+  the connected daemon. See the [report](docs/compatibility.md#optional-features)
+  and [complete program](examples/api/capabilities.lua).
 - **Control mode.** [`observe`][ref-server-observe] needs tmux 3.7 or newer
   and returns `unsupported` below it. [Control guide](docs/control.md).
 - **Polling.** [`Pane:wait_for_text`][ref-pane-wait-for-text] works on every

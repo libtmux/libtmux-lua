@@ -5,12 +5,38 @@ local mode = assert(os.getenv("LIBTMUX_FEATURE_CASE"))
 local function work(runtime)
     local server = assert(runtime
         :connect({
-            binary = assert(os.getenv("TMUX_BIN")),
+            binary = os.getenv("TMUX_CLIENT_BIN") or assert(os.getenv("TMUX_BIN")),
             socket_path = assert(os.getenv("TMUX_SOCKET")),
         })
         :await())
     local report
-    if mode == "observe" then
+    if mode == "capabilities" then
+        local discovered = assert(server:capabilities():await())
+        assert(discovered.version == os.getenv("TMUX_DAEMON_VERSION"), discovered.version)
+        local deletion = assert(discovered.features["buffer-delete-named"])
+        assert(deletion.since == "3.4" and deletion.handling == "refuse")
+        assert(discovered.features["unknown-feature"] == nil)
+        local expected = assert(os.getenv("LIBTMUX_EXPECT_DELETE")) == "yes"
+        assert(deletion.supported == expected, "feature decision disagrees with daemon")
+        deletion.since, deletion.supported = "1.0", true
+        deletion.commands[1].flags[1] = "-not-a-flag"
+        assert(server:set_buffer("capability-check", "owned"):await())
+        local deleted, err = server:delete_buffer("capability-check"):await()
+        if expected then
+            assert(deleted, tostring(err))
+        else
+            assert(deleted == nil and err.code == "unsupported" and err.effect == "not_sent")
+        end
+        local again = assert(server:capabilities():await())
+        assert(again.features["buffer-delete-named"].since == "3.4")
+        assert(again.features["buffer-delete-named"].supported == expected)
+        assert(again.features["buffer-delete-named"].commands[1].flags[1] == "-b")
+        assert(server:close():await())
+        local closed, closed_error = server:capabilities():await()
+        assert(closed == nil and closed_error.code == "closed")
+        assert(discovered.version == os.getenv("TMUX_DAEMON_VERSION"))
+        return "DISCOVERED " .. discovered.version
+    elseif mode == "observe" then
         local snapshot =
             assert(server:snapshot({ fields = { sessions = { "id", "name" } } }):await())
         local session = assert(server:handle(snapshot, assert(snapshot.sessions:first())))

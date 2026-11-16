@@ -50,6 +50,31 @@ fixture.each_host(M, "control_observation_needs_tmux_3_7_and_attaches_nothing_be
     end)
 end)
 
+fixture.each_host(M, "public_capabilities_follow_the_daemon_and_keep_guards_private", function(host)
+    fixture.with(function(f)
+        local version = f:version()
+        local before = state(f)
+        local result = f:program(host, "features", {
+            TMUX_DAEMON_VERSION = version,
+            TMUX_CLIENT_BIN = os.getenv("TMUX_CLIENT_BIN") or f.binary,
+            LIBTMUX_FEATURE_CASE = "capabilities",
+            LIBTMUX_EXPECT_DELETE = fixture.at_least(version, 3, 4) and "yes" or "no",
+        }, { timeout = DEADLINE })
+        test.assertStrContains(result.stdout, "FEATURE DISCOVERED " .. version)
+        test.assertEquals(f:pins(), {})
+        local after = state(f)
+        test.assertEquals(after[2], before[2])
+        test.assertEquals(after[3], before[3])
+        test.assertEquals(after[4], before[4])
+        if fixture.at_least(version, 3, 4) then
+            test.assertEquals(after[1], before[1])
+        else
+            test.assertStrContains(after[1], "capability-check")
+        end
+        alive(f)
+    end)
+end)
+
 fixture.each_host(M, "raw_commands_are_refused_per_release_without_effects", function(host)
     fixture.with(function(f)
         local version = f:version()
