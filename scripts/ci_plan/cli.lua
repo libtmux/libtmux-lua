@@ -1,5 +1,6 @@
 local argparse = require("argparse")
 local files = require("support.files")
+local identity = require("ci_plan.identity")
 local json = require("support.json")
 local planner = require("ci_plan.planner")
 
@@ -23,6 +24,11 @@ local function parser()
     plan:option("--github-output", "the GITHUB_OUTPUT file")
     plan:option("--summary", "the GITHUB_STEP_SUMMARY file")
     cli:command("verify", "Check the NEEDS environment variable.")
+    local tools = cli:command("identity", "Print the identities of the tools a job ran with.")
+    tools:option("--lua", "the interpreter the tests run under"):count(1)
+    tools:option("--tmux", "the tmux the tests ran against"):default("")
+    tools:option("--client", "a newer tmux that starts beside it"):default("")
+    tools:option("--nvim", "the Neovim host"):default("")
     return cli
 end
 
@@ -46,6 +52,23 @@ function M.main(argv, context)
     if not parsed then
         stderr:write(cli:get_usage(), "\nci_plan.lua: error: ", arguments, "\n")
         return 2
+    end
+
+    if arguments.command == "identity" then
+        local ok, failure = identity.report(
+            identity.commands({
+                lua = arguments.lua,
+                tmux = arguments.tmux,
+                client = arguments.client,
+                nvim = arguments.nvim,
+            }),
+            stdout,
+            context.run
+        )
+        if not ok then
+            stderr:write("identity: ", failure, "\n")
+        end
+        return ok and 0 or 1
     end
 
     if arguments.command == "verify" then

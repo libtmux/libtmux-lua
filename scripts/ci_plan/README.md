@@ -10,6 +10,8 @@ matrix for the event that started the run.
 
 - The `plan` job of `ci.yml` runs `plan` on every run and passes the matrix
   to the `validate` job.
+- The `validate` job runs `identity` to log the version of each tool the job
+  ran with.
 - The `required` job runs `verify`, which fails unless `plan` and `validate`
   both succeeded.
 - A maintainer runs `plan` to preview a run before dispatching it.
@@ -42,6 +44,11 @@ exits 2.
 `verify` reads the `NEEDS` environment variable, the JSON of the `needs`
 context, and exits 1 with one `required:` line per failing job.
 
+`identity --lua PATH` prints the checkout's commit and the versions of the
+compiler, the interpreter at `PATH` and `luarocks`. `--tmux`, `--client` and
+`--nvim` add a tool each, and an empty path skips it. It stops at the first
+command that fails or runs past `TIMEOUT` in `identity.lua`.
+
 ## Scopes
 
 - `edges`: the default for a push, a pull request and a dispatch. The unit
@@ -72,6 +79,7 @@ and `tmate`. `ref` is what the shared `build-tmux` action builds:
   the LuaJIT rock tree on the rock paths, then calls `cli.lua`.
 - `cli.lua`: argument parsing and output, with the process boundary passed
   in.
+- `identity.lua`: the commands `identity` runs and their report.
 - `planner.lua`: the rules. Each rule calls its siblings through the module
   table, so a test can replace one.
 - `tests/test_ci_plan.lua`: behavior checks, and for each rule a deliberate
