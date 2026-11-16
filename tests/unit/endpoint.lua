@@ -73,7 +73,6 @@ local function fixture()
     end
     function uv.spawn(program, spec, on_exit)
         uv.spawned[#uv.spawned + 1] = { program = program, args = spec.args }
-        local last = spec.args[#spec.args]
         local format = spec.args[#spec.args - 1]
         local metadata = spec.args[#spec.args - 3] == "list-commands"
             and type(format) == "string"
