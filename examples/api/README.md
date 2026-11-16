@@ -26,6 +26,7 @@ $ lua examples/api/connect.lua
 | [start_server.lua](start_server.lua) | Start a private server, use it and stop it | `sessions: 0, then 1` |
 | [with_server.lua](with_server.lua) | Run a body on a server that stops when the body ends | `sessions: 1` |
 | [connect.lua](connect.lua) | Connect a second handle to a started server | `connected` |
+| [capabilities.lua](capabilities.lua) | Check a feature on the connected daemon | `named deletion requires: 3.4`, then `daemon decision checked` |
 | [snapshot.lua](snapshot.lua) | List sessions, windows, and panes | Two of each |
 | [new_session.lua](new_session.lua) | Create a session | `session: demo` |
 | [new_window.lua](new_window.lua) | Create a window in that session | `window: logs` |

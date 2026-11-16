@@ -36,6 +36,17 @@
       "stdout": "connected\n"
     },
     {
+      "id": "capabilities",
+      "symbols": [
+        "libtmux.Server:capabilities",
+        "libtmux.CapabilityReport.features",
+        "libtmux.CapabilityStatus.supported"
+      ],
+      "file": "examples/api/capabilities.lua",
+      "description": "Check named feature requirements against the connected daemon and use its decision.",
+      "stdout": "named deletion requires: 3.4\ndaemon decision checked\n"
+    },
+    {
       "id": "snapshot",
       "symbols": [
         "libtmux.Server:snapshot",

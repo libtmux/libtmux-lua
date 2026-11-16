@@ -53,7 +53,7 @@ How the check works:
 
 - The library reads the connected daemon's own `#{version}`, never the client
   executable's `-V`, so a newer client cannot pass for an older daemon.
-- The endpoint reads the daemon's version, pid and start time once, when it
+- The endpoint reads the daemon's version, pid and start time when it
   binds, with `run-shell -C`, which fires no `after-*` or `command-error` hook.
   Each command group then starts with a fence on the cached pid, start time and
   release, so a command costs no probe.
@@ -90,6 +90,24 @@ also run the check with a 3.3a client against the old daemon, which covers the
 3.1 usage error and the 3.0 "too old for client" answer.
 
 ## Optional features
+
+Use `Server:capabilities():await()` to check a feature before attempting it.
+The [complete program](../examples/api/capabilities.lua) starts and stops its
+own daemon and checks named buffer deletion against it.
+
+The request reads the bound daemon again with the same bounded, hook-free
+probe. It refuses a changed or closed binding instead of accepting another
+daemon. The report contains:
+
+- `version`: the daemon's release, independent of the client executable.
+- `features[id]`: copied requirement metadata, including `since`, `except`,
+  `apis` and `commands`, with a boolean `supported` decision.
+- `workarounds[id]`: copied release-specific defect metadata with a boolean
+  `active` decision. These are workarounds, not additional features.
+
+Unknown IDs are absent. The report is an observation; later daemon changes do
+not update it. Editing it cannot change the library's command guards or a
+later report. Those guards still check every operation before dispatch.
 
 The 3.3a minimum covers subprocess commands, typed operations, snapshots and
 polling captures. Each feature below names its own release requirement. A

@@ -31,6 +31,8 @@ M.EXPECTED_MODULES = {
 }
 M.EXPECTED_TYPES = {
     "libtmux.Buffer",
+    "libtmux.CapabilityReport",
+    "libtmux.CapabilityStatus",
     "libtmux.Client",
     "libtmux.Configurable",
     "libtmux.Entity",
@@ -44,6 +46,7 @@ M.EXPECTED_TYPES = {
     "libtmux.Snapshot",
     "libtmux.Window",
     "libtmux.WindowLink",
+    "libtmux.WorkaroundStatus",
 }
 -- Public modules whose annotations the export adds to a copy of the source, so the runtime
 -- modules stay free of export-only tags.
