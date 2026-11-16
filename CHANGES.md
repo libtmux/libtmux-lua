@@ -4,6 +4,9 @@ Notable changes to `libtmux`.
 
 ## Unreleased
 
+- Server: `Server:capabilities()` returns a Request for feature requirements,
+  support decisions and active workarounds on the bound daemon. Reports own
+  their nested metadata; editing one cannot change command admission. (#104)
 - Runtime: `Runtime:start_server` starts a private tmux server and resolves to
   an `OwnedServer` with its `server` handle, its `socket_path` and `stop()`.
   The server lives in a new directory under `root` (the system temporary
