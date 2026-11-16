@@ -11,7 +11,8 @@
 -- rockspec and CHANGES.md; with --check it reports drift and changes nothing. `changelogs` checks
 -- that the changelog opens with the rock's name and has an Unreleased section. `verify` is the
 -- publication guard the Publish workflow runs. `upload` and `github-release` publish the verified
--- artifacts, and only the Publish workflow runs them. Failures print FAIL and exit 1. See README.md.
+-- artifacts, and only the Publish workflow runs them. Failures print FAIL and exit 1.
+-- See README.md.
 local here = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") or "."
 package.path = here .. "/../?.lua;" .. package.path
 require("support.repo").use_rocks()
