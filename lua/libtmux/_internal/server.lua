@@ -382,7 +382,9 @@ end
 --- Returns copied feature/workaround metadata. Unknown IDs are absent; edits to a
 --- report do not affect admission. The bounded probe creates no tmux resources and
 --- refuses a replaced or closed binding. The detached report remains an observation
---- of that release after later daemon changes.
+--- of that release after later daemon changes. Reserve the native, unaliased
+--- list-commands bootstrap throughout binding and discovery, without concurrent
+--- administrative configuration changes; discovery does not inspect or repair it.
 ---@return libtmux.Request<libtmux.CapabilityReport>
 function Server:capabilities()
     local state = servers[self]
