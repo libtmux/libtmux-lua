@@ -424,7 +424,10 @@ local function archive_problems(job)
         end
     end
     local builds = {}
-    if has(job, 'bootstrap.lua runtimes "$CI_LUA"') then
+    if
+        has(job, 'bootstrap.lua runtimes "$CI_LUA"')
+        or has(job, 'bootstrap.lua select-lua "$CI_LUA"')
+    then
         builds[#builds + 1] = { "${{ matrix.lua }}", "the matrix Lua" }
     end
     for version in job:gmatch("bootstrap%.lua runtimes (%d+%.%d+%.%d+)") do
@@ -445,12 +448,48 @@ local function archive_problems(job)
     return found
 end
 
+--- The steps whose `run:` block holds more than one command: SCRIPTS.md keeps only `run:` lines
+--- that call one command. A backslash continues a command onto the next line.
+---@param text string
+---@param label string
+---@return string[]
+local function command_problems(text, label)
+    local found = {}
+    local lines = lines_of(text)
+    local step
+    for index, line in ipairs(lines) do
+        step = line:match("^%s*%- name: (.-)%s*$") or step
+        local indent = line:match("^(%s*)run: |[-+]?%s*$")
+        if indent then
+            local commands, continued = 0, false
+            for _, body in ipairs({ unpack(lines, index + 1) }) do
+                local own = body:match("^(%s*)")
+                if body:match("%S") and #own <= #indent then
+                    break
+                end
+                if body:match("%S") then
+                    commands = commands + (continued and 0 or 1)
+                    continued = body:match("\\%s*$") ~= nil
+                end
+            end
+            if commands > 1 then
+                found[#found + 1] = ("%s: step %q runs more than one command"):format(
+                    label,
+                    step or "?"
+                )
+            end
+        end
+    end
+    return found
+end
+
 local function all_problems(ci, publish)
     local found = problems(ci, publish)
     for _, list in ipairs({
         sessions(ci, publish),
         archive_problems(split_jobs(ci).validate or ""),
         supply_problems({ ["ci.yml"] = ci }),
+        command_problems(ci, "ci.yml"),
     }) do
         for _, message in ipairs(list) do
             found[#found + 1] = message
@@ -486,6 +525,18 @@ function M.test_every_workflow_and_action_in_the_repository_is_pinned_and_calls_
     test.assertEquals(supply_problems(workflows), {})
 end
 
+function M.test_the_lua_tools_action_runs_one_command_per_step()
+    local action = files.read(repo.root .. "/.github/actions/lua-tools/action.yml")
+    test.assertEquals(command_problems(action, "lua-tools"), {})
+end
+
+function M.test_a_run_block_counts_a_continued_line_as_one_command()
+    local block = "      - name: one\n        run: |\n          a \\\n            --b\n"
+    test.assertEquals(command_problems(block, "x"), {})
+    local two = block .. "          c\n"
+    test.assertEquals(command_problems(two, "x"), { 'x: step "one" runs more than one command' })
+end
+
 function M.test_no_other_workflow_opens_a_session()
     for _, name in ipairs({ "docs.yml", "publish.yml", "docs-preview-cleanup.yml" }) do
         local text = files.read(repo.root .. "/.github/workflows/" .. name)
@@ -510,6 +561,18 @@ end
 
 local SESSION = "mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113 # v3.24"
 local MUTATIONS = {
+    {
+        "a step runs two commands again",
+        function(ci, pub)
+            return replaced(
+                ci,
+                "        run: mkdir -p .cache/ci\n",
+                "        run: |\n          mkdir -p .cache/ci\n          ls .cache\n"
+            ),
+                pub
+        end,
+        "runs more than one command",
+    },
     {
         "a tmux version returns to the workflow",
         function(ci, pub)

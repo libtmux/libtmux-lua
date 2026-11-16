@@ -148,21 +148,12 @@ jobs:
         with:
           path: .cache/source/lua-*.tar.gz
           key: lua-source-${{ hashFiles('scripts/bootstrap/runtimes.lua') }}-5.4.9
-      - name: Select Lua and install test dependencies
-        run: |
-          mkdir -p .cache/ci
-          if [[ "$CI_LUA" == '5.5.1' ]]; then
-            test_lua="$(mise which lua)"
-          else
-            lua scripts/bootstrap/bootstrap.lua runtimes "$CI_LUA" 2>&1 | tee .cache/ci/runtime.log
-            if [[ "$CI_LUA" == luajit ]]; then
-              test_lua="$PWD/.cache/toolchains/luajit-2.1/bin/luajit"
-            else
-              test_lua="$PWD/.cache/toolchains/lua-$CI_LUA/bin/lua"
-            fi
-          fi
-          echo "TEST_LUA=$test_lua" >> "$GITHUB_ENV"
-          lua scripts/bootstrap/bootstrap.lua rocks dev live --lua="$test_lua" 2>&1 | tee .cache/ci/dependencies.log
+      - name: Create the diagnostics directory
+        run: mkdir -p .cache/ci
+      - name: Select the test Lua and build it if mise does not provide it
+        run: lua scripts/bootstrap/bootstrap.lua select-lua "$CI_LUA" --github-env="$GITHUB_ENV" 2>&1 | tee .cache/ci/runtime.log
+      - name: Install the test dependencies
+        run: lua scripts/bootstrap/bootstrap.lua rocks dev live --lua="$TEST_LUA" 2>&1 | tee .cache/ci/dependencies.log
       - name: Install the Neovim host
         if: matrix.gate != 'unit'
         run: luajit scripts/bootstrap/bootstrap.lua hosts "$CI_NVIM" 2>&1 | tee .cache/ci/neovim.log
@@ -178,61 +169,65 @@ jobs:
         uses: libtmux/.github/actions/build-tmux@30f81842b1e639ea4e25f93f1f2543504178e228
         with:
           ref: ${{ matrix.client }}
-      - name: Select the tmux builds
+      - name: Select the tmux build
         if: matrix.gate != 'unit'
         env:
           TMUX_BUILT: ${{ steps.tmux.outputs.binary }}
+        run: echo "TMUX_BIN=$TMUX_BUILT" >> "$GITHUB_ENV"
+      - name: Select the client tmux build
+        if: matrix.client && matrix.gate != 'unit'
+        env:
           CLIENT_BUILT: ${{ steps.client.outputs.binary }}
-        run: |
-          echo "TMUX_BIN=$TMUX_BUILT" >> "$GITHUB_ENV"
-          if [[ -n "$CLIENT_BUILT" ]]; then
-            echo "CI_CLIENT_BIN=$CLIENT_BUILT" >> "$GITHUB_ENV"
-          fi
-      - name: Install outer-gate prerequisites
+        run: echo "CI_CLIENT_BIN=$CLIENT_BUILT" >> "$GITHUB_ENV"
+      - name: Install stylua for the outer gate
         if: matrix.gate == 'outer'
         env:
           MISE_GITHUB_TOKEN: ${{ github.token }}
-        run: |
-          mise install stylua@2.4.0
-          mise where stylua@2.4.0 >> "$GITHUB_PATH"
-          mise install actionlint@1.7.12
-          mise where actionlint@1.7.12 >> "$GITHUB_PATH"
-          lua scripts/bootstrap/bootstrap.lua runtimes 5.4.9
-          lua scripts/bootstrap/bootstrap.lua rocks lint --lua=.cache/toolchains/lua-5.4.9/bin/lua
-          lua scripts/bootstrap/bootstrap.lua luals
+        run: mise install stylua@2.4.0
+      - name: Put stylua on the path
+        if: matrix.gate == 'outer'
+        run: mise where stylua@2.4.0 >> "$GITHUB_PATH"
+      - name: Install actionlint for the outer gate
+        if: matrix.gate == 'outer'
+        env:
+          MISE_GITHUB_TOKEN: ${{ github.token }}
+        run: mise install actionlint@1.7.12
+      - name: Put actionlint on the path
+        if: matrix.gate == 'outer'
+        run: mise where actionlint@1.7.12 >> "$GITHUB_PATH"
+      - name: Build the pinned Lua 5.4.9 lint interpreter
+        if: matrix.gate == 'outer'
+        run: lua scripts/bootstrap/bootstrap.lua runtimes 5.4.9
+      - name: Install the lint rocks
+        if: matrix.gate == 'outer'
+        run: lua scripts/bootstrap/bootstrap.lua rocks lint --lua=.cache/toolchains/lua-5.4.9/bin/lua
+      - name: Install the pinned LuaLS
+        if: matrix.gate == 'outer'
+        run: lua scripts/bootstrap/bootstrap.lua luals
       - name: Record tool identities
-        run: |
-          {
-            git rev-parse HEAD
-            uname -a
-            cc --version
-            "$TEST_LUA" -v
-            luarocks --version
-            if [[ "$CI_GATE" != unit ]]; then
-              "$TMUX_BIN" -V
-              if [[ -n "$CI_CLIENT" ]]; then
-                "$CI_CLIENT_BIN" -V
-              fi
-              ".cache/toolchains/nvim-$CI_NVIM/bin/nvim" --version
-            fi
-          } 2>&1 | tee .cache/ci/identity.log
+        env:
+          IDENTITY_NVIM: ${{ matrix.gate != 'unit' && format('.cache/toolchains/nvim-{0}/bin/nvim', matrix.nvim) || '' }}
+          IDENTITY_TMUX: ${{ steps.tmux.outputs.binary }}
+          IDENTITY_CLIENT: ${{ steps.client.outputs.binary }}
+        run: luajit scripts/ci_plan/ci_plan.lua identity --lua "$TEST_LUA" --tmux "$IDENTITY_TMUX" --client "$IDENTITY_CLIENT" --nvim "$IDENTITY_NVIM" 2>&1 | tee .cache/ci/identity.log
       - name: Open a tmate session before the tests
         if: ${{ github.event_name == 'workflow_dispatch' && matrix.tmate == 'before-tests' }}
         uses: mxschmitt/action-tmate@35b54afac29c97fb54faba5b513f8fbd1882f113 # v3.24
         timeout-minutes: 30
         with:
           limit-access-to-actor: true
-      - name: Run offline gates
-        run: |
-          if [[ "$CI_GATE" == unit ]]; then
-            luajit scripts/check/check.lua unit --lua "$TEST_LUA" 2>&1 | tee .cache/ci/check.log
-          else
-            luajit scripts/check/check.lua "$CI_GATE" --lua "$TEST_LUA" --nvim ".cache/toolchains/nvim-$CI_NVIM/bin/nvim" 2>&1 | tee .cache/ci/check.log
-          fi
+      - name: Run the unit gate
+        if: matrix.gate == 'unit'
+        run: luajit scripts/check/check.lua unit --lua "$TEST_LUA" 2>&1 | tee .cache/ci/check.log
+      - name: Run the ${{ matrix.gate }} gate
+        if: matrix.gate != 'unit'
+        run: luajit scripts/check/check.lua "$CI_GATE" --lua "$TEST_LUA" --nvim ".cache/toolchains/nvim-$CI_NVIM/bin/nvim" 2>&1 | tee .cache/ci/check.log
       - name: Run the refusal check with a newer client
         if: matrix.client
-        run: |
-          TMUX_CLIENT_BIN="$CI_CLIENT_BIN" LIBTMUX_REFUSAL_MAX_MS=500 luajit scripts/check/check.lua refusal --lua "$TEST_LUA" --nvim ".cache/toolchains/nvim-$CI_NVIM/bin/nvim" 2>&1 | tee .cache/ci/mixed-client.log
+        env:
+          TMUX_CLIENT_BIN: ${{ steps.client.outputs.binary }}
+          LIBTMUX_REFUSAL_MAX_MS: '500'
+        run: luajit scripts/check/check.lua refusal --lua "$TEST_LUA" --nvim ".cache/toolchains/nvim-$CI_NVIM/bin/nvim" 2>&1 | tee .cache/ci/mixed-client.log
       - name: Retain diagnostics
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -245,15 +240,15 @@ jobs:
           include-hidden-files: true
           if-no-files-found: ignore
           retention-days: 7
-      - name: Validate release artifacts
-        if: matrix.name == 'Outer current'
-        run: |
-          source_args=()
-          if [[ "$GITHUB_EVENT_NAME" == push && "$GITHUB_REF_TYPE" == tag ]]; then
-            luajit scripts/release/main.lua verify --event "$GITHUB_EVENT_PATH" --commit "$GITHUB_SHA"
-            source_args+=(--public-tag)
-          fi
-          luajit scripts/package/main.lua --release --lua "$TEST_LUA" --output dist "${source_args[@]}"
+      - name: Verify the release event
+        if: matrix.name == 'Outer current' && github.event_name == 'push' && github.ref_type == 'tag'
+        run: luajit scripts/release/main.lua verify --event "$GITHUB_EVENT_PATH" --commit "$GITHUB_SHA"
+      - name: Package the release candidate
+        if: matrix.name == 'Outer current' && !(github.event_name == 'push' && github.ref_type == 'tag')
+        run: luajit scripts/package/main.lua --release --lua "$TEST_LUA" --output dist
+      - name: Package the release candidate for a public tag
+        if: matrix.name == 'Outer current' && github.event_name == 'push' && github.ref_type == 'tag'
+        run: luajit scripts/package/main.lua --release --lua "$TEST_LUA" --output dist --public-tag
       - name: Retain release candidate
         if: matrix.name == 'Outer current'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
