@@ -1,6 +1,7 @@
 -- Persistent observations against an explicitly owned tmux session.
 local test = require("luaunit")
 local fixture = require("tests.support.fixture")
+local repo = require("support.repo")
 local M = {}
 
 local TOPOLOGY = "#{session_id};#{pane_id};#{window_id};#{window_width};#{window_height}"
@@ -29,6 +30,7 @@ local function run_case(case, host, timeout)
             TMUX_TEST_SESSION = session,
             TMUX_TEST_PANE = pane,
             LIBTMUX_CONTROL_CASE = case,
+            LIBTMUX_OUTPUT_SCRIPT = repo.root .. "/tests/support/programs/output.lua",
         }
         if case == "unlink" then
             f:run("new-window", "-d", "-t", session, "exec /bin/cat")

@@ -68,8 +68,11 @@ local function work(runtime)
     local slow = assert(connection:watch_pane(pane, { max_bytes = 32 }):await())
     local uncovered, uncovered_error = connection:watch_pane("%2147483647"):await()
     assert(uncovered == nil and uncovered_error.code == "uncovered_pane")
-    local output = "stty raw -echo; printf 'BYTE\\000\\001\\012\\015\\134\\377DONE'; exec /bin/cat"
-    assert(bound:execute({ "respawn-pane", "-k", "-t", pane, output }):await())
+    local lua, script =
+        assert(os.getenv("LIBTMUX_TEST_LUA")), assert(os.getenv("LIBTMUX_OUTPUT_SCRIPT"))
+    assert(
+        bound:execute({ "respawn-pane", "-k", "-t", pane, lua, script, "bytes", "BYTE" }):await()
+    )
     local bytes = ""
     repeat
         local item = assert(watch:next({ timeout = 750 }):await())

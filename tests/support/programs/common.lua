@@ -15,6 +15,15 @@ function M.raw()
     assert(M.tty:set_blocking(true))
 end
 
+--- Puts the terminal on standard input in binary mode: no echo, no line editing and no output
+--- translation, so what the program writes reaches tmux byte for byte. Raw mode keeps libuv's
+--- translation of line feeds to a carriage return and a line feed.
+function M.binary()
+    M.tty = assert(uv.new_tty(0, true))
+    assert(M.tty:set_mode(2))
+    assert(M.tty:set_blocking(true))
+end
+
 --- Reads what is available from standard input, up to `count` bytes. Nil at the end of input.
 ---@param count integer
 ---@return string?

@@ -4,12 +4,14 @@ local child = require("tests.support.child")
 local files = require("support.files")
 local fixture = require("tests.support.fixture")
 local fs = require("support.fs")
+local repo = require("support.repo")
 local M = {}
 
 local LIMIT = 30
 
 local function start(f, host, case)
     return f:start_program(host, "wait_text", {
+        LIBTMUX_OUTPUT_SCRIPT = repo.root .. "/tests/support/programs/output.lua",
         LIBTMUX_WAIT_CASE = case,
         LIBTMUX_WAIT_DIR = f.path,
     })

@@ -33,10 +33,13 @@ local function work(runtime)
     local bw = assert(b:watch_pane(pane):await())
     local format = assert(b:subscribe_format(pane, { "title", "dead" }):await())
     assert(format:close():await())
-    assert(
-        pane:respawn({ kill = true, shell = "stty raw -echo; printf 'READY'; exec /bin/cat" })
-            :await()
-    )
+    local program = {
+        assert(os.getenv("LIBTMUX_TEST_LUA")),
+        assert(os.getenv("LIBTMUX_OUTPUT_SCRIPT")),
+        "raw",
+        "READY",
+    }
+    assert(pane:respawn({ kill = true, argv = program }):await())
     for _, watch in ipairs({ aw, bw }) do
         local bytes = ""
         repeat

@@ -23,6 +23,8 @@ local function work(runtime)
     local binary, socket = assert(os.getenv("TMUX_BIN")), assert(os.getenv("TMUX_SOCKET"))
     local dir = assert(os.getenv("LIBTMUX_WAIT_DIR"))
     local case = assert(os.getenv("LIBTMUX_WAIT_CASE"))
+    local lua, script =
+        assert(os.getenv("LIBTMUX_TEST_LUA")), assert(os.getenv("LIBTMUX_OUTPUT_SCRIPT"))
     local server = must(runtime:connect({ binary = binary, socket_path = socket }):await())
 
     local function command(args)
@@ -33,13 +35,13 @@ local function work(runtime)
     local function sleep(seconds)
         command({ "run-shell", "-d", tostring(seconds) })
     end
-    local function program(script, width)
+    local function program(argv, width)
         local created = must(server
             :new_session({
                 name = "wait-" .. case,
                 width = width or 80,
                 height = 24,
-                argv = { "/bin/sh", "-c", script, binary, socket },
+                argv = argv,
             })
             :await())
         return created.pane, assert(created.pane:reference()).id
@@ -76,7 +78,7 @@ local function work(runtime)
     must(server:new_session({ name = "keepalive", argv = { "/bin/cat" } }):await())
 
     if case == "late" then
-        local pane = program("exec cat")
+        local pane = program({ "/bin/cat" })
         signal_reads()
         local request = pane:wait_for_text("LATE" .. "NEEDLE", { interval = 20, timeout = 5000 })
         command({ "wait-for", "read" })
@@ -85,7 +87,7 @@ local function work(runtime)
         assert(found.matched_at_entry == false, "needle was not on screen at entry")
         assert(found.text:find("LATENEEDLE", 1, true))
     elseif case == "entry" then
-        local pane, id = program("printf ALREADY; exec cat")
+        local pane, id = program({ lua, script, "stay", "ALREADY" })
         settle(id, "ALREADY")
         count_hooks({ "capture-pane" })
         local started = now()
@@ -94,13 +96,13 @@ local function work(runtime)
         assert(found.matched_at_entry == true)
         assert(now() - started < 1000, "first read waited for the interval")
     elseif case == "wrapped" then
-        local pane, id = program("printf '%078d' 0; printf NEEDLE; exec cat")
+        local pane, id = program({ lua, script, "stay", ("%078d"):format(0) .. "NEEDLE" })
         settle(id, "NEEDLE")
         local found = must(pane:wait_for_text("NEEDLE", { timeout = 3000 }):await())
         assert(found.matched_at_entry == true)
         assert(command({ "capture-pane", "-p", "-t", id }):find("NEEDLE", 1, true) == nil)
     elseif case == "pane_killed" then
-        local pane, id = program("printf EARLIER; exec cat")
+        local pane, id = program({ lua, script, "stay", "EARLIER" })
         settle(id, "EARLIER")
         signal_reads()
         local started = now()
@@ -113,7 +115,7 @@ local function work(runtime)
         assert(now() - started < 3000, "pane death waited for the deadline")
     elseif case == "remain_on_exit" then
         command({ "set-option", "-g", "remain-on-exit", "on" })
-        local pane, id = program('printf BYE; "$0" -S "$1" wait-for release; exit 0')
+        local pane, id = program({ lua, script, "wait", "BYE", binary, socket, "release" })
         settle(id, "BYE")
         signal_reads()
         local started = now()
@@ -126,7 +128,7 @@ local function work(runtime)
         assert(err.partial and type(err.partial.text) == "string")
         assert(now() - started < 3000, "dead pane waited for the deadline")
     elseif case == "server_killed" or case == "server_killed_stopped" then
-        local pane, id = program("printf EARLIER; exec cat")
+        local pane, id = program({ lua, script, "stay", "EARLIER" })
         settle(id, "EARLIER")
         signal_reads()
         local request = pane:wait_for_text("NEVER", { interval = 20, timeout = 20000 })
@@ -151,7 +153,7 @@ local function work(runtime)
         assert(err.partial and err.partial.text:find("EARLIER", 1, true))
         assert(now() - started < 3000, "server death waited for the deadline")
     elseif case == "cancel" or case == "cancel_inflight" or case == "deadline_inflight" then
-        local pane, id = program("printf EARLIER; exec cat")
+        local pane, id = program({ lua, script, "stay", "EARLIER" })
         settle(id, "EARLIER")
         signal_reads()
         local started = now()
@@ -186,17 +188,13 @@ local function work(runtime)
     elseif case == "history" or case == "history_under" then
         command({ "set-option", "-g", "history-limit", "50000" })
         local rows = case == "history" and 20000 or 5000
-        local pane, id = program(
-            "yes 'row xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' "
-                .. "| head -n "
-                .. rows
-                .. "; printf VISIBLE; exec cat"
-        )
+        local row = "row " .. ("x"):rep(69)
+        local pane, id = program({ lua, script, "rows", tostring(rows), row, "VISIBLE" })
         settle(id, "VISIBLE")
         local found = must(pane:wait_for_text("VISIBLE", { timeout = 5000 }):await())
         assert(found.matched_at_entry == true)
     elseif case == "hooks" then
-        local pane, id = program("printf EARLIER; exec cat")
+        local pane, id = program({ lua, script, "stay", "EARLIER" })
         settle(id, "EARLIER")
         count_hooks({ "display-message", "list-panes", "show-options", "capture-pane" })
         local err = expect_error(
@@ -205,25 +203,25 @@ local function work(runtime)
         )
         assert(err.partial and err.partial.text:find("EARLIER", 1, true))
     elseif case == "matcher_first" then
-        local pane, id = program("printf FOUND; exec cat")
+        local pane, id = program({ lua, script, "stay", "FOUND" })
         settle(id, "FOUND")
         command({ "set-hook", "-g", "after-capture-pane", "kill-pane -t " .. id })
         local found = must(pane:wait_for_text("FOUND", { timeout = 3000 }):await())
         assert(found.matched_at_entry == true)
     elseif case == "hook_output" then
-        local pane = program("exec cat")
+        local pane = program({ "/bin/cat" })
         command({ "set-hook", "-g", "after-capture-pane", "run-shell 'printf HOOK''OUT'" })
         local found = must(pane:wait_for_text("HOOK" .. "OUT", { timeout = 3000 }):await())
         assert(found.text:find("HOOKOUT", 1, true))
         command({ "set-hook", "-gu", "after-capture-pane" })
     elseif case == "typed_echo" then
-        local pane, id = program("exec cat")
+        local pane, id = program({ "/bin/cat" })
         settle(id, "") -- screen exists
         must(pane:send_text("printf '%s' ECHO" .. "NEEDLE"):await())
         local found = must(pane:wait_for_text("ECHO" .. "NEEDLE", { timeout = 3000 }):await())
         assert(found.text:find("ECHONEEDLE", 1, true))
     elseif case == "validation" then
-        local pane, id = program("printf VALID; exec cat")
+        local pane, id = program({ lua, script, "stay", "VALID" })
         settle(id, "VALID")
         local bad = {
             { "", {} },
@@ -253,7 +251,7 @@ local function work(runtime)
         local found = must(pane:wait_for_text("VALID", { interval = 5 }):await())
         assert(found.matched_at_entry == true)
     elseif case == "close" then
-        local pane, id = program("printf EARLIER; exec cat")
+        local pane, id = program({ lua, script, "stay", "EARLIER" })
         settle(id, "EARLIER")
         signal_reads()
         pane:wait_for_text("NEVER", { interval = 5000 })

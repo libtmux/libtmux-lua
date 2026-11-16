@@ -5,6 +5,8 @@ local fixture = require("tests.support.fixture")
 local repo = require("support.repo")
 local M = {}
 
+local OUTPUT = repo.root .. "/tests/support/programs/output.lua"
+
 local function contains(text, ...)
     for _, needle in ipairs({ ... }) do
         if not text:find(needle, 1, true) then
@@ -34,23 +36,11 @@ function M.test_live_guards_notifications_and_wait_continuation()
         boundary("PARSER_READY")
         command('display-message -p "%%output %%0 body\\n%%begin 1 2 3\\n%%end 1 2 3\\nBODY_END"')
         until_seen("BODY_END\n%end ")
-        f:run(
-            "respawn-pane",
-            "-k",
-            "-t",
-            "fixture:0.0",
-            "stty raw -echo; printf 'PLAIN\\000\\001\\012\\015\\134\\377DONE'; exec /bin/cat"
-        )
+        f:run("respawn-pane", "-k", "-t", "fixture:0.0", fixture.lua(), OUTPUT, "bytes", "PLAIN")
         until_seen("%output ", "DONE\n")
         command("refresh-client -f pause-after=5")
         until_seen("\n%end ")
-        f:run(
-            "respawn-pane",
-            "-k",
-            "-t",
-            "fixture:0.0",
-            "stty raw -echo; printf 'EXTENDED\\000\\001\\012\\015\\134\\377DONE'; exec /bin/cat"
-        )
+        f:run("respawn-pane", "-k", "-t", "fixture:0.0", fixture.lua(), OUTPUT, "bytes", "EXTENDED")
         until_seen("%extended-output ", "DONE\n")
         -- An explicit pane target keeps job output routing stable across tmux versions.
         command('run-shell -t fixture:0.0 "printf PANE_ONLY"')
