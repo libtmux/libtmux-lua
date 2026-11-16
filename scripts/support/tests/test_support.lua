@@ -126,4 +126,36 @@ function M.test_a_child_that_never_reads_its_input_does_not_kill_the_writer()
     end
 end
 
+-- A descendant that holds the output pipe open used to keep the call waiting for the descendant,
+-- not for the timeout: `sleep 8 & sleep 8` returned after eight seconds.
+function M.test_a_timeout_bounds_the_call_when_a_descendant_holds_the_output_open()
+    local started = uv.hrtime()
+    local result = proc.run({ "/bin/sh", "-c", "sleep 3 & sleep 3" }, { timeout = 0.3 })
+    local elapsed = (uv.hrtime() - started) / 1e9
+    test.assertTrue(result.timed_out)
+    test.assertTrue(elapsed < 1.5, ("the call took %.2f seconds"):format(elapsed))
+end
+
+-- The timeout ends the whole process group, so the descendant does not outlive the call.
+function M.test_a_timeout_kills_the_descendants_of_the_child()
+    local started = uv.hrtime()
+    local result = proc.run({ "/bin/sh", "-c", "sleep 30 & echo $!; wait" }, { timeout = 0.3 })
+    local elapsed = (uv.hrtime() - started) / 1e9
+    local pid = assert(tonumber(result.stdout:match("^(%d+)")), result.stdout)
+    local gone = false
+    for _ = 1, 100 do
+        if not uv.kill(pid, 0) then
+            gone = true
+            break
+        end
+        uv.sleep(10)
+    end
+    test.assertTrue(result.timed_out)
+    test.assertTrue(elapsed < 1.5, ("the call took %.2f seconds"):format(elapsed))
+    test.assertTrue(gone, "the backgrounded sleep is still running")
+    if not gone then
+        uv.kill(pid, "sigkill")
+    end
+end
+
 return M

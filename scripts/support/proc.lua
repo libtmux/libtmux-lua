@@ -31,7 +31,7 @@ end
 ---@field cwd? string
 ---@field env? table<string, string> Replaces the whole environment. Defaults to this process's.
 ---@field stdin? string Written to the child's standard input, which is then closed.
----@field timeout? number Seconds before the child is killed.
+---@field timeout? number Seconds before the child and its descendants are killed.
 ---@field inherit? boolean Give the child this process's standard streams instead of capturing them.
 
 ---@class support.RunResult
@@ -62,15 +62,23 @@ function M.run(argv, opts)
         open = open - 1
     end
     local chunks = { stdout = {}, stderr = {} }
+    local reading = {}
+    local function release(pipe)
+        if reading[pipe] then
+            reading[pipe] = nil
+            pipe:read_stop()
+            pipe:close(closed)
+        end
+    end
     local function collect(pipe, name)
         open = open + 1
+        reading[pipe] = true
         pipe:read_start(function(read_error, data)
             assert(not read_error, read_error)
             if data then
                 chunks[name][#chunks[name] + 1] = data
             else
-                pipe:read_stop()
-                pipe:close(closed)
+                release(pipe)
             end
         end)
     end
@@ -82,6 +90,9 @@ function M.run(argv, opts)
         env = environment_list(opts.env or uv.os_environ()),
         cwd = opts.cwd,
         stdio = stdio,
+        -- A timeout ends the child's whole process group, so the child leads one. A child given
+        -- this process's own streams stays in its session, for programs that need the terminal.
+        detached = opts.timeout ~= nil and not opts.inherit,
     }, function(code, signal)
         result.code, result.signal = code, signal
         handle:close(closed)
@@ -116,7 +127,13 @@ function M.run(argv, opts)
         open = open + 1
         timer:start(opts.timeout * 1000, 0, function()
             result.timed_out = true
-            handle:kill("sigkill")
+            if opts.inherit or not uv.kill(-started, "sigkill") then
+                handle:kill("sigkill")
+            end
+            -- A descendant that left the group would still hold the output open; the call has
+            -- waited its time, so stop reading.
+            release(out)
+            release(err)
         end)
     end
     -- A caller's own handles, such as a listening socket, keep the loop alive, so run it only until
