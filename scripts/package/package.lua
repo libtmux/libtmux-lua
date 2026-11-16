@@ -44,6 +44,26 @@ local function run(argv, opts)
     return output
 end
 
+--- The tmux the examples run: TMUX_BIN, or tmux on PATH.
+---@return string
+local function tmux_binary()
+    local configured = os.getenv("TMUX_BIN")
+    return runtime.executable_path(configured ~= nil and configured ~= "" and configured or "tmux")
+end
+
+--- The `.rock` file `luarocks pack` wrote into `directory`, whose name starts with `prefix`.
+---@param directory string
+---@param prefix string
+---@return string
+local function packed_rock(directory, prefix)
+    for _, name in ipairs(fs.list(directory)) do
+        if name:sub(1, #prefix) == prefix and name:sub(-5) == ".rock" then
+            return directory .. "/" .. name
+        end
+    end
+    error(("no %s*.rock in %s"):format(prefix, directory), 0)
+end
+
 --- Runs a Lua program given as text through the interpreter, with its arguments.
 local function run_source(lua, source, args, opts)
     local path = os.tmpname()
@@ -238,7 +258,7 @@ end
 --- Runs the installed snapshot and quickstart examples, each on a private server of its own.
 function M.live_example(prefix, version, lua, opts)
     local temporary = fs.mkdtemp("libtmux-lua-live-")
-    local binary = run({ "sh", "-c", 'command -v "${TMUX_BIN:-tmux}"' }):match("%S+")
+    local binary = tmux_binary()
     local child = with_env(opts, installed_paths(prefix, version))
     child.env.TMPDIR = temporary
     child.env.TMUX_BIN = binary
@@ -281,7 +301,7 @@ function M.complete_api_examples(prefix, version, lua, cwd, opts)
     -- Each program starts a private server under TMPDIR; its directory and socket alias must fit
     -- sun_path.
     local temporary = fs.mkdtemp("libtmux-lua-api-check-")
-    local binary = run({ "sh", "-c", 'command -v "${TMUX_BIN:-tmux}"' }):match("%S+")
+    local binary = tmux_binary()
     local child = with_env(opts, installed_paths(prefix, version))
     child.cwd = directory
     child.env.TMPDIR = temporary
@@ -397,10 +417,12 @@ function M.source_rock(spec, work, rocks, public_tag, opts)
         -- needs the public tag, so the drift cannot be published.
         local drifted = tagged and M.drifted_from(source_tag)
         if tagged and not drifted then
+            local archive = work .. "/source-tag.tar"
             run(
-                { "sh", "-c", 'git archive "$1" | tar -x -C "$2"', "sh", source_tag, repository },
+                { "git", "archive", "--format=tar", "--output=" .. archive, source_tag },
                 { cwd = ROOT }
             )
+            run({ "tar", "-x", "-C", repository, "-f", archive })
         elseif revision > 1 then
             local drift = "a packaging revision ships "
                 .. source_tag
@@ -515,8 +537,7 @@ local function check_release(work, rocks, lua, rt, cache, output, public_tag, op
     M.import_installed("libtmux", prefix, rt.version, lua, with_env(opts, {}))
     -- Add the explicit standalone adapter dependency only after proving the core boundary.
     rocks({ "--tree=" .. cache, "pack", "luv", M.DEPENDENCIES.luv }, { cwd = work })
-    local luv =
-        run({ "sh", "-c", 'ls "$1"/luv-"$2".*.rock', "sh", work, M.DEPENDENCIES.luv }):match("%S+")
+    local luv = packed_rock(work, "luv-" .. M.DEPENDENCIES.luv .. ".")
     rocks({ "--tree=" .. prefix, "install", "--deps-mode=one", luv }, { cwd = work })
     M.live_example(prefix, rt.version, lua, opts)
     M.complete_api_examples(prefix, rt.version, lua, work, opts)
@@ -581,7 +602,7 @@ function M.check_core(work, rocks, lua, version, opts)
         { cwd = build }
     )
     rocks({ "--tree=" .. build_prefix, "pack", "libtmux", "scm-1" }, { cwd = build })
-    local artifact = run({ "sh", "-c", 'ls "$1"/libtmux-scm-1.*.rock', "sh", build }):match("%S+")
+    local artifact = packed_rock(build, "libtmux-scm-1.")
     local prefix = work .. "/installed-libtmux"
     rocks({ "--tree=" .. prefix, "install", "--deps-mode=one", artifact }, { cwd = work })
     if not M.only(M.installed(prefix, rocks), "libtmux") then

@@ -7,6 +7,15 @@ local runtime = require("support.runtime")
 local shell = require("support.shell")
 local M = {}
 
+local LUA = runtime.executable_path(arg and arg[-1] or "luajit")
+
+--- A child that runs Lua source, so the shell runner is tested without writing a shell program.
+---@param source string
+---@return string[]
+local function lua_child(source)
+    return { LUA, "-e", source }
+end
+
 local function argument_after(argv, flag)
     for index, value in ipairs(argv) do
         if value == flag then
@@ -57,17 +66,23 @@ function M.test_shell_arguments_are_quoted_not_interpolated()
 end
 
 function M.test_shell_reports_the_exit_code_and_merges_the_streams()
-    local code, output = shell.run({ "sh", "-c", "echo out; echo err >&2; exit 3" })
+    local code, output = shell.run(lua_child([=[
+        io.stdout:write("out\n")
+        io.stdout:flush()
+        io.stderr:write("err\n")
+        os.exit(3)
+    ]=]))
     test.assertEquals(code, 3)
     test.assertEquals(output, "out\nerr\n")
-    test.assertErrorMsgContains("failed (3)", shell.check, { "sh", "-c", "exit 3" })
+    test.assertErrorMsgContains("failed (3)", shell.check, lua_child("os.exit(3)"))
 end
 
 function M.test_shell_sets_and_unsets_the_childs_environment()
-    local _, output = shell.run({ "sh", "-c", 'printf "%s|%s" "$KEPT" "${HOME-unset}"' }, {
-        env = { KEPT = "yes" },
-        unset = { "HOME" },
-    })
+    local _, output =
+        shell.run(lua_child('io.write(os.getenv("KEPT"), "|", os.getenv("HOME") or "unset")'), {
+            env = { KEPT = "yes" },
+            unset = { "HOME" },
+        })
     test.assertEquals(output, "yes|unset")
 end
 

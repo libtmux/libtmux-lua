@@ -1,11 +1,14 @@
 local test = require("luaunit")
 local files = require("support.files")
 local json = require("support.json")
+local fs = require("support.fs")
 local proc = require("support.proc")
 local repo = require("support.repo")
+local runtime = require("support.runtime")
+local uv = require("support.uv")
 local M = {}
 
--- Written by Python's json.dumps(value, indent=2) and json.dumps(value, separators=(",", ":")).
+-- The same document in the indented and the compact layout.
 local PRETTY = [[
 {
   "name": "\u00e9\ud83d\ude00",
@@ -40,7 +43,7 @@ local function temporary()
     return path
 end
 
-function M.test_encode_matches_python_for_a_decoded_document()
+function M.test_encode_writes_a_decoded_document_in_both_layouts()
     local value = json.decode(PRETTY)
     test.assertEquals(json.encode(value, 2), PRETTY)
     test.assertEquals(json.encode(value), COMPACT)
@@ -93,6 +96,25 @@ end
 function M.test_the_root_holds_the_scripts_and_the_rock_tree_is_on_the_path()
     test.assertNotNil(io.open(repo.root .. "/scripts/support/repo.lua"))
     test.assertNotNil(package.path:find(repo.root .. "/.cache/rocks/luajit-", 1, true))
+end
+
+function M.test_executable_path_takes_the_first_executable_file_on_path()
+    local directory = fs.mkdtemp("libtmux-lua-path-")
+    assert(uv.fs_mkdir(directory .. "/first", 448))
+    assert(uv.fs_mkdir(directory .. "/first/tool", 448))
+    assert(uv.fs_mkdir(directory .. "/second", 448))
+    files.write(directory .. "/second/tool", "")
+    assert(uv.fs_chmod(directory .. "/second/tool", 493))
+    local original = os.getenv("PATH")
+    assert(uv.os_setenv("PATH", directory .. "/first:" .. directory .. "/second:" .. original))
+    local ok, found = pcall(runtime.executable_path, "tool")
+    local missing_ok, missing = pcall(runtime.executable_path, "libtmux-no-such-tool")
+    assert(uv.os_setenv("PATH", original))
+    fs.remove_tree(directory)
+    test.assertTrue(ok, found)
+    test.assertEquals(found, directory .. "/second/tool")
+    test.assertFalse(missing_ok)
+    test.assertEquals(missing, "Missing executable: libtmux-no-such-tool")
 end
 
 -- A write to a pipe whose reader has gone raises SIGPIPE, which ends a process that does not
