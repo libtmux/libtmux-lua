@@ -1,4 +1,4 @@
--- Prepare and validate explicit LuaRocks release versions without publishing.
+-- Prepare and validate explicit LuaRocks release versions, and publish the verified artifacts.
 local files = require("support.files")
 local fs = require("support.fs")
 local json = require("support.json")
@@ -367,6 +367,124 @@ function M.verify_release(root, event, commit, artifacts)
     if artifacts then
         M.verify_artifacts(root, artifacts, head)
     end
+end
+
+--- Whether a version is a pre-release: its source version ends in alphaN, betaN or rcN.
+---@param version string
+---@return boolean
+function M.is_prerelease(version)
+    local source = M.identity(version)
+    return source:find("alpha%d+$") ~= nil
+        or source:find("beta%d+$") ~= nil
+        or source:find("rc%d+$") ~= nil
+end
+
+--- The two artifacts a release publishes, named as the validated candidate lists them.
+---@param version string
+---@param directory string
+---@return string rockspec
+---@return string source_rock
+local function artifact_paths(version, directory)
+    return directory .. "/libtmux-" .. version .. ".rockspec",
+        directory .. "/libtmux-" .. version .. ".src.rock"
+end
+
+--- The `luarocks upload` command for the validated artifacts. The key is a temporary one, passed
+--- on the command line because `luarocks upload` takes it no other way.
+---@param version string
+---@param directory string
+---@param key? string
+---@return string[]
+function M.upload_command(version, directory, key)
+    if key == nil or key == "" then
+        refuse("LUAROCKS_API_KEY is not set")
+    end
+    local rockspec, source_rock = artifact_paths(version, directory)
+    return { "luarocks", "upload", rockspec, source_rock, "--temp-key", key }
+end
+
+--- The files a GitHub release carries: the artifacts, their checksums, the candidate record and
+--- the provenance bundle.
+---@param version string
+---@param directory string
+---@return string[]
+local function release_assets(version, directory)
+    local rockspec, source_rock = artifact_paths(version, directory)
+    return {
+        rockspec,
+        source_rock,
+        directory .. "/SHA256SUMS",
+        directory .. "/candidate.json",
+        directory .. "/provenance.sigstore.json",
+    }
+end
+
+--- The `gh release create` command: the tag must already exist, the notes are generated, and a
+--- pre-release is marked as one.
+---@param version string
+---@param tag string
+---@param directory string
+---@return string[]
+function M.github_release_command(version, tag, directory)
+    local command = {
+        "gh",
+        "release",
+        "create",
+        tag,
+        "--verify-tag",
+        "--title",
+        "libtmux " .. version,
+        "--generate-notes",
+    }
+    if M.is_prerelease(version) then
+        command[#command + 1] = "--prerelease"
+    end
+    for _, asset in ipairs(release_assets(version, directory)) do
+        command[#command + 1] = asset
+    end
+    return command
+end
+
+---@param argv string[]
+---@return support.RunResult
+local function run_attached(argv)
+    return require("support.proc").run(argv, { inherit = true })
+end
+
+---@param argv string[]
+---@param runner fun(argv: string[]): support.RunResult
+local function run_or_refuse(argv, runner)
+    local result = runner(argv)
+    if result.code ~= 0 then
+        refuse(argv[1] .. " " .. argv[2] .. " failed with status " .. result.code)
+    end
+end
+
+--- Uploads the validated artifacts to LuaRocks.
+---@param root string
+---@param directory string
+---@param key? string
+---@param runner? fun(argv: string[]): support.RunResult
+function M.upload(root, directory, key, runner)
+    local command = M.upload_command(M.candidate(root), directory, key)
+    run_or_refuse(command, runner or run_attached)
+end
+
+--- Creates the GitHub release for a tag with the validated artifacts and their provenance bundle.
+---@param root string
+---@param tag string
+---@param directory string
+---@param bundle string The attestation bundle, copied beside the artifacts as the release asset.
+---@param runner? fun(argv: string[]): support.RunResult
+function M.github_release(root, tag, directory, bundle, runner)
+    local version = M.candidate(root)
+    files.write(directory .. "/provenance.sigstore.json", files.read(bundle))
+    for _, asset in ipairs(release_assets(version, directory)) do
+        if not fs.is_file(asset) then
+            refuse("release asset is missing: " .. asset)
+        end
+    end
+    run_or_refuse(M.github_release_command(version, tag, directory), runner or run_attached)
 end
 
 return M

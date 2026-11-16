@@ -387,4 +387,129 @@ function M.test_a_changelog_that_is_not_the_rocks_own_is_refused()
     fs.remove_tree(directory)
 end
 
+function M.test_only_alpha_beta_and_rc_versions_are_prereleases()
+    test.assertTrue(release.is_prerelease("0.1.0alpha1-1"))
+    test.assertTrue(release.is_prerelease("0.1.0beta12-2"))
+    test.assertTrue(release.is_prerelease("1.0.0rc3-1"))
+    test.assertFalse(release.is_prerelease("0.1.0-1"))
+    test.assertFalse(release.is_prerelease("1.2.3-4"))
+end
+
+function M.test_the_upload_command_names_the_two_artifacts_and_carries_the_key()
+    test.assertEquals(release.upload_command("0.1.0-1", "dist", "secret"), {
+        "luarocks",
+        "upload",
+        "dist/libtmux-0.1.0-1.rockspec",
+        "dist/libtmux-0.1.0-1.src.rock",
+        "--temp-key",
+        "secret",
+    })
+    test.assertErrorMsgContains(
+        "LUAROCKS_API_KEY is not set",
+        release.upload_command,
+        "0.1.0-1",
+        "dist",
+        ""
+    )
+    test.assertErrorMsgContains(
+        "LUAROCKS_API_KEY is not set",
+        release.upload_command,
+        "0.1.0-1",
+        "dist",
+        nil
+    )
+end
+
+function M.test_the_github_release_marks_a_prerelease_and_lists_its_assets()
+    local stable = release.github_release_command("0.1.0-1", "v0.1.0", "dist")
+    test.assertEquals({ unpack(stable, 1, 8) }, {
+        "gh",
+        "release",
+        "create",
+        "v0.1.0",
+        "--verify-tag",
+        "--title",
+        "libtmux 0.1.0-1",
+        "--generate-notes",
+    })
+    test.assertEquals({ unpack(stable, 9) }, {
+        "dist/libtmux-0.1.0-1.rockspec",
+        "dist/libtmux-0.1.0-1.src.rock",
+        "dist/SHA256SUMS",
+        "dist/candidate.json",
+        "dist/provenance.sigstore.json",
+    })
+    local pre = release.github_release_command("0.1.0alpha1-1", "v0.1.0alpha1", "dist")
+    test.assertEquals(pre[9], "--prerelease")
+    test.assertEquals(#pre, #stable + 1)
+end
+
+--- A checkout whose release.json names `version`, and a directory of artifacts.
+local function publication(version)
+    local checkout = fs.mkdtemp("libtmux-lua-publish-")
+    json.write(checkout .. "/release.json", { package = "libtmux", version = version })
+    local dist = checkout .. "/dist"
+    fs.mkdir_p(dist)
+    for _, name in ipairs({
+        "libtmux-" .. version .. ".rockspec",
+        "libtmux-" .. version .. ".src.rock",
+        "SHA256SUMS",
+        "candidate.json",
+    }) do
+        files.write(dist .. "/" .. name, name)
+    end
+    files.write(checkout .. "/bundle.json", "bundle bytes")
+    return checkout, dist
+end
+
+function M.test_upload_runs_luarocks_for_the_candidate_and_reports_a_failure()
+    local checkout, dist = publication("0.1.0alpha1-1")
+    local ran
+    release.upload(checkout, dist, "secret", function(argv)
+        ran = argv
+        return { code = 0 }
+    end)
+    test.assertEquals(ran[3], dist .. "/libtmux-0.1.0alpha1-1.rockspec")
+    test.assertEquals(ran[#ran], "secret")
+    test.assertErrorMsgContains("status 7", release.upload, checkout, dist, "secret", function()
+        return { code = 7 }
+    end)
+    local started = false
+    pcall(release.upload, checkout, dist, "", function()
+        started = true
+        return { code = 0 }
+    end)
+    test.assertFalse(started, "a missing key must stop before luarocks runs")
+    fs.remove_tree(checkout)
+end
+
+function M.test_github_release_copies_the_bundle_and_refuses_a_missing_asset()
+    local checkout, dist = publication("0.1.0-1")
+    local ran
+    release.github_release(checkout, "v0.1.0", dist, checkout .. "/bundle.json", function(argv)
+        ran = argv
+        return { code = 0 }
+    end)
+    test.assertEquals(files.read(dist .. "/provenance.sigstore.json"), "bundle bytes")
+    test.assertEquals(ran[4], "v0.1.0")
+    test.assertEquals(ran[#ran], dist .. "/provenance.sigstore.json")
+    test.assertEquals(ran[9], dist .. "/libtmux-0.1.0-1.rockspec")
+    os.remove(dist .. "/candidate.json")
+    local started = false
+    test.assertErrorMsgContains(
+        "release asset is missing",
+        release.github_release,
+        checkout,
+        "v0.1.0",
+        dist,
+        checkout .. "/bundle.json",
+        function()
+            started = true
+            return { code = 0 }
+        end
+    )
+    test.assertFalse(started)
+    fs.remove_tree(checkout)
+end
+
 return M

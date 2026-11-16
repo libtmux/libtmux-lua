@@ -1,13 +1,17 @@
--- Prepare and validate LuaRocks release versions, and guard publication, without publishing.
+-- Prepare and validate LuaRocks release versions, guard publication and publish the verified
+-- artifacts.
 --
 --   luajit scripts/release/main.lua prepare [VERSION] [--check]
 --   luajit scripts/release/main.lua changelogs
 --   luajit scripts/release/main.lua verify --event FILE --commit SHA [--artifacts DIR]
+--   luajit scripts/release/main.lua upload --artifacts DIR
+--   luajit scripts/release/main.lua github-release --tag TAG --artifacts DIR --bundle FILE
 --
 -- Run from the repository root. `prepare` rewrites release.json, the runtime version, the release
 -- rockspec and CHANGES.md; with --check it reports drift and changes nothing. `changelogs` checks
 -- that the changelog opens with the rock's name and has an Unreleased section. `verify` is the
--- publication guard the Publish workflow runs. Failures print FAIL and exit 1. See README.md.
+-- publication guard the Publish workflow runs. `upload` and `github-release` publish the verified
+-- artifacts, and only the Publish workflow runs them. Failures print FAIL and exit 1. See README.md.
 local here = debug.getinfo(1, "S").source:match("^@(.*)/[^/]*$") or "."
 package.path = here .. "/../?.lua;" .. package.path
 require("support.repo").use_rocks()
@@ -28,6 +32,12 @@ local verify = cli:command("verify", "Check publication guards without uploading
 verify:option("--event", "GitHub tag-push event JSON"):count(1)
 verify:option("--commit", "exact commit validated by the workflow"):count(1)
 verify:option("--artifacts", "directory containing validated artifacts")
+local upload = cli:command("upload", "Upload the validated artifacts to LuaRocks.")
+upload:option("--artifacts", "directory containing validated artifacts"):count(1)
+local github = cli:command("github-release", "Create the GitHub release for a tag.")
+github:option("--tag", "the release tag"):count(1)
+github:option("--artifacts", "directory containing validated artifacts"):count(1)
+github:option("--bundle", "the provenance attestation bundle"):count(1)
 local parsed, arguments = cli:pparse({ ... })
 if not parsed then
     io.stderr:write(cli:get_usage(), "\nmain.lua: error: ", arguments, "\n")
@@ -55,6 +65,12 @@ local ok, failure = pcall(function()
                 arguments.commit
             )
         )
+    elseif arguments.target == "upload" then
+        release.upload(root, arguments.artifacts, os.getenv("LUAROCKS_API_KEY"))
+        print(("PASS uploaded libtmux %s to LuaRocks"):format(release.candidate(root)))
+    elseif arguments.target == "github-release" then
+        release.github_release(root, arguments.tag, arguments.artifacts, arguments.bundle)
+        print(("PASS created GitHub release %s"):format(arguments.tag))
     else
         if arguments.version == nil and not arguments.check then
             io.stderr:write("main.lua: error: prepare requires an explicit version\n")
