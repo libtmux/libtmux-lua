@@ -212,180 +212,216 @@ end
 ---@field nvim? string
 ---@field suites string[]
 
---- The steps of one gate, in order. `mid` and `outer` are the other gates in sequence.
----@param gate string
+--- What the plan of one gate is built from.
+---@class check.Context
+---@field options check.Options
+---@field luajit string
+---@field lua string
+---@field env table<string, string>
+
 ---@param options check.Options
----@return check.Step[]
-function M.steps(gate, options)
-    local luajit = arg and arg[-1] or "luajit"
-    luajit = runtime.executable_path(luajit)
+---@return check.Context
+local function context(options)
+    local luajit = runtime.executable_path(arg and arg[-1] or "luajit")
     local lua = M.tool(options.lua)
     local env = M.lua_environment(lua)
     if options.nvim then
         env.LIBTMUX_TEST_NVIM = runtime.executable_path(options.nvim)
     end
-    local function lint_command()
-        local lint_lua = ROOT .. "/.cache/toolchains/lua-5.4.9/bin/lua"
-        if not fs.is_file(lint_lua) then
-            error("Luacheck needs the pinned Lua 5.4.9 tool interpreter; see CONTRIBUTING.md", 0)
+    return { options = options, luajit = luajit, lua = lua, env = env }
+end
+
+---@param ctx check.Context
+---@return check.Step[]
+local function unit_steps(ctx)
+    local suites = { unpack(ctx.options.suites) }
+    if #suites == 0 then
+        for _, name in ipairs(fs.list(ROOT .. "/tests/unit")) do
+            if name:match("%.lua$") then
+                suites[#suites + 1] = (name:gsub("%.lua$", ""))
+            end
         end
-        local lint_env = M.lua_environment(lint_lua)
-        local tree = ROOT .. "/.cache/rocks/" .. runtime.identify(lint_lua).cache_label
-        local executable = tree .. "/bin/luacheck"
-        if not fs.is_file(executable) then
-            error("Missing luacheck; run scripts/bootstrap/bootstrap.lua rocks lint first", 0)
-        end
-        return {
+    end
+    if #suites == 0 then
+        error("No unit suites discovered", 0)
+    end
+    local argv = { ctx.lua, "tests/run.lua" }
+    for _, name in ipairs(suites) do
+        argv[#argv + 1] = name
+    end
+    return { { argv = argv, env = ctx.env, timeout = 5 } }
+end
+
+---@return check.Step[]
+local function format_steps()
+    return {
+        {
+            argv = {
+                M.tool("stylua"),
+                "--check",
+                "--syntax",
+                "Lua51",
+                "lua",
+                "tests",
+                "examples",
+                "rockspecs",
+                "scripts",
+            },
+            timeout = 10,
+        },
+    }
+end
+
+---@return check.Step[]
+local function lint_steps()
+    local lint_lua = ROOT .. "/.cache/toolchains/lua-5.4.9/bin/lua"
+    if not fs.is_file(lint_lua) then
+        error("Luacheck needs the pinned Lua 5.4.9 tool interpreter; see CONTRIBUTING.md", 0)
+    end
+    local lint_env = M.lua_environment(lint_lua)
+    local tree = ROOT .. "/.cache/rocks/" .. runtime.identify(lint_lua).cache_label
+    local executable = tree .. "/bin/luacheck"
+    if not fs.is_file(executable) then
+        error("Missing luacheck; run scripts/bootstrap/bootstrap.lua rocks lint first", 0)
+    end
+    return {
+        {
             argv = { executable, "lua", "tests", "examples", "scripts" },
             env = lint_env,
             timeout = 10,
-        }
-    end
-    local plans = {
-        unit = function()
-            local suites = { unpack(options.suites) }
-            if #suites == 0 then
-                for _, name in ipairs(fs.list(ROOT .. "/tests/unit")) do
-                    if name:match("%.lua$") then
-                        suites[#suites + 1] = (name:gsub("%.lua$", ""))
-                    end
-                end
-            end
-            if #suites == 0 then
-                error("No unit suites discovered", 0)
-            end
-            local argv = { lua, "tests/run.lua" }
-            for _, name in ipairs(suites) do
-                argv[#argv + 1] = name
-            end
-            return { { argv = argv, env = env, timeout = 5 } }
-        end,
-        format = function()
-            return {
-                {
-                    argv = {
-                        M.tool("stylua"),
-                        "--check",
-                        "--syntax",
-                        "Lua51",
-                        "lua",
-                        "tests",
-                        "examples",
-                        "rockspecs",
-                        "scripts",
-                    },
-                    timeout = 10,
-                },
-            }
-        end,
-        lint = function()
-            return { lint_command() }
-        end,
-        docs = function()
-            return { { call = M.docs }, { argv = { "git", "diff", "--check" }, timeout = 5 } }
-        end,
-        generated = function()
-            return {
-                {
-                    argv = { luajit, "scripts/generate/generate.lua", "fields", "--check" },
-                    env = env,
-                    timeout = 5,
-                },
-                {
-                    argv = { luajit, "scripts/generate/generate.lua", "options", "--check" },
-                    env = env,
-                    timeout = 5,
-                },
-                {
-                    argv = { luajit, "scripts/release/main.lua", "prepare", "--check" },
-                    timeout = 5,
-                },
-                { argv = { luajit, "scripts/release/main.lua", "changelogs" }, timeout = 5 },
-            }
-        end,
-        integration = function()
-            local argv = { luajit, "tests/run_integration.lua" }
-            -- The `outer` gate names none, and the unit gate's own are not integration suites.
-            for _, name in ipairs(gate == "integration" and options.suites or {}) do
-                argv[#argv + 1] = name
-            end
-            return { { argv = argv, env = env } }
-        end,
-        refusal = function()
-            local refuse = {}
-            for name, value in pairs(env) do
-                refuse[name] = value
-            end
-            refuse.LIBTMUX_REQUIRE_REFUSED = "1"
-            return {
-                {
-                    argv = { luajit, "tests/run_integration.lua", "version_check" },
-                    env = refuse,
-                },
-            }
-        end,
-        package = function()
-            return { { argv = { luajit, "scripts/package/main.lua", "--lua", lua }, env = env } }
-        end,
-        types = function()
-            local server = ROOT .. "/.cache/tools/luals-3.19.1/bin/lua-language-server"
-            if not fs.is_file(server) then
-                error("Missing pinned LuaLS 3.19.1; see CONTRIBUTING.md", 0)
-            end
-            return {
-                {
-                    argv = {
-                        server,
-                        "--check=.",
-                        "--checklevel=Warning",
-                        "--logpath=.cache/luals",
-                    },
-                    env = env,
-                },
-                {
-                    argv = {
-                        luajit,
-                        "scripts/docs/docs.lua",
-                        "export",
-                        "--luals",
-                        server,
-                        "--check",
-                    },
-                    env = env,
-                },
-                {
-                    argv = { luajit, "scripts/check_editor/check_editor.lua" },
-                    env = env,
-                    timeout = 20,
-                },
-            }
-        end,
+        },
     }
-    if gate == "mid" then
-        local steps = {}
-        local suites = {}
-        for _, directory in ipairs(fs.list(ROOT .. "/scripts")) do
-            local tests = ROOT .. "/scripts/" .. directory .. "/tests"
-            if fs.is_directory(tests) then
-                for _, name in ipairs(fs.list(tests)) do
-                    if name:match("^test_.*%.lua$") then
-                        suites[#suites + 1] = "scripts/" .. directory .. "/tests/" .. name
-                    end
+end
+
+---@return check.Step[]
+local function docs_steps()
+    return { { call = M.docs }, { argv = { "git", "diff", "--check" }, timeout = 5 } }
+end
+
+---@param ctx check.Context
+---@return check.Step[]
+local function generated_steps(ctx)
+    local luajit, env = ctx.luajit, ctx.env
+    return {
+        {
+            argv = { luajit, "scripts/generate/generate.lua", "fields", "--check" },
+            env = env,
+            timeout = 5,
+        },
+        {
+            argv = { luajit, "scripts/generate/generate.lua", "options", "--check" },
+            env = env,
+            timeout = 5,
+        },
+        { argv = { luajit, "scripts/release/main.lua", "prepare", "--check" }, timeout = 5 },
+        { argv = { luajit, "scripts/release/main.lua", "changelogs" }, timeout = 5 },
+    }
+end
+
+---@param ctx check.Context
+---@param gate string
+---@return check.Step[]
+local function integration_steps(ctx, gate)
+    local argv = { ctx.luajit, "tests/run_integration.lua" }
+    -- The `outer` gate names none, and the unit gate's own are not integration suites.
+    for _, name in ipairs(gate == "integration" and ctx.options.suites or {}) do
+        argv[#argv + 1] = name
+    end
+    return { { argv = argv, env = ctx.env } }
+end
+
+---@param ctx check.Context
+---@return check.Step[]
+local function refusal_steps(ctx)
+    local refuse = {}
+    for name, value in pairs(ctx.env) do
+        refuse[name] = value
+    end
+    refuse.LIBTMUX_REQUIRE_REFUSED = "1"
+    return { { argv = { ctx.luajit, "tests/run_integration.lua", "version_check" }, env = refuse } }
+end
+
+---@param ctx check.Context
+---@return check.Step[]
+local function package_steps(ctx)
+    local argv = { ctx.luajit, "scripts/package/main.lua", "--lua", ctx.lua }
+    return { { argv = argv, env = ctx.env } }
+end
+
+---@param ctx check.Context
+---@return check.Step[]
+local function types_steps(ctx)
+    local server = ROOT .. "/.cache/tools/luals-3.19.1/bin/lua-language-server"
+    if not fs.is_file(server) then
+        error("Missing pinned LuaLS 3.19.1; see CONTRIBUTING.md", 0)
+    end
+    return {
+        {
+            argv = { server, "--check=.", "--checklevel=Warning", "--logpath=.cache/luals" },
+            env = ctx.env,
+        },
+        {
+            argv = { ctx.luajit, "scripts/docs/docs.lua", "export", "--luals", server, "--check" },
+            env = ctx.env,
+        },
+        {
+            argv = { ctx.luajit, "scripts/check_editor/check_editor.lua" },
+            env = ctx.env,
+            timeout = 20,
+        },
+    }
+end
+
+--- The suites under every `scripts/<name>/tests/`.
+---@return string[]
+local function script_suites()
+    local suites = {}
+    for _, directory in ipairs(fs.list(ROOT .. "/scripts")) do
+        local tests = ROOT .. "/scripts/" .. directory .. "/tests"
+        if fs.is_directory(tests) then
+            for _, name in ipairs(fs.list(tests)) do
+                if name:match("^test_.*%.lua$") then
+                    suites[#suites + 1] = "scripts/" .. directory .. "/tests/" .. name
                 end
             end
         end
-        local argv = { luajit, "scripts/support/run_tests.lua" }
-        for _, suite in ipairs(suites) do
-            argv[#argv + 1] = suite
+    end
+    return suites
+end
+
+--- The small loop: the script tests and actionlint, then the quick gates.
+---@param ctx check.Context
+---@return check.Step[]
+local function mid_steps(ctx)
+    local argv = { ctx.luajit, "scripts/support/run_tests.lua" }
+    for _, suite in ipairs(script_suites()) do
+        argv[#argv + 1] = suite
+    end
+    local steps =
+        { { argv = argv, timeout = 30 }, { argv = { M.tool("actionlint") }, timeout = 5 } }
+    local quick = {
+        unit_steps,
+        format_steps,
+        lint_steps,
+        generated_steps,
+        docs_steps,
+    }
+    for _, plan in ipairs(quick) do
+        for _, step in ipairs(plan(ctx)) do
+            steps[#steps + 1] = step
         end
-        steps[#steps + 1] = { argv = argv, timeout = 30 }
-        steps[#steps + 1] = { argv = { M.tool("actionlint") }, timeout = 5 }
-        for _, name in ipairs({ "unit", "format", "lint", "generated", "docs" }) do
-            for _, step in ipairs(plans[name]()) do
-                steps[#steps + 1] = step
-            end
-        end
-        return steps
+    end
+    return steps
+end
+
+--- The steps of one gate, in order. `mid` and `outer` are the other gates in sequence.
+---@param gate string
+---@param options check.Options
+---@return check.Step[]
+function M.steps(gate, options)
+    local ctx = context(options)
+    if gate == "mid" then
+        return mid_steps(ctx)
     elseif gate == "outer" then
         local steps = {}
         for _, name in ipairs({ "mid", "integration", "package", "types" }) do
@@ -395,7 +431,20 @@ function M.steps(gate, options)
         end
         return steps
     end
-    return plans[gate]()
+    local plans = {
+        unit = unit_steps,
+        format = format_steps,
+        lint = lint_steps,
+        docs = docs_steps,
+        generated = generated_steps,
+        integration = function()
+            return integration_steps(ctx, gate)
+        end,
+        refusal = refusal_steps,
+        package = package_steps,
+        types = types_steps,
+    }
+    return plans[gate](ctx)
 end
 
 return M
