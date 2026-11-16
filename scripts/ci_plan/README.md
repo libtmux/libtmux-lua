@@ -82,8 +82,16 @@ and `tmate`. `ref` is what the shared `build-tmux` action builds:
 - `identity.lua`: the commands `identity` runs and their report.
 - `planner.lua`: the rules. Each rule calls its siblings through the module
   table, so a test can replace one.
-- `tests/test_ci_plan.lua`: behavior checks, and for each rule a deliberate
-  break the matching check has to notice.
+- `tests/plan_checks.lua` and `tests/test_ci_plan.lua`: the behavior checks,
+  and the suite that runs them.
+- `tests/plan_breaks.lua` and `tests/test_ci_plan_breaks.lua`: for each rule a
+  deliberate break the matching check has to notice, and the suite that runs
+  them.
+- `tests/test_ci_plan_cli.lua`, `tests/test_ci_identity.lua` and
+  `tests/test_ci_workflow.lua`: the command line, `identity`, and the rules
+  `ci.yml` has to follow.
+- `tests/plan_support.lua`: the manifest, the expected jobs and the helpers
+  the plan tests share.
 - `../support/`: JSON with key order (`json.lua`), file reads and appends
   (`files.lua`), the repository root and rock tree (`repo.lua`), and the
   suite runner (`run_tests.lua`).
