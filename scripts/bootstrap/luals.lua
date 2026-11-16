@@ -1,5 +1,6 @@
 -- Install the pinned LuaLS release into .cache/tools, the language server the types gate and the
 -- documentation exporter run.
+local files = require("support.files")
 local repo = require("support.repo")
 local runtimes = require("bootstrap.runtimes")
 local shell = require("support.shell")
@@ -28,7 +29,7 @@ function M.main()
     local source = repo.root .. "/.cache/source"
     local archive = source .. "/" .. name
     shell.check({ "mkdir", "-p", source })
-    if not io.open(archive, "rb") then
+    if not files.exists(archive) then
         local url = ("https://github.com/LuaLS/lua-language-server/releases/download/%s/%s"):format(
             M.VERSION,
             name

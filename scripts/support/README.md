@@ -8,7 +8,10 @@ any directory.
 | --- | --- |
 | `repo` | The repository root, and the rock tree of the running LuaJIT on the search path. |
 | `files` | Read, write and append whole files. |
-| `json` | Decode keeping key order; encode like Python's `json.dumps`, compact or indented. |
+| `json` | Decode keeping key order; encode ASCII-only JSON, compact or indented. |
+| `fs` | List, walk, create, copy and remove directories on luv. |
+| `proc` | Run a program on luv with an explicit environment and a timeout. |
+| `uv` | `require("luv")`, typed so LuaLS does not resolve it to the library's adapter. |
 | `shell` | Run a program with quoted arguments before luv exists: the bootstrap. |
 | `runtime` | Identify an interpreter's ABI and name its rock tree. |
 | `run_tests.lua` | Run luaunit suites: `luajit scripts/support/run_tests.lua scripts/*/tests/test_*.lua`. |

@@ -33,14 +33,6 @@ if #arguments.suites > 0 and arguments.gate ~= "unit" and arguments.gate ~= "int
     os.exit(2)
 end
 
-local function command_line(argv)
-    local quoted = {}
-    for index, value in ipairs(argv) do
-        quoted[index] = value
-    end
-    return quoted
-end
-
 --- Runs the steps of the gate, printing a JSON line for each command. Returns the exit status.
 local function execute(steps)
     local luv = require("support.uv")
@@ -58,7 +50,7 @@ local function execute(steps)
             local seconds = (luv.hrtime() - started) / 1e9
             local code = result.timed_out and 124 or result.code
             print(json.encode(json.object({ "command", "exit_code", "wall_seconds" }, {
-                command = command_line(step.argv),
+                command = step.argv,
                 exit_code = code,
                 wall_seconds = tonumber(("%.4f"):format(seconds)),
             })))

@@ -21,8 +21,8 @@ local REFUSED = json.keys(MANIFEST.refused)
 local OLDEST, NEWEST = RELEASED[1], RELEASED[#RELEASED]
 local UNIT = MANIFEST.unit
 
--- The jobs the workflow ran before the plan, in its order.
-local OLD_FULL_SET = {
+-- The jobs the full scope runs, in the workflow's order.
+local FULL_SET = {
     { "Unit Lua 5.1", "unit", "5.1.5", "", "", "" },
     { "Unit Lua 5.2", "unit", "5.2.4", "", "", "" },
     { "Unit Lua 5.3", "unit", "5.3.6", "", "", "" },
@@ -213,11 +213,11 @@ function checks.full_runs_the_whole_table()
     )
 end
 
-function checks.full_scope_is_exactly_the_old_set()
+function checks.full_scope_is_exactly_the_listed_set()
     local full = map(cells(run("workflow_dispatch", { scope = "full" })), function(each)
         return { each.name, each.gate, each.lua, each.tmux, each.nvim, each.client }
     end)
-    test.assertEquals(full, OLD_FULL_SET)
+    test.assertEquals(full, FULL_SET)
     test.assertEquals(cells(run("schedule")), cells(run("push", { scope = "full" })))
 end
 
@@ -963,10 +963,10 @@ local DELIBERATE_BREAKS = {
         checks.full_scope_keeps_the_outer_current_pin,
     },
     {
-        "the full scope moves a cell of the old set",
+        "the full scope moves a cell of the full set",
         "outer_cells",
         outer_ignoring_the_scope,
-        checks.full_scope_is_exactly_the_old_set,
+        checks.full_scope_is_exactly_the_listed_set,
     },
     {
         "a push keeps the pinned outer job",
@@ -984,13 +984,13 @@ local DELIBERATE_BREAKS = {
         "the full scope drops the development builds",
         "tmux_cells",
         full_without_development,
-        checks.full_scope_is_exactly_the_old_set,
+        checks.full_scope_is_exactly_the_listed_set,
     },
     {
         "the full scope drops a unit job",
         "unit_cells",
         full_without_a_unit_job,
-        checks.full_scope_is_exactly_the_old_set,
+        checks.full_scope_is_exactly_the_listed_set,
     },
     {
         "a unit job has no ref",

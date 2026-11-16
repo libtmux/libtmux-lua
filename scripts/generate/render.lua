@@ -108,9 +108,8 @@ local function chunks(text)
     return list
 end
 
---- Python's textwrap.wrap(text, width=width, subsequent_indent=indent) for text without
---- hard-to-split words: lines fill up to `width` columns and break between words or after a
---- hyphen between letters.
+--- Wraps `text`, which holds no hard-to-split words, to `width` columns: lines break between words
+--- or after a hyphen between letters, and every line after the first starts with `indent`.
 ---@param text string
 ---@param width integer
 ---@param indent string

@@ -1,5 +1,6 @@
 -- Build pinned Lua interpreters into .cache/toolchains. Runs before the tool interpreter exists,
 -- so it uses only the standard library and the build tools on PATH.
+local files = require("support.files")
 local repo = require("support.repo")
 local shell = require("support.shell")
 
@@ -15,14 +16,6 @@ M.RELEASES = {
 M.ATTEMPTS = 4
 M.LUAJIT_REVISION = "c6ffc141a8762b41703f9287d63d93622a13dd8f"
 M.LUAJIT_REPOSITORY = "https://github.com/LuaJIT/LuaJIT.git"
-
-local function exists(path)
-    local handle = io.open(path, "rb")
-    if handle then
-        handle:close()
-    end
-    return handle ~= nil
-end
 
 local function say(fields)
     local keys = {}
@@ -70,14 +63,14 @@ M.sha256 = shell.sha256
 
 local function build_lua(version, source, toolchains)
     local prefix = toolchains .. "/lua-" .. version
-    if exists(prefix .. "/bin/lua") then
+    if files.exists(prefix .. "/bin/lua") then
         print(shell.check({ prefix .. "/bin/lua", "-v" }):match("[^\n]+"))
         return
     end
     local started = os.time()
     local name = "lua-" .. version .. ".tar.gz"
     local archive = source .. "/" .. name
-    if not exists(archive) then
+    if not files.exists(archive) then
         shell.check(M.download_command("https://www.lua.org/ftp/" .. name, archive))
     end
     if M.sha256(archive) ~= M.RELEASES[version] then
@@ -109,7 +102,7 @@ local function build_luajit(source, toolchains)
     local directory = source .. "/luajit"
     local prefix = toolchains .. "/luajit-2.1"
     local started = os.time()
-    if not exists(directory .. "/.git/HEAD") then
+    if not files.exists(directory .. "/.git/HEAD") then
         shell.check({
             "git",
             "clone",
@@ -145,7 +138,7 @@ end
 ---@param versions string[]
 function M.main(versions)
     if #versions == 0 then
-        error("usage: bootstrap.lua runtimes VERSION... (" .. "5.1.5 ... 5.5.1, luajit)", 0)
+        error("usage: bootstrap.lua runtimes VERSION... (5.1.5 ... 5.5.1, luajit)", 0)
     end
     for _, version in ipairs(versions) do
         if version ~= "luajit" and not M.RELEASES[version] then

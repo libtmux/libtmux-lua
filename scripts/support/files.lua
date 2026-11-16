@@ -15,6 +15,17 @@ function M.read(path)
     return text
 end
 
+--- Whether a file can be opened for reading.
+---@param path string
+---@return boolean
+function M.exists(path)
+    local handle = io.open(path, "rb")
+    if handle then
+        handle:close()
+    end
+    return handle ~= nil
+end
+
 local function put(path, mode, text)
     local handle = open(path, mode)
     assert(handle:write(text))

@@ -37,7 +37,8 @@ local function refuse(template, ...)
     error(setmetatable({ message = template:format(...) }, M.PlanError), 0)
 end
 
--- Python's repr of a string, which the error messages quote with.
+-- A string as the error messages quote it: single quotes, or double quotes when it holds only a
+-- single quote, with control characters and the quote mark escaped.
 local function quote(text)
     local mark = (text:find("'", 1, true) and not text:find('"', 1, true)) and '"' or "'"
     local escaped = text:gsub("[%c\\" .. mark .. "]", function(char)
@@ -211,7 +212,7 @@ function M.unit_cells(manifest)
 end
 
 -- A push runs both outer jobs on the edge releases. The full scope keeps the current one on the
--- release the manifest pins it to, as it always ran.
+-- release the manifest pins it to.
 function M.outer_cells(manifest, scope, oldest, newest)
     local current = newest
     if scope == "full" then

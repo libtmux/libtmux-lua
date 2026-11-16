@@ -120,7 +120,8 @@ local function utf16(sequence)
     return ("\\u%04x\\u%04x"):format(0xD800 + math.floor(point / 1024), 0xDC00 + point % 1024)
 end
 
--- Matches json.dumps with ensure_ascii, so output is ASCII and equal to Python's byte for byte.
+-- Escapes every non-ASCII character as \uXXXX, in surrogate pairs above U+FFFF, so the output is
+-- plain ASCII.
 local function quote(text)
     local escaped = text:gsub('[%c"\\]', function(char)
         return ESCAPES[char] or ("\\u%04x"):format(char:byte())
@@ -139,8 +140,8 @@ local function number(value)
     return tonumber(text) == value and text or ("%.17g"):format(value)
 end
 
--- `indent` is a number of spaces for json.dumps(indent=n) layout, or nil for the compact
--- separators (",", ":"). `sort_keys` orders every object's keys, as json.dumps(sort_keys=True).
+-- `indent` is the number of spaces per level, or nil for the compact separators "," and ":".
+-- `sort_keys` orders every object's keys.
 function M.encode(value, indent, sort_keys)
     local function emit(item, level)
         if item == M.null then

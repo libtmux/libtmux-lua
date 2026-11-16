@@ -38,14 +38,6 @@ local PROBE = table.concat({
     "lua=_VERSION,jit=jit and jit.version or false,libuv=vim.uv.version_string()}),'\\n')",
 }, " ")
 
-local function exists(path)
-    local handle = io.open(path, "rb")
-    if handle then
-        handle:close()
-    end
-    return handle ~= nil
-end
-
 --- Environment names a probe must not inherit from the developer's Neovim or Lua setup.
 local function probe_environment(directory)
     local env = {}
@@ -114,7 +106,7 @@ function M.bootstrap(version, check_only)
     local prefix = repo.root .. "/.cache/toolchains/nvim-" .. version
     local executable = prefix .. "/bin/nvim"
     local receipt = prefix .. "/.libtmux-host.json"
-    if not exists(archive) then
+    if not files.exists(archive) then
         if check_only then
             error("Missing cached Neovim archive for " .. version .. "; run bootstrap", 0)
         end
@@ -137,7 +129,7 @@ function M.bootstrap(version, check_only)
         artifact_sha256 = checksum,
     }
     local installed = false
-    if not exists(executable) then
+    if not files.exists(executable) then
         if check_only then
             error("Missing cached Neovim host for " .. version .. "; run bootstrap", 0)
         end
@@ -145,7 +137,7 @@ function M.bootstrap(version, check_only)
         local staging =
             shell.check({ "mktemp", "-d", parent .. "/nvim-" .. version .. "-XXXXXX" }):match("%S+")
         shell.check({ "tar", "-xzf", archive, "-C", staging })
-        if not exists(staging .. "/" .. flavor .. "/bin/nvim") then
+        if not files.exists(staging .. "/" .. flavor .. "/bin/nvim") then
             shell.run({ "rm", "-rf", staging })
             error("Neovim " .. version .. " archive lacks its expected executable", 0)
         end
