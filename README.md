@@ -54,6 +54,10 @@ make and CMake:
 If the build fails, install `lua-luv` on Debian or Ubuntu instead. It serves
 only the distribution's own Lua.
 
+`Runtime:start_server`, which the programs below call, is not in the published
+`0.1.1-1` rock. It ships in the release after it. Until then, put this
+repository's `lua/` directory ahead of the installed rock on `LUA_PATH`.
+
 Install the rock, then `luv` (skip it if you installed `lua-luv`):
 
 ```console
