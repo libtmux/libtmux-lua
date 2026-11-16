@@ -39,7 +39,7 @@ $ lua examples/api/connect.lua
 | [capture.lua](capture.lua) | Read a completed command's output | `lua capture ready` |
 | [wait_for_text.lua](wait_for_text.lua) | Wait for text on the visible screen | `lua wait ready` |
 | [watch_pane.lua](watch_pane.lua) | Stream a pane's output over control mode (tmux 3.7 or newer) | `output: watched` |
-| [unsupported_version.lua](unsupported_version.lua) | Handle a tmux below the minimum | `unsupported_version` and its message |
+| [unsupported_version.lua](unsupported_version.lua) | Handle an unsupported tmux client | `unsupported_version` and its message |
 
 The [manifest](manifest.json) ties each program to the API symbols it shows
 and its exact output.
