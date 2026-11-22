@@ -44,7 +44,7 @@ end
 local function recording(extra)
     local env = developer_environment({
         PATH = root .. "/bin:" .. (os.getenv("PATH") or ""),
-        TMUX_BIN = fake,
+        LIBTMUX_TEST_TMUX = fake,
         FAKE_TMUX_LOG = log,
         FAKE_TMUX_ROOT = root,
     })
@@ -163,11 +163,53 @@ end
 function M.test_variables_that_select_nothing_survive_entering()
     local result = child(
         'local host = require("tests.support.sandbox_host")\n'
-            .. "print(host.run(function() print(os.getenv('LIBTMUX_RELEASE_DIR')) end))",
-        developer_environment({ LIBTMUX_RELEASE_DIR = "kept" })
+            .. "print(host.run(function()\n"
+            .. "  print(os.getenv('LIBTMUX_RELEASE_DIR'), os.getenv('LIBTMUX_TEST_TMUX'))\n"
+            .. "end))",
+        developer_environment({
+            LIBTMUX_RELEASE_DIR = "kept",
+            LIBTMUX_TEST_TMUX = "/custom/tmux",
+        })
     )
     test.assertEquals(result.code, 0, result.stderr)
-    test.assertStrContains(result.stdout, "kept")
+    test.assertStrContains(result.stdout, "kept\t/custom/tmux")
+end
+
+function M.test_fixture_prefers_libtmux_test_tmux_and_falls_back_through_tmux_bin()
+    local fixture = require("tests.support.fixture")
+    local preferred = recorder.install(root .. "/preferred")
+    local fallback = recorder.install(root .. "/fallback")
+    local function getenv(values)
+        return function(name)
+            return values[name]
+        end
+    end
+    test.assertEquals(
+        fixture.tmux(getenv({
+            LIBTMUX_TEST_TMUX = preferred,
+            TMUX_BIN = fallback,
+            PATH = root .. "/bin",
+        })),
+        preferred
+    )
+    for _, blank in ipairs({ "", " ", "\t\n" }) do
+        test.assertEquals(
+            fixture.tmux(getenv({
+                LIBTMUX_TEST_TMUX = blank,
+                TMUX_BIN = fallback,
+                PATH = root .. "/bin",
+            })),
+            fallback
+        )
+        test.assertEquals(
+            fixture.tmux(getenv({
+                LIBTMUX_TEST_TMUX = blank,
+                TMUX_BIN = blank,
+                PATH = root .. "/bin",
+            })),
+            fake
+        )
+    end
 end
 
 function M.test_a_refusal_names_the_variables_and_never_their_values()

@@ -8,6 +8,7 @@ local json = require("support.json")
 local release = require("release.release")
 local repo = require("support.repo")
 local runtime = require("support.runtime")
+local sandbox = require("tests.support.sandbox")
 local shell = require("support.shell")
 
 local M = {}
@@ -44,11 +45,11 @@ local function run(argv, opts)
     return output
 end
 
---- The tmux the examples run: TMUX_BIN, or tmux on PATH.
+--- The tmux the examples run: LIBTMUX_TEST_TMUX, else TMUX_BIN, else tmux on PATH.
+---@param getenv? fun(name: string): string?
 ---@return string
-local function tmux_binary()
-    local configured = os.getenv("TMUX_BIN")
-    return runtime.executable_path(configured ~= nil and configured ~= "" and configured or "tmux")
+function M.tmux_binary(getenv)
+    return runtime.executable_path(sandbox.tmux_binary(getenv))
 end
 
 --- The `.rock` file `luarocks pack` wrote into `directory`, whose name starts with `prefix`.
@@ -258,9 +259,10 @@ end
 --- Runs the installed snapshot and quickstart examples, each on a private server of its own.
 function M.live_example(prefix, version, lua, opts)
     local temporary = fs.mkdtemp("libtmux-lua-live-")
-    local binary = tmux_binary()
+    local binary = M.tmux_binary()
     local child = with_env(opts, installed_paths(prefix, version))
     child.env.TMPDIR = temporary
+    child.env.LIBTMUX_TEST_TMUX = binary
     child.env.TMUX_BIN = binary
     local ok, failure = pcall(function()
         local snapshot = run({ lua, "snapshot.lua" }, child)
@@ -301,10 +303,11 @@ function M.complete_api_examples(prefix, version, lua, cwd, opts)
     -- Each program starts a private server under TMPDIR; its directory and socket alias must fit
     -- sun_path.
     local temporary = fs.mkdtemp("libtmux-lua-api-check-")
-    local binary = tmux_binary()
+    local binary = M.tmux_binary()
     local child = with_env(opts, installed_paths(prefix, version))
     child.cwd = directory
     child.env.TMPDIR = temporary
+    child.env.LIBTMUX_TEST_TMUX = binary
     child.env.TMUX_BIN = binary
     local major, minor = M.tmux_release(binary)
     local ran = 0

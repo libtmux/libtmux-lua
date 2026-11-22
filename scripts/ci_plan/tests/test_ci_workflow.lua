@@ -209,6 +209,9 @@ local function problems(ci, publish)
     if jobs.validate:find("\n    if:") then
         add("validate: the matrix shrinks through the plan, never an if on the job")
     end
+    if not has(jobs.validate, 'echo "LIBTMUX_TEST_TMUX=$TMUX_BUILT" >> "$GITHUB_ENV"') then
+        add("validate: must select the built tmux through LIBTMUX_TEST_TMUX")
+    end
     local gate = jobs.required
     if not gate then
         add("ci.yml needs one stable required job")
@@ -811,6 +814,13 @@ local MUTATIONS = {
             return (ci:gsub("actions/build%-tmux@%x+", "actions/build-tmux@v1")), pub
         end,
         "must be pinned to a full commit SHA",
+    },
+    {
+        "validate stops setting LIBTMUX_TEST_TMUX",
+        function(ci, pub)
+            return replaced(ci, "LIBTMUX_TEST_TMUX=$TMUX_BUILT", "TMUX_BIN=$TMUX_BUILT"), pub
+        end,
+        "select the built tmux through LIBTMUX_TEST_TMUX",
     },
     {
         "a raw apt-get replaces the action",

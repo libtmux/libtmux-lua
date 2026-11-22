@@ -19,12 +19,13 @@ M.DEADLINE = DEADLINE
 
 --- The first executable called `name` on PATH, or `name` itself when it holds a slash.
 ---@param name string
+---@param getenv? fun(name: string): string?
 ---@return string?
-function M.which(name)
+function M.which(name, getenv)
     if name:find("/", 1, true) then
         return name
     end
-    for directory in (os.getenv("PATH") or ""):gmatch("[^:]+") do
+    for directory in ((getenv or os.getenv)("PATH") or ""):gmatch("[^:]+") do
         local path = directory .. "/" .. name
         if fs.is_file(path) and uv.fs_access(path, "X") then
             return path
@@ -32,9 +33,10 @@ function M.which(name)
     end
 end
 
+---@param getenv? fun(name: string): string?
 ---@return string
-function M.tmux()
-    local binary = M.which(os.getenv("TMUX_BIN") or "tmux")
+function M.tmux(getenv)
+    local binary = M.which(sandbox.tmux_binary(getenv), getenv)
     return assert(binary, "missing tmux executable")
 end
 
@@ -444,7 +446,7 @@ function Fixture:program_env(extra)
     for name, value in pairs(self.env) do
         env[name] = value
     end
-    env.TMUX_BIN, env.TMUX_SOCKET = self.binary, self.socket
+    env.LIBTMUX_TEST_TMUX, env.TMUX_BIN, env.TMUX_SOCKET = self.binary, self.binary, self.socket
     for name, value in pairs(extra or {}) do
         env[name] = value
     end

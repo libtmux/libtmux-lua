@@ -41,13 +41,18 @@ local function with(base, extra)
 end
 
 function M.test_child_environments_carry_nothing_that_selects_a_server_or_a_lua_path()
-    local env = gates.clean_environment(with({ HOME = "/home/x", PATH = "/usr/bin" }, DECOYS))
-    test.assertEquals(names(env), { "HOME", "PATH" })
-    local lua =
-        gates.lua_environment(runtime.executable_path("lua"), with({ PATH = "/usr/bin" }, DECOYS))
+    local env = gates.clean_environment(
+        with({ HOME = "/home/x", LIBTMUX_TEST_TMUX = "/custom/tmux", PATH = "/usr/bin" }, DECOYS)
+    )
+    test.assertEquals(names(env), { "HOME", "LIBTMUX_TEST_TMUX", "PATH" })
+    local lua = gates.lua_environment(
+        runtime.executable_path("lua"),
+        with({ LIBTMUX_TEST_TMUX = "/custom/tmux", PATH = "/usr/bin" }, DECOYS)
+    )
     for name in pairs(DECOYS) do
         test.assertNil(lua[name] and lua[name]:find("decoy", 1, true) and name)
     end
+    test.assertEquals(lua.LIBTMUX_TEST_TMUX, "/custom/tmux")
     test.assertStrContains(lua.LUA_PATH, repo.root .. "/lua/?.lua")
     test.assertNotNil(lua.LIBTMUX_TEST_LUA)
 end

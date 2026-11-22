@@ -16,6 +16,22 @@ function M.ambient(name)
     return name == "TMUX" or name == "TMUX_PANE" or name:sub(1, 14) == "LIBTMUX_SOCKET"
 end
 
+--- The tmux executable under test: LIBTMUX_TEST_TMUX, else TMUX_BIN, else `default` ("tmux").
+--- Empty and whitespace-only values count as unset.
+---@param getenv? fun(name: string): string?
+---@param default? string
+---@return string
+function M.tmux_binary(getenv, default)
+    getenv = getenv or os.getenv
+    for _, name in ipairs({ "LIBTMUX_TEST_TMUX", "TMUX_BIN" }) do
+        local value = getenv(name)
+        if value ~= nil and value:find("%S") ~= nil then
+            return value
+        end
+    end
+    return default or "tmux"
+end
+
 --- What is wrong with TMUX_TMPDIR as a sandbox directory, from the strings alone.
 ---@param getenv fun(name: string): string?
 ---@return string[] findings
