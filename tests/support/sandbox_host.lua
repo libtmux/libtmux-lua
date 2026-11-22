@@ -214,7 +214,7 @@ end
 ---@param wait? number
 ---@return tests.Release
 function M.release(directory, tmux, wait)
-    tmux = tmux or os.getenv("TMUX_BIN") or "tmux"
+    tmux = tmux or sandbox.tmux_binary(os.getenv)
     wait = wait or M.STOP_SECONDS
     local found = M.leaks(directory)
     local answering = {}

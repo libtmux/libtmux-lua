@@ -25,7 +25,7 @@ function M.setUp()
         "refusing to start a client outside the sandbox"
     )
     sandbox_host.check()
-    binary = os.getenv("TMUX_BIN") or "tmux"
+    binary = sandbox.tmux_binary(os.getenv)
 end
 
 --- A client that names no socket and may not start a server.

@@ -173,7 +173,7 @@ jobs:
         if: matrix.gate != 'unit'
         env:
           TMUX_BUILT: ${{ steps.tmux.outputs.binary }}
-        run: echo "TMUX_BIN=$TMUX_BUILT" >> "$GITHUB_ENV"
+        run: echo "LIBTMUX_TEST_TMUX=$TMUX_BUILT" >> "$GITHUB_ENV"
       - name: Select the client tmux build
         if: matrix.client && matrix.gate != 'unit'
         env:

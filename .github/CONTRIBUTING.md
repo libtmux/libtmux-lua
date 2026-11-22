@@ -147,10 +147,12 @@ installs the resulting source rock outside the checkout, and runs the pure
 query and live snapshot examples. The public source tag is checked only by
 the publication workflow, after that tag exists.
 
-Select a specific tmux binary through `TMUX_BIN`. Run floor/current versions
-separately and record their actual identities. The fixture runner handles
-SIGINT/SIGTERM by unwinding owned resources before exit. Linux forced cleanup
-uses owned pidfds; macOS cleanup remains an explicit unverified gate.
+Select a specific tmux binary through `LIBTMUX_TEST_TMUX` (`TMUX_BIN` remains
+accepted as a fallback; empty or whitespace-only values count as unset). Run
+floor/current versions separately and record their actual identities. The
+fixture runner handles SIGINT/SIGTERM by unwinding owned resources before exit.
+Linux forced cleanup uses owned pidfds; macOS cleanup remains an explicit
+unverified gate.
 
 Select the floor Lua and a cached Neovim explicitly:
 
@@ -160,7 +162,8 @@ $ mise exec -- luajit scripts/check/check.lua integration \
     --nvim .cache/toolchains/nvim-0.10.0/bin/nvim
 ```
 
-Set `TMUX_BIN` to the intended floor or current executable for each run.
+Set `LIBTMUX_TEST_TMUX` to the intended floor or current executable for each
+run.
 Local WSL2 checks are recorded separately from hosted Linux and macOS.
 The official Neovim 0.10.0 archive reports
 `prerelease="dev"` through `vim.version()` despite its release CLI version;
@@ -258,7 +261,8 @@ CI builds tmux with the shared
 which pins each release's archive by checksum, caches the build and checks the
 version it reports. Each matrix cell names its build in `ref`: the release, or
 the commit the catalog records for a development build. To reproduce a build,
-install that tmux and select it through `TMUX_BIN` when running a gate.
+install that tmux and select it through `LIBTMUX_TEST_TMUX` when running a
+gate.
 macOS, remaining runtime/host combinations and unfinished product gates stay
 open in the [compatibility matrix](../docs/compatibility.md).
 
@@ -354,8 +358,9 @@ library and its integration tests exist.
 A tmux command that names no socket goes to the server an inherited `TMUX`
 names, and otherwise to the default socket under `TMUX_TMPDIR`. The
 [test sandbox](../tests/support/sandbox_host.lua) removes `TMUX`, `TMUX_PANE` and
-every `LIBTMUX_SOCKET*` variable and sets `TMUX_TMPDIR` to an owner-only
-`libtmux-lua-sb-` directory, so a test that forgets `-S` finds nothing.
+every `LIBTMUX_SOCKET*` variable and sets both `TMUX_TMPDIR` and
+`LIBTMUX_TEST_SANDBOX` to an owner-only `libtmux-lua-sb-` directory, so a test
+that forgets `-S` finds nothing.
 
 `scripts/check/check.lua`, `scripts/package/main.lua` and
 `tests/run_integration.lua` enter the sandbox, and their children join it. The

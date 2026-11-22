@@ -32,8 +32,48 @@ end
 function M.test_a_sandboxed_environment_has_no_findings()
     t.assertEquals(sandbox.violations(lookup(inside())), {})
     t.assertEquals(
-        sandbox.violations(lookup(inside({ LIBTMUX_TEST_LUA = "lua", TMUX_BIN = "tmux" }))),
+        sandbox.violations(lookup(inside({
+            LIBTMUX_TEST_LUA = "lua",
+            LIBTMUX_TEST_TMUX = "/opt/tmux/bin/tmux",
+            TMUX_BIN = "tmux",
+        }))),
         {}
+    )
+    t.assertFalse(sandbox.ambient("LIBTMUX_TEST_TMUX"))
+    t.assertFalse(sandbox.ambient("TMUX_BIN"))
+    for name in pairs(DECOYS) do
+        t.assertTrue(sandbox.ambient(name), name)
+    end
+end
+
+function M.test_tmux_binary_prefers_libtmux_test_tmux_and_ignores_blank_values()
+    t.assertEquals(
+        sandbox.tmux_binary(lookup({
+            LIBTMUX_TEST_TMUX = "/custom/tmux",
+            TMUX_BIN = "/legacy/tmux",
+        })),
+        "/custom/tmux"
+    )
+    for _, blank in ipairs({ "", " ", " \t\n" }) do
+        t.assertEquals(
+            sandbox.tmux_binary(lookup({
+                LIBTMUX_TEST_TMUX = blank,
+                TMUX_BIN = "/legacy/tmux",
+            })),
+            "/legacy/tmux"
+        )
+        t.assertEquals(
+            sandbox.tmux_binary(lookup({
+                LIBTMUX_TEST_TMUX = blank,
+                TMUX_BIN = blank,
+            })),
+            "tmux"
+        )
+    end
+    t.assertEquals(sandbox.tmux_binary(lookup({})), "tmux")
+    t.assertEquals(
+        sandbox.tmux_binary(lookup({ LIBTMUX_TEST_TMUX = "  " }), "/usr/bin/tmux"),
+        "/usr/bin/tmux"
     )
 end
 

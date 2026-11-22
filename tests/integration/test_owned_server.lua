@@ -64,7 +64,8 @@ end
 --- reported.
 local function launch(case, host, extra)
     local env = fixture.environment(extra)
-    env.TMUX_BIN, env.OWNED_ROOT, env.LIBTMUX_OWNED_CASE = binary, root, case
+    env.LIBTMUX_TEST_TMUX, env.TMUX_BIN = binary, binary
+    env.OWNED_ROOT, env.LIBTMUX_OWNED_CASE = root, case
     env.LIBTMUX_TEST_LUA = env.LIBTMUX_TEST_LUA or fixture.lua()
     local argv = fixture.program_command(host or "luv", "owned_server", env)
     local result = child.run(argv, { env = env, cwd = repo.root, timeout = 20 })

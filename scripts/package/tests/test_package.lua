@@ -103,4 +103,34 @@ function M.test_the_closure_check_accepts_exactly_the_core_rock()
     test.assertFalse(package_checks.only({ luv = true }, "libtmux"))
 end
 
+function M.test_tmux_binary_prefers_libtmux_test_tmux_and_falls_back_to_tmux_bin()
+    local preferred = root .. "/preferred-tmux"
+    local fallback = root .. "/fallback-tmux"
+    for _, path in ipairs({ preferred, fallback }) do
+        files.write(path, "#!/bin/sh\nexit 0\n")
+        shell.check({ "chmod", "+x", path })
+    end
+    local function getenv(values)
+        return function(name)
+            return values[name]
+        end
+    end
+    test.assertEquals(
+        package_checks.tmux_binary(getenv({
+            LIBTMUX_TEST_TMUX = preferred,
+            TMUX_BIN = fallback,
+        })),
+        preferred
+    )
+    for _, blank in ipairs({ "", " ", " \t" }) do
+        test.assertEquals(
+            package_checks.tmux_binary(getenv({
+                LIBTMUX_TEST_TMUX = blank,
+                TMUX_BIN = fallback,
+            })),
+            fallback
+        )
+    end
+end
+
 return M

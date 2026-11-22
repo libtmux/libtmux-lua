@@ -1,9 +1,9 @@
 -- The integration runner hands the sandbox canary's clients nothing that selects a server.
 --
 -- The canary runs through tests/run_integration.lua, and through a bare luaunit run that does not
--- make a sandbox, with a recording script named tmux first on PATH and as TMUX_BIN, and decoys in
--- the environment. The recorder cannot name a socket, so the canary fails; what matters is what it
--- was called with. Assertions compare names and words, never environment values.
+-- make a sandbox, with a recording script named tmux first on PATH and as LIBTMUX_TEST_TMUX, and
+-- decoys in the environment. The recorder cannot name a socket, so the canary fails; what matters
+-- is what it was called with. Assertions compare names and words, never environment values.
 local test = require("luaunit")
 local child = require("tests.support.child")
 local fixture = require("tests.support.fixture")
@@ -42,7 +42,7 @@ local function environment()
         env[name] = value
     end
     env.PATH = root .. "/bin:" .. (os.getenv("PATH") or "")
-    env.TMPDIR, env.TMUX_BIN = root, recorder.install(root .. "/bin")
+    env.TMPDIR, env.LIBTMUX_TEST_TMUX = root, recorder.install(root .. "/bin")
     env.FAKE_TMUX_LOG, env.FAKE_TMUX_ROOT = log, root
     return env
 end

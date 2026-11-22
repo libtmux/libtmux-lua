@@ -20,7 +20,8 @@ The `package` gate of [check.lua](../check/README.md), and the release step of
 
 ## Run it
 
-`TMUX_BIN` selects the tmux the examples use:
+`LIBTMUX_TEST_TMUX` selects the tmux the examples use (`TMUX_BIN` is accepted as
+a fallback):
 
 ```console
 $ luajit scripts/package/main.lua \
