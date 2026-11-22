@@ -12,12 +12,14 @@ local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
     local owned = must(runtime:start_server({ binary = binary }):await())
-    local created = must(
-        owned.server
-            :new_session({ name = "demo", window_name = "main", argv = { "/bin/cat" } })
-            :await()
-    )
-    -- Observation holds one control-mode client open; it needs tmux 3.7 or newer.
+    local created = must(owned.server
+        :new_session({
+            name = "demo",
+            window_name = "main",
+            argv = { "/bin/cat" },
+        })
+        :await())
+    -- Observation keeps one control-mode client open (tmux 3.7 or newer).
     local observation = must(owned.server:observe(created.session):await())
     local watch = must(observation:watch_pane(created.pane):await())
 

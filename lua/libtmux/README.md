@@ -11,8 +11,8 @@
 
 # libtmux for Lua: the core package
 
-The `libtmux` rock holds the Lua API for tmux [sessions, windows and
-panes][ref-concepts].
+The `libtmux` rock holds the Lua API for tmux
+[sessions, windows and panes][ref-concepts].
 
 [![libtmux.org](https://img.shields.io/badge/docs-libtmux.org-0b7285)](https://libtmux.org/en/lua/)
 [![libtmux](https://img.shields.io/luarocks/v/tony/libtmux?label=libtmux)](https://luarocks.org/modules/tony/libtmux)
@@ -23,13 +23,8 @@ Needs Lua 5.1 to 5.5 or LuaJIT, and tmux 3.3a or newer. Before 1.0, any
 release may change an API: pin an exact version and read the
 [changelog][changes].
 
-The [root README](https://github.com/libtmux/libtmux-lua/blob/master/README.md#quick-start)
-shows a first tmux program. The
-[API reference](https://libtmux.org/en/lua/latest/reference/) lists every
-public symbol.
-
-**Contents** — [Quick start](#quick-start) · [Modules](#modules) ·
-[Leaves out](#what-it-leaves-out) · [Support](#support-and-status)
+The [root README][root-readme] shows a first tmux program, and the
+[API reference][ref-index] lists every public symbol.
 
 ## Quick start
 
@@ -64,7 +59,9 @@ local rows = {
     { id = "%3", active = false, current_command = "vim" },
 }
 local panes = query.select(rows, schema)
-local editors = panes:where({ current_command = { one_of = { "nvim", "vim" } } })
+local editors = panes:where({
+    current_command = { one_of = { "nvim", "vim" } },
+})
 assert(#editors == 2 and editors[1] == rows[1] and editors[2] == rows[3])
 
 local inactive = panes:filter(function(pane)
@@ -77,9 +74,8 @@ end
 ```
 
 [`query.select`][ref-query-select] wraps the list in a
-[`Selection`][ref-selection]. [`where`][ref-selection-where] narrows it by
-criteria and [`filter`][ref-selection-filter] by a function. Save the program
-and run it, or run it from a checkout:
+[`Selection`][ref-selection]; [`where`][ref-selection-where] filters by
+criteria and [`filter`][ref-selection-filter] by a function:
 
 ```console
 $ lua examples/native_query.lua
@@ -94,18 +90,13 @@ these modules.
 
 ### [`libtmux.runtime.luv`][ref-runtime-luv]: the standalone loop
 
-[`run(body, limits)`][ref-luv-run] drives a luv loop for a standalone script
-and returns `value, err` once its work has finished. It needs the `luv` rock;
-importing the module starts no loop. Related:
-[`libtmux.Server`][ref-server]. Source:
-[`luv.lua`](https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/runtime/luv.lua).
+[`run(body, limits)`][ref-luv-run] drives a luv loop (`luv` rock) and returns
+`value, err` when done; importing starts no loop. Related:
+[`libtmux.Server`][ref-server]. Source: [`luv.lua`][src-luv].
 
-This is the complete
-[`new_session.lua`](https://github.com/libtmux/libtmux-lua/blob/master/examples/api/new_session.lua)
-program. It starts a private server with
-[`Runtime:start_server`](https://github.com/libtmux/libtmux-lua/blob/master/docs/runtime.md#start-a-private-server),
-creates a session with [`Server:new_session`][ref-server-new-session], reads it
-back with [`Session:snapshot`][ref-session-snapshot] and stops the server:
+[`new_session.lua`][ex-new-session] calls [`start_server`][guide-start-server],
+[`Server:new_session`][ref-server-new-session] and
+[`Session:snapshot`][ref-session-snapshot]:
 
 <!-- example: examples/api/new_session.lua -->
 
@@ -131,7 +122,8 @@ must(adapter.run(function(runtime)
             argv = { "/bin/cat" },
         })
         :await())
-    assert(created.session and created.window and created.pane, "creation handles are missing")
+    local handles = created.session and created.window and created.pane
+    assert(handles, "creation handles are missing")
     local snapshot = must(created.session:snapshot():await())
     assert(snapshot.name == "demo", "created session has the wrong name")
     print("session: " .. snapshot.name)
@@ -141,9 +133,8 @@ must(adapter.run(function(runtime)
 end))
 ```
 
-After the
-[setup for the complete examples](https://github.com/libtmux/libtmux-lua/blob/master/examples/api/README.md),
-run this from the repository root:
+After the [setup for the complete examples][ex-setup], run this from the
+repository root:
 
 ```console
 $ lua examples/api/new_session.lua
@@ -152,15 +143,12 @@ session: demo
 
 ### [`libtmux.runtime.nvim`][ref-runtime-nvim]: Neovim's loop
 
-[`start(body, on_done, limits)`][ref-nvim-start] returns at once and borrows
-the editor's loop. It calls `on_done(value, err)` once its work has finished,
-and handles it did not create stay open. Source:
-[`nvim.lua`](https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/runtime/nvim.lua).
+[`start(body, on_done, limits)`][ref-nvim-start] borrows Neovim's loop, calls
+`on_done(value, err)` when done, and leaves borrowed handles open. Source:
+[`nvim.lua`][src-nvim].
 
-This is the complete
-[`nvim_snapshot.lua`](https://github.com/libtmux/libtmux-lua/blob/master/examples/nvim_snapshot.lua)
-program. It starts a private server, creates a session and shows the pane
-count:
+[`nvim_snapshot.lua`][ex-nvim-snapshot] starts a private server, creates a
+session and shows the pane count:
 
 <!-- example: examples/nvim_snapshot.lua -->
 
@@ -168,12 +156,14 @@ count:
 local adapter = require("libtmux.runtime.nvim")
 
 adapter.start(function(runtime)
-    local owned, err = runtime:start_server({ binary = vim.fn.exepath("tmux") }):await()
+    local binary = vim.fn.exepath("tmux")
+    local owned, err = runtime:start_server({ binary = binary }):await()
     if not owned then
         return nil, err
     end
+    local session = { name = "demo", argv = { "/bin/cat" } }
     local created
-    created, err = owned.server:new_session({ name = "demo", argv = { "/bin/cat" } }):await()
+    created, err = owned.server:new_session(session):await()
     local snapshot
     if created then
         snapshot, err = owned.server:snapshot({ strict = true }):await()
@@ -205,22 +195,18 @@ $ nvim \
 
 ### [`libtmux.query`][ref-query]: tables without tmux
 
-[`select`][ref-query-select] wraps a list of Lua tables in a
-[`Selection`][ref-selection], the same type as a snapshot's `panes`. The quick
-start program is the complete example. Source:
-[`query.lua`](https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/query.lua).
+[`select`][ref-query-select] wraps Lua tables in a [`Selection`][ref-selection],
+matching `snapshot.panes`; Quick start shows the program. Source:
+[`query.lua`][src-query].
 
 [`Server:query`][ref-server-query] applies criteria to a live server instead
-of a table. The [query guide](https://github.com/libtmux/libtmux-lua/blob/master/docs/query.md)
-lists the criteria both accept.
+of a table. The [query guide][guide-query] lists the criteria both accept.
 
 ## What it leaves out
 
 - **Starting a server on connect.** [`Runtime:connect`][ref-runtime-connect]
-  never starts one;
-  [`start_server`](https://github.com/libtmux/libtmux-lua/blob/master/docs/runtime.md#start-a-private-server)
-  does. Without a `socket_path`, `LIBTMUX_SOCKET_PATH` or `LIBTMUX_SOCKET` names
-  the server, and otherwise tmux picks it.
+  never starts one; [`start_server`][guide-start-server] does. Without
+  `socket_path`, `LIBTMUX_SOCKET_PATH` or `LIBTMUX_SOCKET` picks the server.
 - **Live records.** A [snapshot][ref-snapshot] holds what tmux said when it
   was read. Capture again to see a change.
 - **An interactive terminal.** The luv and Neovim adapters own no terminal, so
@@ -236,21 +222,31 @@ lists the criteria both accept.
 - **Neovim.** 0.10 or newer.
 - **Linux, WSL included.** macOS is not tested.
 
+[changes]: https://github.com/libtmux/libtmux-lua/blob/master/CHANGES.md
+[ex-new-session]: https://github.com/libtmux/libtmux-lua/blob/master/examples/api/new_session.lua
+[ex-nvim-snapshot]: https://github.com/libtmux/libtmux-lua/blob/master/examples/nvim_snapshot.lua
+[ex-setup]: https://github.com/libtmux/libtmux-lua/blob/master/examples/api/README.md
+[guide-query]: https://github.com/libtmux/libtmux-lua/blob/master/docs/query.md
+[guide-start-server]: https://github.com/libtmux/libtmux-lua/blob/master/docs/runtime.md#start-a-private-server
 [ref-concepts]: https://libtmux.org/en/lua/latest/concepts/server-session-window-pane/
-[ref-runtime-luv]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-luv/
-[ref-runtime-nvim]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim/
-[ref-server]: https://libtmux.org/en/lua/latest/reference/libtmux-server/
+[ref-index]: https://libtmux.org/en/lua/latest/reference/
 [ref-luv-run]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-luv-run/
-[ref-runtime-connect]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-connect/
-[ref-server-new-session]: https://libtmux.org/en/lua/latest/reference/libtmux-server-new_session/
-[ref-server-query]: https://libtmux.org/en/lua/latest/reference/libtmux-server-query/
-[ref-session-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-session-snapshot/
-[ref-session-attach]: https://libtmux.org/en/lua/latest/reference/libtmux-session-attach/
-[ref-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-snapshot/
 [ref-nvim-start]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim-start/
 [ref-query]: https://libtmux.org/en/lua/latest/reference/libtmux-query/
 [ref-query-select]: https://libtmux.org/en/lua/latest/reference/libtmux-query-select/
+[ref-runtime-connect]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-connect/
+[ref-runtime-luv]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-luv/
+[ref-runtime-nvim]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim/
 [ref-selection]: https://libtmux.org/en/lua/latest/reference/libtmux-selection/
-[ref-selection-where]: https://libtmux.org/en/lua/latest/reference/libtmux-selection-where/
 [ref-selection-filter]: https://libtmux.org/en/lua/latest/reference/libtmux-selection-filter/
-[changes]: https://github.com/libtmux/libtmux-lua/blob/master/CHANGES.md
+[ref-selection-where]: https://libtmux.org/en/lua/latest/reference/libtmux-selection-where/
+[ref-server]: https://libtmux.org/en/lua/latest/reference/libtmux-server/
+[ref-server-new-session]: https://libtmux.org/en/lua/latest/reference/libtmux-server-new_session/
+[ref-server-query]: https://libtmux.org/en/lua/latest/reference/libtmux-server-query/
+[ref-session-attach]: https://libtmux.org/en/lua/latest/reference/libtmux-session-attach/
+[ref-session-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-session-snapshot/
+[ref-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-snapshot/
+[root-readme]: https://github.com/libtmux/libtmux-lua/blob/master/README.md#quick-start
+[src-luv]: https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/runtime/luv.lua
+[src-nvim]: https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/runtime/nvim.lua
+[src-query]: https://github.com/libtmux/libtmux-lua/blob/master/lua/libtmux/query.lua

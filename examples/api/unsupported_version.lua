@@ -18,7 +18,8 @@ local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 local stand_in = os.tmpname()
 local file = assert(io.open(stand_in, "w"))
 file:write("#!" .. uv.exepath() .. "\n")
-file:write('io.stderr:write("usage: run-shell [-b] [-t target-pane] shell-command\\n")\n')
+local usage = "usage: run-shell [-b] [-t target-pane] shell-command\\n"
+file:write('io.stderr:write("' .. usage .. '")\n')
 file:write("os.exit(1)\n")
 file:close()
 assert(uv.fs_chmod(stand_in, 448))
@@ -26,8 +27,8 @@ assert(uv.fs_chmod(stand_in, 448))
 local ok, failure = pcall(function()
     must(adapter.run(function(runtime)
         local owned = must(runtime:start_server({ binary = binary }):await())
-        local server, err =
-            runtime:connect({ binary = stand_in, socket_path = owned.socket_path }):await()
+        local target = { binary = stand_in, socket_path = owned.socket_path }
+        local server, err = runtime:connect(target):await()
         assert(server == nil, "a tmux before 3.2 was accepted")
         err = assert(err, "the refusal carried no error")
         if err.code == "unsupported_version" then

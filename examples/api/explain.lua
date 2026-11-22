@@ -16,9 +16,11 @@ must(adapter.run(function(runtime)
     local where = { active = true, current_command = "cat" }
     for _, mode in ipairs({ "never", "auto" }) do
         -- Explaining sends nothing to tmux.
-        local plan = must(server:explain_panes({ where = where, pushdown = mode }):await())
+        local query = { where = where, pushdown = mode }
+        local plan = must(server:explain_panes(query):await())
+        local count = #plan.commands .. " tmux commands"
         local filter = plan.filter or "none"
-        print(mode .. ": " .. #plan.commands .. " tmux commands, filter " .. filter)
+        print(mode .. ": " .. count .. ", filter " .. filter)
         for _, left in ipairs(plan.residual) do
             print("  local: " .. left.path .. " (" .. left.reason .. ")")
         end

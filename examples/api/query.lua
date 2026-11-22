@@ -29,7 +29,8 @@ must(adapter.run(function(runtime)
         })
         :await())
     assert(result.complete, "query observed a topology change")
-    assert(#result.rows == 1 and result.rows[1].name == "demo", "query selected the wrong session")
+    local matched = #result.rows == 1 and result.rows[1].name == "demo"
+    assert(matched, "query selected the wrong session")
     print("matched: " .. result.rows[1].name)
 
     must(owned:stop():await())
