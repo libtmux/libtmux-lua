@@ -19,7 +19,8 @@ must(adapter.run(function(runtime)
             argv = { "/bin/cat" },
         })
         :await())
-    local logs = must(created.session:new_window({ name = "logs", argv = { "/bin/cat" } }):await())
+    local window = { name = "logs", argv = { "/bin/cat" } }
+    local logs = must(created.session:new_window(window):await())
     local snapshot = must(logs.window:snapshot():await())
     assert(snapshot.name == "logs", "created window has the wrong name")
     print("window: " .. snapshot.name)

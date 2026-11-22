@@ -14,7 +14,8 @@ must(adapter.run(function(runtime)
     -- The server stops when the body returns, fails or raises.
     local count = must(runtime
         :with_server({ binary = binary }, function(server)
-            must(server:new_session({ name = "demo", argv = { "/bin/cat" } }):await())
+            local session = { name = "demo", argv = { "/bin/cat" } }
+            must(server:new_session(session):await())
             local snapshot = must(server:snapshot():await())
             return #snapshot.sessions
         end)

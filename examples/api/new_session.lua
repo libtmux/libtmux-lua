@@ -19,7 +19,8 @@ must(adapter.run(function(runtime)
             argv = { "/bin/cat" },
         })
         :await())
-    assert(created.session and created.window and created.pane, "creation handles are missing")
+    local handles = created.session and created.window and created.pane
+    assert(handles, "creation handles are missing")
     local snapshot = must(created.session:snapshot():await())
     assert(snapshot.name == "demo", "created session has the wrong name")
     print("session: " .. snapshot.name)

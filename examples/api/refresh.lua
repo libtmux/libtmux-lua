@@ -23,7 +23,8 @@ must(adapter.run(function(runtime)
     local held = must(window:snapshot():await())
     must(window:rename("build"):await())
     local fresh = must(window:snapshot():await())
-    assert(held.name == "editor" and fresh.name == "build", "refresh did not read the rename")
+    local renamed = held.name == "editor" and fresh.name == "build"
+    assert(renamed, "refresh did not read the rename")
     print(held.name .. " " .. fresh.name)
 
     must(owned:stop():await())

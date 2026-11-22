@@ -20,9 +20,13 @@ must(adapter.run(function(runtime)
             argv = { "/bin/cat" },
         })
         :await())
-    must(
-        server:new_session({ name = "worker", window_name = "jobs", argv = { "/bin/cat" } }):await()
-    )
+    must(server
+        :new_session({
+            name = "worker",
+            window_name = "jobs",
+            argv = { "/bin/cat" },
+        })
+        :await())
     local snapshot = must(server:snapshot({ strict = true }):await())
     local sessions, windows = {}, {}
     for _, session in ipairs(snapshot.sessions) do
@@ -33,7 +37,8 @@ must(adapter.run(function(runtime)
     end
     table.sort(sessions)
     table.sort(windows)
-    assert(#snapshot.sessions == 2 and #snapshot.windows == 2 and #snapshot.panes == 2)
+    local counts_ok = #snapshot.sessions == 2 and #snapshot.windows == 2
+    assert(counts_ok and #snapshot.panes == 2)
     print("sessions: " .. table.concat(sessions, ", "))
     print("windows: " .. table.concat(windows, ", "))
     print("panes: " .. #snapshot.panes)

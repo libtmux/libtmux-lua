@@ -1,12 +1,14 @@
 local adapter = require("libtmux.runtime.nvim")
 
 adapter.start(function(runtime)
-    local owned, err = runtime:start_server({ binary = vim.fn.exepath("tmux") }):await()
+    local binary = vim.fn.exepath("tmux")
+    local owned, err = runtime:start_server({ binary = binary }):await()
     if not owned then
         return nil, err
     end
+    local session = { name = "demo", argv = { "/bin/cat" } }
     local created
-    created, err = owned.server:new_session({ name = "demo", argv = { "/bin/cat" } }):await()
+    created, err = owned.server:new_session(session):await()
     local snapshot
     if created then
         snapshot, err = owned.server:snapshot({ strict = true }):await()

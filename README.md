@@ -11,11 +11,9 @@
 
 # libtmux for Lua
 
-Script tmux from Lua: [create sessions and panes][ref-server-new-session],
-[capture terminal output][ref-pane-capture],
-[query server state][ref-server-query], and
-[watch pane output][ref-observation-watch-pane]. Use standalone Lua with luv or
-Neovim's event loop.
+Script tmux from Lua on luv or Neovim:
+[create sessions][ref-server-new-session], [capture panes][ref-pane-capture],
+[query state][ref-server-query], and [watch output][ref-observation-watch-pane].
 
 [![CI](https://github.com/libtmux/libtmux-lua/actions/workflows/ci.yml/badge.svg)](https://github.com/libtmux/libtmux-lua/actions/workflows/ci.yml)
 [![libtmux](https://img.shields.io/luarocks/v/tony/libtmux?label=libtmux)](https://luarocks.org/modules/tony/libtmux)
@@ -27,20 +25,6 @@ Neovim's event loop.
 Needs Lua 5.1 to 5.5 or LuaJIT, and tmux 3.3a or newer. Before 1.0, any
 release may change an API: pin an exact version and read the
 [changelog](CHANGES.md).
-
-**Contents** — [Quick start](#quick-start) ·
-[Start a server](#start-and-stop-a-private-server) ·
-[Read tmux](#read-what-tmux-has-now) ·
-[Create](#create-sessions-windows-and-panes) ·
-[Type and read](#type-into-a-pane-and-read-the-answer) ·
-[Resize](#resize-remove-and-configure) ·
-[Run together](#run-several-commands-together) ·
-[Watch](#watch-a-pane-as-it-prints) ·
-[Neovim](#use-it-from-neovim) · [Packages](#packages) ·
-[Leaves out](#what-it-leaves-out) · [Support](#support-and-status) ·
-[Guides](#guides) ·
-[CI](https://github.com/libtmux/libtmux-lua/actions/workflows/ci.yml) ·
-[MIT license](LICENSE)
 
 ## Quick start
 
@@ -100,7 +84,8 @@ must(adapter.run(function(runtime)
             argv = { "/bin/cat" },
         })
         :await())
-    assert(created.session and created.window and created.pane, "creation handles are missing")
+    local handles = created.session and created.window and created.pane
+    assert(handles, "creation handles are missing")
     local snapshot = must(created.session:snapshot():await())
     assert(snapshot.name == "demo", "created session has the wrong name")
     print("session: " .. snapshot.name)
@@ -110,10 +95,9 @@ must(adapter.run(function(runtime)
 end))
 ```
 
-[`Runtime:start_server`](docs/runtime.md#start-a-private-server) starts a
-private tmux server and `owned:stop()` ends it, so the program needs only Lua
-and tmux. [`Server:new_session`][ref-server-new-session] creates the session
-and [`Session:snapshot`][ref-session-snapshot] reads it back.
+[`Runtime:start_server`][guide-start-server] starts a private tmux server and
+`owned:stop()` ends it. [`Server:new_session`][ref-server-new-session] creates
+the session and [`Session:snapshot`][ref-session-snapshot] reads it back.
 
 Live calls return [Requests][ref-request]. [`:await()`][ref-request-await]
 yields inside the [runtime][ref-runtime] body and returns `value, err`; `must`
@@ -137,7 +121,7 @@ hand.
 
 ## Start and stop a private server
 
-### [`Runtime:start_server`](docs/runtime.md#start-a-private-server): own a tmux server
+### [`Runtime:start_server`][guide-start-server]: own a tmux server
 
 `start_server` starts a tmux server in a directory of its own, with no
 configuration and none of your `TMUX` variables. It returns an `OwnedServer`
@@ -185,11 +169,9 @@ More: [private servers](docs/runtime.md#start-a-private-server).
 
 ### [`Server:snapshot`][ref-server-snapshot]: what tmux has now
 
-One call reads every session, window and pane.
-[`snapshot.sessions`][ref-snapshot-sessions],
+One call reads [`snapshot.sessions`][ref-snapshot-sessions],
 [`snapshot.windows`][ref-snapshot-windows] and
-[`snapshot.panes`][ref-snapshot-panes] list them. This prints each pane and
-its window:
+[`snapshot.panes`][ref-snapshot-panes]:
 
 <!-- example: examples/snapshot.lua -->
 
@@ -208,8 +190,9 @@ local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
     local owned = must(runtime:start_server({ binary = binary }):await())
-    must(owned.server:new_session({ name = "demo", argv = { "/bin/cat" } }):await())
-    local snapshot = must(owned.server:snapshot({ strict = true }):await())
+    local server = owned.server
+    must(server:new_session({ name = "demo", argv = { "/bin/cat" } }):await())
+    local snapshot = must(server:snapshot({ strict = true }):await())
     for _, pane in ipairs(snapshot.panes) do
         io.stdout:write(pane.id, "\t", pane.window_id, "\n")
     end
@@ -234,11 +217,9 @@ More: [Snapshots](docs/snapshots.md).
 
 ### [`Selection:where`][ref-selection-where]: narrow what you read
 
-[`Selection:where`][ref-selection-where] narrows a collection by structured
-criteria, and [`Selection:filter`][ref-selection-filter] by a Lua function.
-Both work on [`snapshot.panes`][ref-snapshot-panes] and on any list you give
-[`query.select`][ref-query-select], and neither calls tmux. This program needs
-only Lua:
+[`Selection:where`][ref-selection-where] filters by criteria and
+[`Selection:filter`][ref-selection-filter] by a function, on
+[`snapshot.panes`][ref-snapshot-panes] or [`query.select`][ref-query-select]:
 
 <!-- example: examples/native_query.lua -->
 
@@ -258,7 +239,9 @@ local rows = {
     { id = "%3", active = false, current_command = "vim" },
 }
 local panes = query.select(rows, schema)
-local editors = panes:where({ current_command = { one_of = { "nvim", "vim" } } })
+local editors = panes:where({
+    current_command = { one_of = { "nvim", "vim" } },
+})
 assert(#editors == 2 and editors[1] == rows[1] and editors[2] == rows[3])
 
 local inactive = panes:filter(function(pane)
@@ -298,7 +281,8 @@ local result = must(server
     })
     :await())
 assert(result.complete, "query observed a topology change")
-assert(#result.rows == 1 and result.rows[1].name == "demo", "query selected the wrong session")
+local matched = #result.rows == 1 and result.rows[1].name == "demo"
+assert(matched, "query selected the wrong session")
 print("matched: " .. result.rows[1].name)
 ```
 
@@ -317,23 +301,24 @@ More: [live queries](docs/query.md#query-live-state-explicitly).
 ### [`Server:explain_panes`][ref-server-explain-panes]: see what runs in tmux
 
 [`Server:explain_panes`][ref-server-explain-panes] and
-[`Server:explain`][ref-server-explain] return the plan for a query without
-contacting tmux: its commands, the criteria sent to tmux as a filter, and the
-ones kept local. `pushdown` picks the mode: `never`, `auto` or `require`:
+[`Server:explain`][ref-server-explain] plan a query locally, splitting tmux and
+local criteria for `pushdown` (`never`, `auto`, `require`):
 
 <!-- excerpt: examples/api/explain.lua -->
 
 ```lua
-    local where = { active = true, current_command = "cat" }
-    for _, mode in ipairs({ "never", "auto" }) do
-        -- Explaining sends nothing to tmux.
-        local plan = must(server:explain_panes({ where = where, pushdown = mode }):await())
-        local filter = plan.filter or "none"
-        print(mode .. ": " .. #plan.commands .. " tmux commands, filter " .. filter)
-        for _, left in ipairs(plan.residual) do
-            print("  local: " .. left.path .. " (" .. left.reason .. ")")
-        end
+local where = { active = true, current_command = "cat" }
+for _, mode in ipairs({ "never", "auto" }) do
+    -- Explaining sends nothing to tmux.
+    local query = { where = where, pushdown = mode }
+    local plan = must(server:explain_panes(query):await())
+    local count = #plan.commands .. " tmux commands"
+    local filter = plan.filter or "none"
+    print(mode .. ": " .. count .. ", filter " .. filter)
+    for _, left in ipairs(plan.residual) do
+        print("  local: " .. left.path .. " (" .. left.reason .. ")")
     end
+end
 ```
 
 `never` keeps every criterion local. `auto` sends `active` to tmux and keeps
@@ -353,16 +338,13 @@ More: [live queries](docs/query.md#query-live-state-explicitly).
 
 ### [`Window:snapshot`][ref-window-snapshot]: read one object again
 
-A record is what tmux said when it was read. Lua has no `refresh` that updates
-one in place, as Python libtmux's `.refresh()` does. Call `snapshot` on the
-handle instead: [`Window:snapshot`][ref-window-snapshot] returns a new record
-and leaves the one you hold as it was.
+Records never mutate in place like Python libtmux's `.refresh()`.
+[`Window:snapshot`][ref-window-snapshot] returns a new record and leaves the
+held table unchanged.
 
 [`Session:snapshot`][ref-session-snapshot] and
-[`Pane:snapshot`][ref-pane-snapshot] work the same way.
-
-This reads a window, renames it with [`Window:rename`][ref-window-rename], and
-reads it again:
+[`Pane:snapshot`][ref-pane-snapshot] work the same way. Rename a window with
+[`Window:rename`][ref-window-rename] and read it again:
 
 <!-- excerpt: examples/api/refresh.lua -->
 
@@ -371,7 +353,8 @@ local window = created.window
 local held = must(window:snapshot():await())
 must(window:rename("build"):await())
 local fresh = must(window:snapshot():await())
-assert(held.name == "editor" and fresh.name == "build", "refresh did not read the rename")
+local renamed = held.name == "editor" and fresh.name == "build"
+assert(renamed, "refresh did not read the rename")
 print(held.name .. " " .. fresh.name)
 ```
 
@@ -384,11 +367,11 @@ editor build
 
 ### [`Session:new_window`][ref-session-new-window]: add a window
 
-[`Session:new_window`][ref-session-new-window] adds a window to a session.
-Like [`Server:new_session`][ref-server-new-session], it returns a
-[`Creation`][ref-creation] holding [`session`][ref-session],
-[`window`][ref-window], [`pane`][ref-pane] and
-[`window_link`][ref-windowlink] handles:
+[`Session:new_window`][ref-session-new-window] adds a window to a session,
+like [`Server:new_session`][ref-server-new-session].
+
+Both return a [`Creation`][ref-creation] holding [`session`][ref-session],
+[`window`][ref-window], [`pane`][ref-pane] and [`window_link`][ref-windowlink]:
 
 <!-- example: examples/api/new_window.lua -->
 
@@ -414,7 +397,8 @@ must(adapter.run(function(runtime)
             argv = { "/bin/cat" },
         })
         :await())
-    local logs = must(created.session:new_window({ name = "logs", argv = { "/bin/cat" } }):await())
+    local window = { name = "logs", argv = { "/bin/cat" } }
+    local logs = must(created.session:new_window(window):await())
     local snapshot = must(logs.window:snapshot():await())
     assert(snapshot.name == "logs", "created window has the wrong name")
     print("window: " .. snapshot.name)
@@ -445,9 +429,14 @@ More: [Creation](docs/creation.md).
 <!-- excerpt: examples/quickstart.lua -->
 
 ```lua
-local logs = must(created.session:new_window({ name = "logs", argv = { "/bin/cat" } }):await())
-local split =
-    must(logs.pane:split({ direction = "right", percent = 40, argv = { "/bin/cat" } }):await())
+local window_opts = { name = "logs", argv = { "/bin/cat" } }
+local logs = must(created.session:new_window(window_opts):await())
+local split_opts = {
+    direction = "right",
+    percent = 40,
+    argv = { "/bin/cat" },
+}
+local split = must(logs.pane:split(split_opts):await())
 ```
 
 [`quickstart.lua`](examples/quickstart.lua) creates a session, a window and
@@ -487,14 +476,17 @@ local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
     local owned = must(runtime:start_server({ binary = binary }):await())
-    local created = must(owned.server:new_session({ name = "demo", argv = { "/bin/sh" } }):await())
+    local session = { name = "demo", argv = { "/bin/sh" } }
+    local created = must(owned.server:new_session(session):await())
     local pane = created.pane
 
     -- The shell echoes what is typed, so print the needle from two pieces.
     must(pane:send_text("printf '%s%s\\n' 'lua input ' 'ready'"):await())
     must(pane:send_keys({ "Enter" }):await())
-    local found = must(pane:wait_for_text("lua input ready", { timeout = 5000 }):await())
-    assert(found.text:find("lua input ready", 1, true), "the command did not print its line")
+    local wait = pane:wait_for_text("lua input ready", { timeout = 5000 })
+    local found = must(wait:await())
+    local matched = found.text:find("lua input ready", 1, true)
+    assert(matched, "the command did not print its line")
     print("lua input ready")
 
     must(owned:stop():await())
@@ -518,9 +510,8 @@ More: [Pane operations](docs/panes.md).
 
 ### [`Pane:capture`][ref-pane-capture]: read the screen
 
-[`Pane:capture`][ref-pane-capture] returns the screen tmux drew.
-`history_lines = 20` adds up to 20 rows of history.
-[`capture:text()`][ref-capture-text] returns the bytes as UTF-8, or an
+[`Pane:capture`][ref-pane-capture] reads the screen (`history_lines = 20` adds
+scrollback). [`capture:text()`][ref-capture-text] decodes UTF-8 or returns an
 [`invalid_utf8`](docs/panes.md#capture-and-text) error:
 
 <!-- excerpt: examples/api/capture.lua -->
@@ -548,10 +539,9 @@ joined lines to escape sequences.
 
 ### [`Pane:wait_for_text`][ref-pane-wait-for-text]: wait for text on screen
 
-[`Pane:wait_for_text`][ref-pane-wait-for-text] polls the visible screen until
-it holds the literal text. The result has the matching screen and
-`matched_at_entry`, true when the first read already matched. Pass `timeout`
-or `deadline` to bound the wait:
+[`Pane:wait_for_text`][ref-pane-wait-for-text] polls the visible screen for
+literal text, returning the matching screen and `matched_at_entry`. Pass
+`timeout` or `deadline` to bound the wait:
 
 <!-- excerpt: examples/api/wait_for_text.lua -->
 
@@ -559,7 +549,8 @@ or `deadline` to bound the wait:
 -- The shell echoes what is typed, so print the needle from two pieces.
 must(pane:send_text("printf '%s%s\\n' 'lua wait ' 'ready'"):await())
 must(pane:send_keys({ "Enter" }):await())
-local found = must(pane:wait_for_text("lua wait ready", { timeout = 5000 }):await())
+local wait = pane:wait_for_text("lua wait ready", { timeout = 5000 })
+local found = must(wait:await())
 assert(found.text:find("lua wait ready", 1, true))
 print("lua wait ready")
 ```
@@ -576,10 +567,9 @@ far. More: [waiting for pane text](docs/panes.md#wait-for-text).
 
 ### [`Pane:resize`][ref-pane-resize]: set a size
 
-[`Pane:resize`][ref-pane-resize] sets a pane's `width` and `height`, or
-adjusts it by a `direction` and an `amount`.
-[`Window:resize`][ref-window-resize] takes `width` and `height`. tmux can clamp
-both to the layout, so read the sizes back:
+[`Pane:resize`][ref-pane-resize] sets `width` and `height` or adjusts by
+`direction` and `amount`; [`Window:resize`][ref-window-resize] sets `width` and
+`height`. tmux clamps both to the layout, so read the sizes back:
 
 <!-- example: examples/api/resize.lua -->
 
@@ -598,8 +588,10 @@ local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
     local owned = must(runtime:start_server({ binary = binary }):await())
-    local created = must(owned.server:new_session({ name = "demo", argv = { "/bin/cat" } }):await())
-    local split = must(created.pane:split({ direction = "right", argv = { "/bin/cat" } }):await())
+    local session = { name = "demo", argv = { "/bin/cat" } }
+    local created = must(owned.server:new_session(session):await())
+    local split_opts = { direction = "right", argv = { "/bin/cat" } }
+    local split = must(created.pane:split(split_opts):await())
 
     must(created.window:resize({ width = 100, height = 30 }):await())
     must(split.pane:resize({ width = 30 }):await())
@@ -607,9 +599,11 @@ must(adapter.run(function(runtime)
     -- A resize can clamp to the layout, so read the sizes tmux settled on.
     local window = must(created.window:snapshot():await())
     local pane = must(split.pane:snapshot():await())
-    assert(window.width == 100 and window.height == 30, "the window kept its old size")
+    local sized = window.width == 100 and window.height == 30
+    assert(sized, "the window kept its old size")
     assert(pane.width == 30, "the pane kept its old width")
-    print(("window %dx%d, pane %d wide"):format(window.width, window.height, pane.width))
+    local template = "window %dx%d, pane %d wide"
+    print(template:format(window.width, window.height, pane.width))
 
     must(owned:stop():await())
     return true
@@ -627,17 +621,18 @@ More: [pane operations](docs/panes.md#resize-kill-and-respawn),
 ### [`Pane:kill`][ref-pane-kill]: remove what you made
 
 [`Pane:kill`][ref-pane-kill], [`Window:kill`][ref-window-kill] and
-[`Session:kill`][ref-session-kill] remove the object they are called on.
-Removing a window's last pane removes the window too. More:
-[removal](docs/topology.md#names-and-removal).
+[`Session:kill`][ref-session-kill] remove their target; killing a window's last
+pane removes the window. More: [removal](docs/topology.md#names-and-removal).
 
 ### [`Window:set_option`][ref-window-set-option]: change a setting
 
 [`Window:set_option`][ref-window-set-option] and
-[`Window:get_option`][ref-window-get-option] write and read one option. Server,
-session and pane handles have them too, and
-[`Window:set_hook`][ref-window-set-hook] stores a command for a hook. More:
-[options and hooks](docs/settings.md).
+[`Window:get_option`][ref-window-get-option] write and read options across
+handles, and [`Window:set_hook`][ref-window-set-hook] stores a hook command.
+
+More: [options and hooks](docs/settings.md),
+[option reference](docs/options-reference.md),
+[environment values](docs/environment.md).
 
 ## Run several commands together
 
@@ -694,18 +689,19 @@ windows: main, build, test
 A group is not a transaction: a failing command skips the rest, and commands
 that already ran stay done.
 
-More: [commands and batches](docs/commands.md).
+More: [commands and batches](docs/commands.md),
+[binary buffers](docs/buffers.md), [clients](docs/clients.md).
 
 ## Watch a pane as it prints
 
 ### [`Server:observe`][ref-server-observe]: keep a control-mode client open
 
 [`Server:observe`][ref-server-observe] holds one control-mode client for a
-session. [`Observation:watch_pane`][ref-observation-watch-pane] streams a
-pane's output, and
+session (tmux 3.7 or newer).
+
+[`Observation:watch_pane`][ref-observation-watch-pane] streams pane output,
 [`Observation:watch_notifications`][ref-observation-watch-notifications]
-streams tmux's own events. [`watch:next`][ref-watch-next] returns the next
-event. This needs tmux 3.7 or newer:
+streams tmux events, and [`watch:next`][ref-watch-next] reads the next event:
 
 <!-- example: examples/api/watch_pane.lua -->
 
@@ -724,12 +720,14 @@ local binary = os.getenv("TMUX_BIN") or "/usr/bin/tmux"
 
 must(adapter.run(function(runtime)
     local owned = must(runtime:start_server({ binary = binary }):await())
-    local created = must(
-        owned.server
-            :new_session({ name = "demo", window_name = "main", argv = { "/bin/cat" } })
-            :await()
-    )
-    -- Observation holds one control-mode client open; it needs tmux 3.7 or newer.
+    local created = must(owned.server
+        :new_session({
+            name = "demo",
+            window_name = "main",
+            argv = { "/bin/cat" },
+        })
+        :await())
+    -- Observation keeps one control-mode client open (tmux 3.7 or newer).
     local observation = must(owned.server:observe(created.session):await())
     local watch = must(observation:watch_pane(created.pane):await())
 
@@ -771,12 +769,14 @@ did not create stay open:
 local adapter = require("libtmux.runtime.nvim")
 
 adapter.start(function(runtime)
-    local owned, err = runtime:start_server({ binary = vim.fn.exepath("tmux") }):await()
+    local binary = vim.fn.exepath("tmux")
+    local owned, err = runtime:start_server({ binary = binary }):await()
     if not owned then
         return nil, err
     end
+    local session = { name = "demo", argv = { "/bin/cat" } }
     local created
-    created, err = owned.server:new_session({ name = "demo", argv = { "/bin/cat" } }):await()
+    created, err = owned.server:new_session(session):await()
     local snapshot
     if created then
         snapshot, err = owned.server:snapshot({ strict = true }):await()
@@ -814,20 +814,14 @@ More: [runtime ownership and cancellation](docs/runtime.md).
 
 ## Packages
 
-### [`libtmux`](https://github.com/libtmux/libtmux-lua/tree/master/lua/libtmux): the library
+### [`libtmux`][pkg-libtmux]: the library
 
-Sessions, windows, panes, queries and pane watches on luv or Neovim's event
-loop. Importing a module starts neither tmux nor an event loop, and
-[local queries][ref-query] need only Lua.
+Sessions, windows, panes, [local queries][ref-query] and pane watches on luv or
+Neovim, with no loop or server started on import.
 
-Reference: [LuaRocks](https://luarocks.org/modules/tony/libtmux),
-[libtmux.org](https://libtmux.org/en/lua/latest/reference/),
-[`libtmux.Server`](https://libtmux.org/en/lua/latest/reference/libtmux-server/),
-[`libtmux.runtime.luv`](https://libtmux.org/en/lua/latest/reference/libtmux-runtime-luv/),
-[`libtmux.runtime.nvim`](https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim/),
-[`libtmux.query`](https://libtmux.org/en/lua/latest/reference/libtmux-query/).
-Changelog: [`CHANGES.md`](CHANGES.md). Module by module: the
-[core README](lua/libtmux/README.md).
+Reference: [libtmux.org][ref-index] ·
+Registry: [LuaRocks][luarocks-libtmux] · Changelog: [`CHANGES.md`](CHANGES.md) ·
+Modules: [`lua/libtmux/`](lua/libtmux/README.md)
 
 To install from a checkout instead of LuaRocks:
 
@@ -838,9 +832,8 @@ $ luarocks --local make rockspecs/libtmux-scm-1.rockspec
 ## What it leaves out
 
 - **Starting a server on connect.** [`Runtime:connect`][ref-runtime-connect]
-  never starts one; [`start_server`](docs/runtime.md#start-a-private-server)
-  does. Without a `socket_path`, `LIBTMUX_SOCKET_PATH` or `LIBTMUX_SOCKET` names
-  the server, and otherwise tmux picks it.
+  never starts one; [`start_server`][guide-start-server] does. Without
+  `socket_path`, `LIBTMUX_SOCKET_PATH` or `LIBTMUX_SOCKET` picks the server.
 - **Live records.** A [snapshot][ref-snapshot] holds what tmux said when it
   was read. Capture again to see a change.
 - **Proof that a command finished.** [`Pane:send_keys`][ref-pane-send-keys]
@@ -877,96 +870,71 @@ $ luarocks --local make rockspecs/libtmux-scm-1.rockspec
 - **Changelog.** [`CHANGES.md`](CHANGES.md) records each release;
   [release steps](.github/CONTRIBUTING.md#releases).
 
-## Guides
+[Docs][docs-home] · [API reference][ref-index] · [`examples/`](examples/) ·
+[`CHANGES.md`](CHANGES.md) · [Contributing](.github/CONTRIBUTING.md) ·
+[AI policy][ai-policy] · [Citation](CITATION.cff) · [MIT License](LICENSE)
 
-- **Read and query:** [snapshots](docs/snapshots.md),
-  [queries](docs/query.md), [field reference](docs/fields.md).
-- **Create and type:** [creation](docs/creation.md),
-  [pane operations](docs/panes.md).
-- **Run and arrange:** [commands and batches](docs/commands.md),
-  [topology](docs/topology.md), [binary buffers](docs/buffers.md),
-  [clients](docs/clients.md).
-- **Watch:** [session notifications and pane streams](docs/control.md).
-- **Configure:** [options and hooks](docs/settings.md),
-  [option reference](docs/options-reference.md),
-  [environment values](docs/environment.md).
-- **Runtime and compatibility:** [runtime ownership](docs/runtime.md),
-  [compatibility matrix](docs/compatibility.md).
-- **Contribute:** [setup and validation](.github/CONTRIBUTING.md),
-  [writing conventions](.github/WRITING.md).
+Part of the [libtmux.org](https://libtmux.org/) family alongside Python
+[`libtmux`][python-libtmux], sibling [language ports][libtmux-gh], and
+[tmux][tmux].
 
-## AI policy
-
-Use these packages with AI tools as you like. When contributing, check what you
-submit and wait for a maintainer's invitation before preparing a pull request.
-See the [AI policy](https://libtmux.org/en/meta/ai-policy/), also kept as
-[AI_POLICY.md](https://github.com/libtmux/.github/blob/HEAD/AI_POLICY.md).
-
-## Attribution
-
-Please use the following BibTeX template to cite libtmux-lua in scientific discourse:
-
-```bibtex
-@misc{libtmux-lua,
-   author = {Tony Narlock},
-   year = {2026},
-   note = {https://libtmux.org/en/lua/},
-   title = {libtmux-lua: Lua wrapper for tmux}
-}
-```
-
-## License
-
-MIT. See [`LICENSE`](LICENSE).
-
-[ref-server-new-session]: https://libtmux.org/en/lua/latest/reference/libtmux-server-new_session/
-[ref-pane-capture]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-capture/
-[ref-server-query]: https://libtmux.org/en/lua/latest/reference/libtmux-server-query/
+[ai-policy]: https://libtmux.org/en/meta/ai-policy/
+[docs-home]: https://libtmux.org/en/lua/
+[guide-start-server]: docs/runtime.md#start-a-private-server
+[libtmux-gh]: https://github.com/libtmux
+[luarocks-libtmux]: https://luarocks.org/modules/tony/libtmux
+[pkg-libtmux]: https://github.com/libtmux/libtmux-lua/tree/master/lua/libtmux
+[python-libtmux]: https://github.com/tmux-python/libtmux
+[ref-capture-text]: https://libtmux.org/en/lua/latest/reference/libtmux-capture-text/
+[ref-creation]: https://libtmux.org/en/lua/latest/reference/libtmux-creation/
+[ref-index]: https://libtmux.org/en/lua/latest/reference/
+[ref-nvim-start]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim-start/
+[ref-observation-watch-notifications]: https://libtmux.org/en/lua/latest/reference/libtmux-observation-watch_notifications/
 [ref-observation-watch-pane]: https://libtmux.org/en/lua/latest/reference/libtmux-observation-watch_pane/
-[ref-query]: https://libtmux.org/en/lua/latest/reference/libtmux-query/
-[ref-runtime-connect]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-connect/
-[ref-window-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-window-snapshot/
-[ref-window-rename]: https://libtmux.org/en/lua/latest/reference/libtmux-window-rename/
+[ref-pane]: https://libtmux.org/en/lua/latest/reference/libtmux-pane/
+[ref-pane-capture]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-capture/
+[ref-pane-kill]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-kill/
+[ref-pane-resize]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-resize/
+[ref-pane-send-keys]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-send_keys/
+[ref-pane-send-text]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-send_text/
 [ref-pane-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-snapshot/
-[ref-session-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-session-snapshot/
+[ref-pane-split]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-split/
+[ref-pane-wait-for-text]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-wait_for_text/
+[ref-query]: https://libtmux.org/en/lua/latest/reference/libtmux-query/
+[ref-query-select]: https://libtmux.org/en/lua/latest/reference/libtmux-query-select/
 [ref-request]: https://libtmux.org/en/lua/latest/reference/libtmux-request/
 [ref-request-await]: https://libtmux.org/en/lua/latest/reference/libtmux-request-await/
 [ref-runtime]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime/
+[ref-runtime-connect]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-connect/
+[ref-selection]: https://libtmux.org/en/lua/latest/reference/libtmux-selection/
+[ref-selection-filter]: https://libtmux.org/en/lua/latest/reference/libtmux-selection-filter/
+[ref-selection-where]: https://libtmux.org/en/lua/latest/reference/libtmux-selection-where/
+[ref-server-batch]: https://libtmux.org/en/lua/latest/reference/libtmux-server-batch/
+[ref-server-command]: https://libtmux.org/en/lua/latest/reference/libtmux-server-command/
+[ref-server-explain]: https://libtmux.org/en/lua/latest/reference/libtmux-server-explain/
+[ref-server-explain-panes]: https://libtmux.org/en/lua/latest/reference/libtmux-server-explain_panes/
+[ref-server-group]: https://libtmux.org/en/lua/latest/reference/libtmux-server-group/
+[ref-server-new-session]: https://libtmux.org/en/lua/latest/reference/libtmux-server-new_session/
+[ref-server-observe]: https://libtmux.org/en/lua/latest/reference/libtmux-server-observe/
+[ref-server-query]: https://libtmux.org/en/lua/latest/reference/libtmux-server-query/
 [ref-server-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-server-snapshot/
+[ref-session]: https://libtmux.org/en/lua/latest/reference/libtmux-session/
+[ref-session-attach]: https://libtmux.org/en/lua/latest/reference/libtmux-session-attach/
+[ref-session-kill]: https://libtmux.org/en/lua/latest/reference/libtmux-session-kill/
+[ref-session-new-window]: https://libtmux.org/en/lua/latest/reference/libtmux-session-new_window/
+[ref-session-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-session-snapshot/
 [ref-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-snapshot/
+[ref-snapshot-panes]: https://libtmux.org/en/lua/latest/reference/libtmux-snapshot-panes/
 [ref-snapshot-sessions]: https://libtmux.org/en/lua/latest/reference/libtmux-snapshot-sessions/
 [ref-snapshot-windows]: https://libtmux.org/en/lua/latest/reference/libtmux-snapshot-windows/
-[ref-snapshot-panes]: https://libtmux.org/en/lua/latest/reference/libtmux-snapshot-panes/
-[ref-selection]: https://libtmux.org/en/lua/latest/reference/libtmux-selection/
-[ref-selection-where]: https://libtmux.org/en/lua/latest/reference/libtmux-selection-where/
-[ref-selection-filter]: https://libtmux.org/en/lua/latest/reference/libtmux-selection-filter/
-[ref-query-select]: https://libtmux.org/en/lua/latest/reference/libtmux-query-select/
-[ref-creation]: https://libtmux.org/en/lua/latest/reference/libtmux-creation/
-[ref-session]: https://libtmux.org/en/lua/latest/reference/libtmux-session/
-[ref-window]: https://libtmux.org/en/lua/latest/reference/libtmux-window/
-[ref-pane]: https://libtmux.org/en/lua/latest/reference/libtmux-pane/
-[ref-windowlink]: https://libtmux.org/en/lua/latest/reference/libtmux-windowlink/
-[ref-session-new-window]: https://libtmux.org/en/lua/latest/reference/libtmux-session-new_window/
-[ref-pane-split]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-split/
-[ref-pane-send-text]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-send_text/
-[ref-pane-send-keys]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-send_keys/
-[ref-server-command]: https://libtmux.org/en/lua/latest/reference/libtmux-server-command/
-[ref-pane-wait-for-text]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-wait_for_text/
-[ref-capture-text]: https://libtmux.org/en/lua/latest/reference/libtmux-capture-text/
-[ref-session-attach]: https://libtmux.org/en/lua/latest/reference/libtmux-session-attach/
-[ref-nvim-start]: https://libtmux.org/en/lua/latest/reference/libtmux-runtime-nvim-start/
-[ref-server-explain-panes]: https://libtmux.org/en/lua/latest/reference/libtmux-server-explain_panes/
-[ref-server-explain]: https://libtmux.org/en/lua/latest/reference/libtmux-server-explain/
-[ref-server-group]: https://libtmux.org/en/lua/latest/reference/libtmux-server-group/
-[ref-server-batch]: https://libtmux.org/en/lua/latest/reference/libtmux-server-batch/
-[ref-server-observe]: https://libtmux.org/en/lua/latest/reference/libtmux-server-observe/
-[ref-observation-watch-notifications]: https://libtmux.org/en/lua/latest/reference/libtmux-observation-watch_notifications/
 [ref-watch-next]: https://libtmux.org/en/lua/latest/reference/libtmux-watch-next/
-[ref-pane-resize]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-resize/
-[ref-window-resize]: https://libtmux.org/en/lua/latest/reference/libtmux-window-resize/
-[ref-pane-kill]: https://libtmux.org/en/lua/latest/reference/libtmux-pane-kill/
-[ref-window-kill]: https://libtmux.org/en/lua/latest/reference/libtmux-window-kill/
-[ref-session-kill]: https://libtmux.org/en/lua/latest/reference/libtmux-session-kill/
-[ref-window-set-option]: https://libtmux.org/en/lua/latest/reference/libtmux-window-set_option/
+[ref-window]: https://libtmux.org/en/lua/latest/reference/libtmux-window/
 [ref-window-get-option]: https://libtmux.org/en/lua/latest/reference/libtmux-window-get_option/
+[ref-window-kill]: https://libtmux.org/en/lua/latest/reference/libtmux-window-kill/
+[ref-window-rename]: https://libtmux.org/en/lua/latest/reference/libtmux-window-rename/
+[ref-window-resize]: https://libtmux.org/en/lua/latest/reference/libtmux-window-resize/
 [ref-window-set-hook]: https://libtmux.org/en/lua/latest/reference/libtmux-window-set_hook/
+[ref-window-set-option]: https://libtmux.org/en/lua/latest/reference/libtmux-window-set_option/
+[ref-window-snapshot]: https://libtmux.org/en/lua/latest/reference/libtmux-window-snapshot/
+[ref-windowlink]: https://libtmux.org/en/lua/latest/reference/libtmux-windowlink/
+[tmux]: https://github.com/tmux/tmux
